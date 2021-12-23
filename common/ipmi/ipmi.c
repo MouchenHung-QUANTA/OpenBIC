@@ -165,6 +165,12 @@ void IPMI_OEM_1S_handler(ipmi_msg *msg)
 	case CMD_OEM_I2C_DEV_SCAN: // debug command
 		pal_OEM_I2C_DEV_SCAN(msg);
 		break;
+	case CMD_OEM_1S_GET_BIC_STATUS:
+		pal_OEM_1S_GET_BIC_STATUS(msg);
+		break;
+	case CMD_OEM_1S_RESET_BIC:
+		pal_OEM_1S_RESET_BIC(msg);
+		break;
 	default:
 		printf("invalid OEM msg netfn: %x, cmd: %x\n", msg->netfn, msg->cmd);
 		msg->data_len = 0;

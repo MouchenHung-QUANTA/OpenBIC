@@ -1148,3 +1148,40 @@ void pal_OEM_GET_POST_CODE(ipmi_msg *msg) {
   msg->completion_code = CC_SUCCESS;
   return;
 }
+
+void pal_OEM_1S_GET_BIC_STATUS(ipmi_msg *msg) {
+  if (!msg){
+    printf("<error> pal_OEM_1S_GET_BIC_STATUS: parameter msg is NULL\n");
+    return;
+  }
+
+  if ( msg->data_len != 0 ){
+    msg->completion_code = CC_INVALID_LENGTH;
+    return;
+  }
+
+  msg->data[0] = FIRMWARE_REVISION_1;
+  msg->data[1] = FIRMWARE_REVISION_2;
+
+  msg->data_len = 3;
+  msg->completion_code = CC_SUCCESS;
+  return;
+}
+
+void pal_OEM_1S_RESET_BIC(ipmi_msg *msg) {
+  if (!msg){
+    printf("<error> pal_OEM_1S_RESET_BIC: parameter msg is NULL\n");
+    return;
+  }
+
+  if ( msg->data_len != 0 ){
+    msg->completion_code = CC_INVALID_LENGTH;
+    return;
+  }
+
+  submit_bic_warm_reset();
+
+  msg->data_len = 1;
+  msg->completion_code = CC_SUCCESS;
+  return;
+}
