@@ -40,25 +40,37 @@ bool pal_vr_read(uint8_t sensor_num, int *reading) {
       if ( (sensor_num == SENSOR_NUM_VOL_PVCCD_HV) || (sensor_num == SENSOR_NUM_VOL_PVCCINFAON) || (sensor_num == SENSOR_NUM_VOL_PVCCFA_EHV)
             || (sensor_num == SENSOR_NUM_VOL_PVCCIN) || (sensor_num == SENSOR_NUM_VOL_PVCCFA_EHV_FIVRA)) {
         val = ((msg.data[1] << 8) | msg.data[0]);
-        *reading = (acur_cal_MBR(sensor_num,val) / 1000) & 0xffff;
+        if ( acur_cal_MBR(sensor_num, val, reading) )
+          *reading = (*reading / 1000) & 0xFFFF;
+        else
+          *reading = val & 0xFFFF;
 
       // current
       } else if ( (sensor_num == SENSOR_NUM_CUR_PVCCD_HV) || (sensor_num == SENSOR_NUM_CUR_PVCCINFAON) || (sensor_num == SENSOR_NUM_CUR_PVCCFA_EHV)
             || (sensor_num == SENSOR_NUM_CUR_PVCCIN) || (sensor_num == SENSOR_NUM_CUR_PVCCFA_EHV_FIVRA) ) {
         val = (((msg.data[1] << 8) | msg.data[0]) / 10);
-        *reading = (acur_cal_MBR(sensor_num,val)) & 0xffff;
+        if ( acur_cal_MBR(sensor_num, val, reading) )
+          *reading &= 0xFFFF;
+        else
+          *reading = val & 0xFFFF;
 
       // temperature
       } else if ( (sensor_num == SENSOR_NUM_TEMP_PVCCD_HV) || (sensor_num == SENSOR_NUM_TEMP_PVCCINFAON) || (sensor_num == SENSOR_NUM_TEMP_PVCCFA_EHV)
             || (sensor_num == SENSOR_NUM_TEMP_PVCCIN) || (sensor_num == SENSOR_NUM_TEMP_PVCCFA_EHV_FIVRA) ) {         
         val = (((msg.data[1] << 8) | msg.data[0]));
-        *reading = (acur_cal_MBR(sensor_num,val)) & 0xffff;
+        if ( acur_cal_MBR(sensor_num, val, reading) )
+          *reading &= 0xFFFF;
+        else
+          *reading = val & 0xFFFF;
 
       // power
       } else if ( (sensor_num == SENSOR_NUM_PWR_PVCCD_HV) || (sensor_num == SENSOR_NUM_PWR_PVCCINFAON) || (sensor_num == SENSOR_NUM_PWR_PVCCFA_EHV) 
 	          || (sensor_num == SENSOR_NUM_PWR_PVCCIN) || (sensor_num == SENSOR_NUM_PWR_PVCCFA_EHV_FIVRA) ) {
         val = (((msg.data[1] << 8) | msg.data[0]));
-        *reading = (acur_cal_MBR(sensor_num,val)) & 0xffff;
+        if ( acur_cal_MBR(sensor_num, val, reading) )
+          *reading &= 0xFFFF;
+        else
+          *reading = val & 0xFFFF;
       }
     } else {
       sensor_config[SnrNum_SnrCfg_map[sensor_num]].cache_status = SNR_FAIL_TO_ACCESS;

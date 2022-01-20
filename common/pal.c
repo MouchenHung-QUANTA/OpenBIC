@@ -264,7 +264,7 @@ __weak void pal_set_sensor_poll_interval(int *interval_ms)
 }
 
 // sensor accessible
-__weak uint8_t pal_load_sdr_table(void)
+__weak uint16_t pal_load_sdr_table(void)
 {
 	return 0;
 }

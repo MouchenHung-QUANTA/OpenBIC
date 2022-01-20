@@ -39,7 +39,11 @@ bool pal_pch_read(uint8_t sensor_num, int *reading) {
   }
 
   if (bridge_msg->completion_code == CC_SUCCESS) {
-    *reading = (cal_MBR(sensor_num, bridge_msg->data[0])) & 0xff;
+    if ( cal_MBR(sensor_num, bridge_msg->data[0], reading) )
+      *reading &= 0xFF;
+    else
+      *reading = bridge_msg->data[0] & 0xFF;
+
     sensor_config[SnrNum_SnrCfg_map[sensor_num]].cache = *reading;
     sensor_config[SnrNum_SnrCfg_map[sensor_num]].cache_status = SNR_READ_SUCCESS;
     free(bridge_msg);
@@ -55,7 +59,12 @@ bool pal_pch_read(uint8_t sensor_num, int *reading) {
         return false;
       }
       if (bridge_msg->completion_code == CC_SUCCESS) { 
-        sensor_config[SnrNum_SnrCfg_map[sensor_num]].cache = cal_MBR(sensor_num, bridge_msg->data[0]) & 0xff;
+        if ( cal_MBR(sensor_num, bridge_msg->data[0], reading) )
+          *reading &= 0xFF;
+        else
+          *reading = bridge_msg->data[0] & 0xFF;
+
+        sensor_config[SnrNum_SnrCfg_map[sensor_num]].cache = *reading;
         sensor_config[SnrNum_SnrCfg_map[sensor_num]].cache_status = SNR_READ_SUCCESS;
         free(bridge_msg);
         return true;

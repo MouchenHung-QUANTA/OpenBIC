@@ -102,7 +102,12 @@ bool pal_adc_read(uint8_t sensor_num, int *reading) {
     if (sensor_num == SENSOR_NUM_CUR_P12V_FAN) {
       val = (float)val / 0.22 / 0.665;
     }
-    *reading = (cal_MBR(sensor_num, val) / 1000) & 0xFF;
+
+    if ( cal_MBR(sensor_num, val, reading) )
+      *reading = (*reading / 1000) & 0xFF;
+    else
+      *reading = val & 0xFF;
+
     sensor_config[snrcfg_sensor_num].cache = *reading;
     sensor_config[snrcfg_sensor_num].cache_status = SNR_READ_SUCCESS;
     return true;

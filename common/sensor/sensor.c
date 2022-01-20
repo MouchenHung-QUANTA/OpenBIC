@@ -17,6 +17,7 @@ static bool snr_poll_eanble_flag = 1;
 const int negative_ten_power[16] = {1,1,1,1,1,1,1,1000000000,100000000,10000000,1000000,100000,10000,1000,100,10};
 
 snr_cfg *sensor_config;
+uint16_t SNR_NUM = 0;
 
 static void init_SnrNum(void) {
   for (int i = 0; i < SENSOR_NUM_MAX; i++) {
@@ -25,7 +26,7 @@ static void init_SnrNum(void) {
   }
 }
 
-void map_SnrNum_SDR_CFG(void) {
+void map_SnrNum_SDR_CFG() {
   uint8_t i,j;
 
   for (i = 0; i < SENSOR_NUM_MAX; i++) {
@@ -37,12 +38,12 @@ void map_SnrNum_SDR_CFG(void) {
         SnrNum_SDR_map[i] = sensor_null;
       }
     }
-    for (j = 0; j < SDR_NUM; j++) {
+    for (j = 0; j < SNR_NUM; j++) {
       if (i == sensor_config[j].num) {
         SnrNum_SnrCfg_map[i] = j;
         break;
       }
-      else if (i == SDR_NUM) {
+      else if (i == SNR_NUM) {
         SnrNum_SnrCfg_map[i] = sensor_null;
       }
     }
@@ -136,7 +137,7 @@ bool sensor_read(uint8_t sensor_num, int *reading) {
 uint8_t get_sensor_reading(uint8_t sensor_num, int *reading, uint8_t read_mode) {
   uint8_t status;
 
-  if(SnrNum_SDR_map[sensor_num] == 0xFF) { // look for sensor in SDR table
+  if(SDR_NUM && SnrNum_SDR_map[sensor_num] == 0xFF) { // look for sensor in SDR table
     return SNR_NOT_FOUND;
   }
 
@@ -221,18 +222,20 @@ bool sensor_init(void) {
   init_SnrNum();
   SDR_init();
 
-  if( SDR_NUM != 0) {
-    sensor_config = malloc(SDR_NUM * sizeof(snr_cfg));
-    if(sensor_config != NULL) {
-      pal_load_snr_config();
-    } else {
-      printf("sensor_config alloc fail\n");
-      return false;
-    }
-  } else {
-    printf("SDR_NUM == 0\n");
+  if( SDR_NUM != 0)
+    printf("<info> SDR read success!\n");
+  else
+    printf("<warn> SDR not available!\n");
+
+  if ( !pal_load_snr_config() ) {
+    printf("<error> Sensor is not polling cause of init failed!\n");
     return false;
   }
+
+  if( SNR_NUM != 0)
+    printf("<info> SNR read success!\n");
+  else
+    printf("<error> SNR not available!\n");
 
   pal_fix_Snrconfig();
   map_SnrNum_SDR_CFG();  

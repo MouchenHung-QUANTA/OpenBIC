@@ -6,6 +6,8 @@
 #include "sensor_def.h"
 #include "plat_ipmb.h"
 
+#define NOSDR 1
+
 enum{
   threshold_UNR ,
   threshold_UCR ,
@@ -18,6 +20,7 @@ enum{
   MBR_R ,
 };
 
+#if NOSDR == 0
 SDR_Full_sensor plat_sensor_table[] = {
   {   // TMP75 on board temperature
     0x00,0x00,  // record ID
@@ -2516,6 +2519,12 @@ SDR_Full_sensor plat_sensor_table[] = {
    "FAON VR Pout",
  },
 };
+#else
+SDR_Full_sensor plat_sensor_table[] = {
+  // If empty
+};
+
+#endif
 
 uint8_t fix_C2SDR_table[][10]= {
 // sensor_num , UNR , UCR , UNC , LNR , LCR , LNC , ( M_tolerance >> 6 ) || M , ( B_accuracy >> 6 ) || B , R
@@ -2528,7 +2537,7 @@ SDR_Full_sensor fix_DVPSDR_table[] = {
 // SDR_Full_sensor struct member
 };
 
-uint8_t pal_load_sdr_table(void) {
+uint16_t pal_load_sdr_table(void) {
   memcpy(&full_sensor_table, &plat_sensor_table, sizeof(plat_sensor_table));
   return (sizeof(plat_sensor_table) / sizeof(plat_sensor_table[0]));
 };

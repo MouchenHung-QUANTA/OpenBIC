@@ -12,7 +12,7 @@ uint8_t is_SDR_not_init = 1;
 
 SDR_Full_sensor full_sensor_table[MAX_SNR_SIZE];
 
-uint8_t SDR_NUM = 0;
+uint16_t SDR_NUM = 0;
 
 void SDR_clear_ID(void)
 {

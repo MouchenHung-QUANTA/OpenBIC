@@ -1518,7 +1518,7 @@ SDR_Full_sensor plat_sensor_table[] = {
 };
 
 
-uint8_t pal_load_sdr_table(void) {
+uint16_t pal_load_sdr_table(void) {
   memcpy(&full_sensor_table, &plat_sensor_table, sizeof(plat_sensor_table));
   return (sizeof(plat_sensor_table) / sizeof(plat_sensor_table[0]));
 };

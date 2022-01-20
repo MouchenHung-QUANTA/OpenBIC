@@ -65,7 +65,12 @@ bool pal_hsc_read(uint8_t sensor_num, int *reading) {
     printf("Snr num %x read fail\n", sensor_num);
     return false;
   }
-  *reading = (cal_MBR(sensor_num,val) / 1000) & 0xff;
+
+  if ( cal_MBR(sensor_num, val, reading) )
+    *reading = (*reading / 1000) & 0xFF;
+  else
+    *reading = val & 0xFF;
+
   sensor_config[SnrNum_SnrCfg_map[sensor_num]].cache = *reading;
   sensor_config[SnrNum_SnrCfg_map[sensor_num]].cache_status = SNR_READ_SUCCESS;
   return true;
