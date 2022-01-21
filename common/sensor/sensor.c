@@ -226,17 +226,15 @@ bool sensor_init(void) {
     printf("<info> SDR read success!\n");
   else
     printf("<warn> SDR not available!\n");
-
-  if ( !pal_load_snr_config() ) {
-    printf("<error> Sensor is not polling cause of init failed!\n");
+  
+  SNR_NUM = pal_get_snr_numbers();
+  sensor_config = malloc(SNR_NUM * sizeof(snr_cfg));
+  if (!sensor_config) {
+    printk("<error> sensor_config memory malloc failed!\n");
     return false;
   }
 
-  if( SNR_NUM != 0)
-    printf("<info> SNR read success!\n");
-  else
-    printf("<error> SNR not available!\n");
-
+  pal_load_snr_config();
   pal_fix_Snrconfig();
   map_SnrNum_SDR_CFG();  
   

@@ -108,17 +108,13 @@ bool post_access(uint8_t snr_num) {
   return get_post_status();
 }
 
+uint16_t pal_get_snr_numbers() {
+  return (sizeof(plat_sensor_config) / sizeof(plat_sensor_config[0]));
+}
+
 bool pal_load_snr_config(void) {
-  SNR_NUM = (sizeof(plat_sensor_config) / sizeof(plat_sensor_config[0]));
-  sensor_config = malloc(SNR_NUM * sizeof(snr_cfg));
-  if (!sensor_config) {
-    printk("<error> sensor_config memory malloc failed!\n");
-    return false;
-  }
-
   memcpy(&sensor_config[0], &plat_sensor_config[0], sizeof(plat_sensor_config));
-
-  return true;
+  return 1;
 };
 
 uint8_t map_SnrNum_Snrconfig( uint8_t sensor_num ) {

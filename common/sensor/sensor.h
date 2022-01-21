@@ -30,34 +30,22 @@
 extern uint16_t SDR_NUM;
 extern uint16_t SNR_NUM;
 
-static inline bool acur_cal_MBR(uint8_t sensor_num, int val, int *output) { // for better accuracy, enlarge SDR to two byte scale
+static inline int acur_cal_MBR(uint8_t sensor_num, int val) { // for better accuracy, enlarge SDR to two byte scale
   if (!SDR_NUM)
-    return false;
-
-  if (!output)
-    return false;
-
-  if( SDR_M(sensor_num) == 0 )
-    *output = ( (val << 8) * SDR_Rexp(sensor_num) );
-  else
-    *output = ( (val << 8) / SDR_M(sensor_num) * SDR_Rexp(sensor_num) ); 
-
-  return true;
+    return val;
+  if( SDR_M(sensor_num) == 0 ) {
+    return ( (val << 8) * SDR_Rexp(sensor_num) );
+  }
+  return ( (val << 8) / SDR_M(sensor_num) * SDR_Rexp(sensor_num) ); 
 }
 
-static inline bool cal_MBR(uint8_t sensor_num, int val, int *output) {
+static inline int cal_MBR(uint8_t sensor_num, int val){
   if (!SDR_NUM)
-    return false;
-  
-  if (!output)
-    return false;
-
-  if( SDR_M(sensor_num) == 0 )
-    *output = ( val * SDR_Rexp(sensor_num) + round_add(sensor_num, val) );
-  else
-    *output = ( val * SDR_Rexp(sensor_num) / SDR_M(sensor_num) + round_add(sensor_num, val) );
-
-  return true;
+    return val;
+  if( SDR_M(sensor_num) == 0 ) {
+    return ( val * SDR_Rexp(sensor_num) + round_add(sensor_num, val) );
+  }
+  return ( val * SDR_Rexp(sensor_num) / SDR_M(sensor_num) + round_add(sensor_num, val) ); 
 }
 
 enum {

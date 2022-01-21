@@ -62,6 +62,7 @@ void pal_set_sensor_poll_interval(int *interval_ms);
 
 // sensor accessible
 uint16_t pal_load_sdr_table(void);
+uint16_t pal_get_snr_numbers(void);
 bool pal_load_snr_config(void);
 void pal_fix_fullSDR_table(void);
 void pal_fix_Snrconfig(void);

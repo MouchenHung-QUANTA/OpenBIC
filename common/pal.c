@@ -269,6 +269,11 @@ __weak uint16_t pal_load_sdr_table(void)
 	return 0;
 }
 
+__weak uint16_t pal_get_snr_numbers(void)
+{
+	return 0;
+}
+
 __weak bool pal_load_snr_config(void)
 {
 	return 0;

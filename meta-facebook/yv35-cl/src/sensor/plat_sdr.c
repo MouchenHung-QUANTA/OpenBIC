@@ -6,7 +6,7 @@
 #include "sensor_def.h"
 #include "plat_ipmb.h"
 
-#define NOSDR 1
+#define NOSDR 0
 
 enum{
   threshold_UNR ,
