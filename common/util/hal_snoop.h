@@ -1,7 +1,8 @@
 #ifndef SNOOP_H
 #define SNOOP_H
 
-#define SNOOP_STACK_SIZE 2000
+#define SNOOP_STACK_SIZE 500
+#define SNOOP_MSGQ_THREAD_STACK_SIZE 2000
 #define SNOOP_MAX_LEN 244
 
 extern int snoop_read_num[];
