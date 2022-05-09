@@ -7,11 +7,17 @@
 #include "plat_isr.h"
 
 #define gpio_name_to_num(x) #x,
+#if ONBOARD == 1
 const char *const gpio_name[] = {
 	name_gpioA name_gpioB name_gpioC name_gpioD name_gpioE name_gpioF name_gpioG name_gpioH
 		name_gpioI name_gpioJ name_gpioK name_gpioL name_gpioM name_gpioN name_gpioO
 			name_gpioP name_gpioQ name_gpioR name_gpioS name_gpioT name_gpioU
 };
+#else
+const char *const gpio_name[] = {
+	name_gpio_dummy
+};
+#endif
 #undef gpio_name_to_num
 
 GPIO_CFG plat_gpio_cfg[] = {
@@ -361,4 +367,84 @@ void enable_PRDY_interrupt()
 void disable_PRDY_interrupt()
 {
 	gpio_interrupt_conf(H_BMC_PRDY_BUF_N, GPIO_INT_DISABLE);
+}
+
+void DisableThermaltripNotify()
+{
+	gpio_interrupt_conf(SGPIO_BMC_DOUT, GPIO_INT_DISABLE);
+}
+
+void EnableThermaltripNotify()
+{
+	//gpio_interrupt_conf(SGPIO_BMC_DOUT, TODO);
+}
+
+void DisablePCHThermaltripNotify()
+{
+	gpio_interrupt_conf(FM_PCH_BMC_THERMTRIP_N, GPIO_INT_DISABLE);
+}
+
+void EnablePCHThermaltripNotify()
+{
+	//gpio_interrupt_conf(FM_PCH_BMC_THERMTRIP_N, TODO);
+}
+
+void DisableUVdetectNotify()
+{
+	gpio_interrupt_conf(FM_CPU_THERMTRIP_LATCH_LVT3_N, GPIO_INT_DISABLE);
+}
+
+void EnableUVdetectNotify()
+{
+	//gpio_interrupt_conf(FM_CPU_THERMTRIP_LATCH_LVT3_N, TODO);
+}
+
+void DisableHSCAlertNotify()
+{
+	gpio_interrupt_conf(IRQ_SML1_PMBUS_ALERT_N, GPIO_INT_DISABLE);
+}
+
+void EnableHSCAlertNotify()
+{
+	//gpio_interrupt_conf(IRQ_SML1_PMBUS_ALERT_N, TODO);
+}
+
+void DisableSYSThrotNotify()
+{
+	gpio_interrupt_conf(FAST_PROCHOT_N, GPIO_INT_DISABLE);
+}
+
+void EnableSYSThrotNotify()
+{
+	//gpio_interrupt_conf(FAST_PROCHOT_N, TODO);
+}
+
+void DisableFASTThrotNotify()
+{
+	gpio_interrupt_conf(IRQ_SMB_IO_LVC3_STBY_ALRT_N, GPIO_INT_DISABLE);
+}
+
+void EnableFASTThrotNotify()
+{
+	//gpio_interrupt_conf(IRQ_SMB_IO_LVC3_STBY_ALRT_N, TODO);
+}
+
+void DisablePRDYNotify()
+{
+	gpio_interrupt_conf(IRQ_BMC_PRDY_NODE_OD_N, GPIO_INT_DISABLE);
+}
+
+void EnablePRDYNotify()
+{
+	//gpio_interrupt_conf(IRQ_BMC_PRDY_NODE_OD_N, TODO);
+}
+
+void DisableResetNotify()
+{
+	gpio_interrupt_conf(RST_RSTBTN_OUT_N, GPIO_INT_DISABLE);
+}
+
+void EnableResetNotify()
+{
+	//gpio_interrupt_conf(RST_RSTBTN_OUT_N, TODO);
 }

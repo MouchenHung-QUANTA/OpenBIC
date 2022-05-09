@@ -3,9 +3,12 @@
 
 #include "hal_gpio.h"
 
+#define gpio_name_to_num(x) x,
+
 // gpio_cfg(chip, number, is_init, direction, status, int_type, int_callback)
 // dedicate gpio A0~A7, B0~B7, C0~C7, D0~D7, E0~E7, total 40 gpios
 // Default name: Reserve_GPIOH0
+
 #define name_gpioA                                                                                 \
 	gpio_name_to_num(FM_BMC_PCH_SCI_LPC_R_N) gpio_name_to_num(FM_BIOS_POST_CMPLT_BMC_N)        \
 		gpio_name_to_num(FM_SLPS3_PLD_N) gpio_name_to_num(IRQ_BMC_PCH_SMI_LPC_R_N)         \
@@ -128,11 +131,100 @@
 			gpio_name_to_num(Reserve_GPIOU4) gpio_name_to_num(Reserve_GPIOU5)          \
 				gpio_name_to_num(Reserve_GPIOU6) gpio_name_to_num(Reserve_GPIOU7)
 
-#define gpio_name_to_num(x) x,
+// YV3 gpio define different from YV3.5
+#define name_gpio_dummy \
+	gpio_name_to_num(PWRGD_BMC_PS_PWROK_R)\
+	gpio_name_to_num(RST_RSTBTN_OUT_N)\
+	gpio_name_to_num(FM_JTAG_TCK_MUX_SEL)\
+	gpio_name_to_num(FM_CPU_MEMHOT_OUT_N)\
+	gpio_name_to_num(IRQ_BMC_PRDY_NODE_OD_N)\
+	gpio_name_to_num(FM_CPU_SKTOCC_LVT3_N)\
+	gpio_name_to_num(SGPIO_BMC_DOUT)\
+	gpio_name_to_num(IRQ_NMI_EVENT_R_N)\
+	gpio_name_to_num(RST_USB_HUB_N)\
+	gpio_name_to_num(HSC_DETECT0)\
+	gpio_name_to_num(HSC_DETECT1)\
+	gpio_name_to_num(FM_BMC_PCHIE_N)\
+	gpio_name_to_num(JTAG_BMC_NTRST_R_N)\
+	gpio_name_to_num(FM_BMC_PCH_SCI_LPC_N)\
+	gpio_name_to_num(HSC_DETECT2)\
+	gpio_name_to_num(DBP_PRESENT_R2_N)\
+	gpio_name_to_num(PVCCIO_CPU)\
+	gpio_name_to_num(FM_FAST_PROCHOT_EN_N)\
+	gpio_name_to_num(FM_PWRBTN_OUT_N)\
+	gpio_name_to_num(FM_CPU_THERMTRIP_LVT3_N)\
+	gpio_name_to_num(FM_CPU_MSMI_CATERR_LVT3_N)\
+	gpio_name_to_num(FM_BIC_RST_RTCRST)\
+	gpio_name_to_num(PWRGD_CPU_LVC3_R)\
+	gpio_name_to_num(HSC_MUX_SWITCH)\
+	gpio_name_to_num(FM_FORCE_ADR_N)\
+	gpio_name_to_num(FM_MRC_DEBUG_EN)\
+	gpio_name_to_num(FM_THERMTRIP_DLY_TO_PCH)\
+	gpio_name_to_num(FM_BMC_CPU_PWR_DEBUG_N)\
+	gpio_name_to_num(SGPIO_BMC_CLK)\
+	gpio_name_to_num(SGPIO_BMC_LD_N)\
+	gpio_name_to_num(IRQ_PVCCIO_CPU_VRHOT_LVC3_N)\
+	gpio_name_to_num(IRQ_PVDDQ_ABC_VRHOT_LVT3_N)\
+	gpio_name_to_num(IRQ_PVCCIN_CPU_VRHOT_LVC3_N)\
+	gpio_name_to_num(HSC_SET_EN)\
+	gpio_name_to_num(FM_BMC_PREQ_N_NODE_R1)\
+	gpio_name_to_num(FM_MEM_THERM_EVENT_LVT3_N)\
+	gpio_name_to_num(IRQ_PVDDQ_DEF_VRHOT_LVT3_N)\
+	gpio_name_to_num(FM_CPU_ERR0_LVT3_N)\
+	gpio_name_to_num(FM_CPU_ERR1_LVT3_N)\
+	gpio_name_to_num(BMC_JTAG_SEL)\
+	gpio_name_to_num(FM_CPU_ERR2_LVT3_N)\
+	gpio_name_to_num(IRQ_SML0_ALERT_MUX_R_N)\
+	gpio_name_to_num(RST_PLTRST_BMC_N)\
+	gpio_name_to_num(FM_SLPS3_R_N)\
+	gpio_name_to_num(DBP_SYSPWROK_R)\
+	gpio_name_to_num(FM_UV_ADR_TRIGGER_EN)\
+	gpio_name_to_num(BMC_HARTBEAT_LED_R)
+
+/*
+// YV3 gpio define same as YV3.5
+#define name_gpio_dummy1 \
+	gpio_name_to_num(FM_PCH_BMC_THERMTRIP_N)\
+	gpio_name_to_num(FM_BMC_ONCTL_R_N)\
+	gpio_name_to_num(FM_SPD_DDRCPU_LVLSHFT_EN)\
+	gpio_name_to_num(A_P3V_BAT_SCALED_EN)\
+	gpio_name_to_num(RST_BMC_R_N)\
+	gpio_name_to_num(FM_SLPS4_R_N)\
+	gpio_name_to_num(FM_SOL_UART_CH_SEL)\
+	gpio_name_to_num(BIC_READY)\
+	gpio_name_to_num(BMC_READY)\
+	gpio_name_to_num(FM_CPU_FIVR_FAULT_LVT3_N)\
+	gpio_name_to_num(FM_HSC_TIMER)\
+	gpio_name_to_num(PWRBTN_N)\
+	gpio_name_to_num(IRQ_SMB_IO_LVC3_STBY_ALRT_N)\
+	gpio_name_to_num(BOARD_ID0)\
+	gpio_name_to_num(BOARD_ID1)\
+	gpio_name_to_num(BOARD_ID2)\
+	gpio_name_to_num(BOARD_ID3)\
+	gpio_name_to_num(FM_BIOS_POST_CMPLT_BMC_N)\
+	gpio_name_to_num(IRQ_BMC_PCH_SMI_LPC_R_N)\
+	gpio_name_to_num(RST_RSMRST_BMC_N)\
+	gpio_name_to_num(IRQ_SMI_ACTIVE_BMC_N)\
+	gpio_name_to_num(IRQ_UV_DETECT_N)\
+	gpio_name_to_num(FAST_PROCHOT_N)\
+	gpio_name_to_num(IRQ_SML1_PMBUS_ALERT_N)\
+	gpio_name_to_num(FM_PEHPCPU_INT)\
+	gpio_name_to_num(PWRGD_SYS_PWROK)\
+	gpio_name_to_num(SGPIO_BMC_DIN)\
+	gpio_name_to_num(IRQ_BMC_PCH_NMI_R)\
+	gpio_name_to_num(FM_BMC_DEBUG_ENABLE_N)\
+	gpio_name_to_num(FM_CPU_THERMTRIP_LATCH_LVT3_N)\
+	gpio_name_to_num(FM_MP_PS_FAIL_N)\
+	gpio_name_to_num(IRQ_HSC_ALERT2_N)\
+*/
+
 enum _GPIO_NUMS_ {
 	name_gpioA name_gpioB name_gpioC name_gpioD name_gpioE name_gpioF name_gpioG name_gpioH
 		name_gpioI name_gpioJ name_gpioK name_gpioL name_gpioM name_gpioN name_gpioO
 			name_gpioP name_gpioQ name_gpioR name_gpioS name_gpioT name_gpioU
+};
+enum _GPIO_NUMS_DUMMY {
+	name_gpio_dummy
 };
 
 extern enum _GPIO_NUMS_ GPIO_NUMS;

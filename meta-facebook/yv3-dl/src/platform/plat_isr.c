@@ -12,6 +12,8 @@
 #include "hal_gpio.h"
 #include "util_sys.h"
 
+extern  uint8_t BICBootUP1SEC;
+
 void send_gpio_interrupt(uint8_t gpio_num)
 {
 	ipmb_error status;
@@ -447,4 +449,318 @@ void ISR_RMCA()
 			printf("RMCA addsel fail\n");
 		}
 	}
+}
+
+/* -------------------------------
+	YV3 isr
+--------------------------------*/
+void BICup1secTickHandler()
+{
+	BICBootUP1SEC = 1;
+}
+
+/* [function] to init */
+void APP_Port80Func(uint8_t u8Port80Byte)
+{
+}
+
+/* [work] of
+	GPIOThermalTripIntHandler
+	GPIOFIVRFaultIntHandler
+	GPIOSYSThrotHandler
+	GPIOPCHProchotIntHandler
+	GPIOUVDetectHandler
+	GPIOHSCAlertHandler
+	GPIOHSCTimerIntHandler
+	Slps3Handler
+	CPUVPPInt2UHandler
+	VCCIOOVFAULTHandler
+	SMI90secHandler
+	GPIOSMIHandler
+*/
+void logThrottleEvtFunc(uint32_t arg0, uint32_t arg1)
+{
+	//TODO: add_sel_evt_record()
+}
+
+/* [work] from CPUVPPIntSB1UHandler */
+void logVPPPwrCtrlEvtFunc(uint32_t root_port, uint32_t Fru)
+{
+}
+
+/* [work] of
+	GPIOPVCCINVRHotIntHandler
+	GPIOPVCCIOVRHotIntHandler
+	GPIOVDDRABCVRHotHandler
+	GPIOVDDRDEFVRHotHandler
+*/
+void logDimmVRHotEvtFunc(uint32_t arg0, uint32_t arg1)
+{
+}
+
+/* [work] of CPUVPPIntSB1UHandler */
+void logM2PwrFaultEvtFunc(uint32_t arg0, uint32_t arg1)
+{
+}
+
+/* [isr] FM_CPU_THERMTRIP_LVT3_N */
+void GPIOThermalTripIntHandler(void)
+{
+}
+
+/* [isr] FM_CPU_FIVR_FAULT_LVT3_N */
+void GPIOFIVRFaultIntHandler(void)
+{
+}
+
+/* [isr] FAST_PROCHOT_N */
+void GPIOSYSThrotHandler()
+{
+}
+
+/* [isr] FM_PCH_BMC_THERMTRIP_N */
+void GPIOPCHProchotIntHandler(void)
+{
+}
+
+/* [isr] IRQ_UV_DETECT_N */
+void GPIOUVDetectHandler()
+{
+}
+
+/* [isr] IRQ_SML1_PMBUS_ALERT_N */
+void GPIOHSCAlertHandler()
+{
+}
+
+/* [isr] FM_HSC_TIMER */
+void GPIOHSCTimerIntHandler()
+{
+}
+
+/* [clock] of GPIOSlps3Handler */
+void Slps3Handler(void)
+{
+}
+
+/* [isr] FM_SLPS3_R_N */
+void GPIOSlps3Handler(void)
+{
+}
+
+/* [work] of GPIOCPUVPPIntHandler */
+void CPUVPPIntSB1UHandler(uint32_t arg0, uint32_t arg1)
+{
+}
+
+/* [work] of GPIOCPUVPPIntHandler */
+void CPUVPPInt2UHandler(uint32_t arg0, uint32_t arg1)
+{
+}
+
+/* [function] of VCCIOOVFAULTHandler */
+uint8_t ReadRNSVRReg(void)
+{
+	return 0;
+}
+
+/* [work] of GPIOCPUVPPIntHandler  */
+void VCCIOOVFAULTHandler(uint32_t arg0, uint32_t arg1)
+{
+}
+
+/* [isr] FM_PEHPCPU_INT */
+void GPIOCPUVPPIntHandler()
+{
+}
+
+/* [isr] IRQ_PVCCIN_CPU_VRHOT_LVC3_N */
+void GPIOPVCCINVRHotIntHandler(void)
+{
+}
+
+/* [isr] IRQ_PVCCIO_CPU_VRHOT_LVC3_N */
+void GPIOPVCCIOVRHotIntHandler(void)
+{
+}
+
+/* [isr] IRQ_PVDDQ_ABC_VRHOT_LVT3_N */
+void GPIOVDDRABCVRHotHandler()
+{
+}
+
+/* [isr] IRQ_PVDDQ_DEF_VRHOT_LVT3_N */
+void GPIOVDDRDEFVRHotHandler()
+{
+}
+
+/* [isr] RST_RSTBTN_OUT_N */
+void GPIOFpRstBtnIntHandler(void)
+{
+}
+
+/* [isr] FM_CPU_MSMI_CATERR_LVT3_N */
+void GPIOCATERRIntHandler(void)
+{
+}
+
+/* [isr] IRQ_NMI_EVENT_R_N */
+void GPIONMIIntHandler(void)
+{
+}
+
+/* [isr] DBP_PRESENT_R2_N */
+void GPIOXDPPRSNTHandler(void)
+{
+}
+
+/* [isr] IRQ_BMC_PRDY_NODE_OD_N */
+void GPIOXDPPRDYHandler(void)
+{
+}
+
+/* [isr] PWRGD_CPU_LVC3_R */
+void GPIOPwrGdIntHandler(void)
+{
+}
+
+/* [function] from PaltformRresetHandler */
+void LPCrstHandler()
+{
+}
+
+/* [work] from GPIOPaltformRresetHandler */
+void PaltformRresetHandler(struct k_work *item)
+{
+}
+
+/* [isr] RST_PLTRST_BMC_N  */
+void GPIOPaltformRresetHandler()
+{
+}
+
+/* [work] from GPIOSMIHandler */
+void SMIHandler(struct k_work *item)
+{
+}
+
+/* [isr] FM_UV_ADR_TRIGGER_EN */
+void GPIOSMIHandler(struct k_work *item)
+{
+}
+
+/* [work] from GPIOMemoryHotIntHandler*/
+void memoryHotFunc(struct k_work *item)
+{
+	//TODO: add_sel_evt_record()
+}
+
+/* [isr]
+	FM_CPU_MEMHOT_OUT_N
+	FM_MEM_THERM_EVENT_LVT3_N
+*/
+void GPIOMemoryHotIntHandler(void)
+{
+}
+
+/* [work] to GPIOSYSGdIntHandler */
+void PowerErrorLogFunc(struct k_work *item)
+{	
+}
+
+/* [isr] PWRGD_SYS_PWROK */
+void GPIOSYSGdIntHandler(void)
+{
+}
+
+/* [isr] FM_BIOS_POST_CMPLT_BMC_N */
+void GPIOBios_Post_compt_n_IntHandler(void)
+{
+}
+
+/* [function] to get expander present from cpld */
+void Set_Exp_Present(uint8_t is_prsnt_1u, uint8_t is_prsnt_2u)
+{
+}
+
+/* [function] to oem command */
+void Set_VPP_status(uint8_t status)
+{
+}
+
+/* [function] to command */
+void getMEverFunc(uint8_t *ME_ver)
+{
+}
+
+/* [function] relative to NM */
+uint32_t getmicrover_buf()
+{
+	return 0;
+}
+
+/* [function] to oem command */
+void getVRver_buf(int index, uint8_t *ptr)
+{
+}
+
+/* [function] to oem command */
+void getVRremaining_write(int index, uint8_t *ptr)
+{
+}
+
+/* [function] to init */
+void signal_handler_init(void )
+{
+}
+
+/* [function] to get whether poweron 15s flag PowerOn_15_Second_flag (for sensor read access) */
+int get_poweron_15_flag()
+{
+	return 0;
+}
+
+/* [work] from Poweron15secTickHandler, to set PowerOn_15_Second_flag flag */
+void PwrOn15s(struct k_work *item)
+{	
+}
+
+/* [clock] from begin */
+void Poweron15secTickHandler()
+{
+}
+
+/* [clock] from begin */
+void CatErrTickHandler()
+{
+}
+
+/* [clock] from begin */
+void DeassertThermalTripTickHandler()
+{
+}
+
+/* [clock] from begin */
+void ProcFailTickHandler()
+{
+}
+
+/* [clock] from begin */
+void power_good_drop_handler()
+{	
+}
+
+/* [clock] from begin */
+void SMI90secHandler(void)
+{
+}
+
+/* [work] from BICup5secTickHandler */
+void getpcodeVerFunc(struct k_work *item)
+{
+}
+
+/* [clock] from begin */
+void BICup5secTickHandler()
+{	
 }
