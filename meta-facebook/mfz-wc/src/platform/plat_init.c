@@ -30,10 +30,12 @@ void pal_set_sys_status()
 	set_DC_status(PWRGD_SYS_PWROK);
 	set_DC_on_delayed_status();
 	set_DC_off_delayed_status();
-	set_post_status(FM_BIOS_POST_CMPLT_BMC_N);
+	// Scron: Replace FM_BIOS_POST_CMPLT_BMC_N by FM_BIOS_POST_CMPLT_BIC_N.
+	set_post_status(FM_BIOS_POST_CMPLT_BIC_N);
 	set_CPU_power_status(PWRGD_CPU_LVC3);
 	set_post_thread();
-	set_sys_ready_pin(BIC_READY);
+	// Scron: Replace BIC_READY by FM_BIC_READY.
+	set_sys_ready_pin(FM_BIC_READY);
 }
 
 #define DEF_PROJ_GPIO_PRIORITY 78

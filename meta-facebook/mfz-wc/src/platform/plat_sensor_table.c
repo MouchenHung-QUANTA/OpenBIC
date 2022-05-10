@@ -17,8 +17,9 @@
 #include "tmp431.h"
 #include "libutil.h"
 
-SET_GPIO_VALUE_CFG pre_bat_3v = { A_P3V_BAT_SCALED_EN_R, GPIO_HIGH };
-SET_GPIO_VALUE_CFG post_bat_3v = { A_P3V_BAT_SCALED_EN_R, GPIO_LOW };
+// Scron: Replace A_P3V_BAT_SCALED_EN_R by FM_P3V_BAT_SCALED_EN_R.
+SET_GPIO_VALUE_CFG pre_bat_3v = { FM_P3V_BAT_SCALED_EN_R, GPIO_HIGH };
+SET_GPIO_VALUE_CFG post_bat_3v = { FM_P3V_BAT_SCALED_EN_R, GPIO_LOW };
 
 sensor_cfg plat_sensor_config[] = {
 	/* number,                  type,       port,      address,      offset,
@@ -278,31 +279,10 @@ void pal_fix_sensor_config()
 				add_sensor_config(adm1278_sensor_config_table[index]);
 			}
 			break;
-		case SYS_BOARD_EVT3_EFUSE:
-			sensor_count = ARRAY_SIZE(mp5990_sensor_config_table);
-			for (int index = 0; index < sensor_count; index++) {
-				if (get_2ou_status()) {
-					/* For the class type 1 and 2OU system,
-					 * set the IMON based total over current fault limit to 70A(0x0046),
-					 * set the gain for output current reporting to 0x01BF following the power team's experiment
-					 * and set GPIOA7(HSC_SET_EN_R) to high.
-					 */
-					mp5990_sensor_config_table[index].init_args =
-						&mp5990_init_args[1];
-					gpio_set(HSC_SET_EN_R, GPIO_HIGH);
-				} else {
-					/* For the class type 1 and 2OU system,
-					 * set the IMON based total over current fault limit to 40A(0x0028),
-					 * set the gain for output current reporting to 0x0104 following the power team's experiment
-					 * and set GPIOA7(HSC_SET_EN_R) to low.
-					 */
-					mp5990_sensor_config_table[index].init_args =
-						&mp5990_init_args[0];
-					gpio_set(HSC_SET_EN_R, GPIO_LOW);
-				}
-				add_sensor_config(mp5990_sensor_config_table[index]);
-			}
-			break;
+		//case SYS_BOARD_EVT3_EFUSE:
+			// Scron:
+			// It seems like MFZ-WC doesn't implement the e-fuse.
+			// Remove code due to using undefined macro: 'HSC_SET_EN_R'.
 		case SYS_BOARD_EVT3_HOTSWAP:
 			/* Follow the GPIO table, the HSC device type can be by ADC7(net name: HSC_TYPE_ADC)
 			 * If the voltage of ADC-7 is 0.5V(+/- 15%), the hotswap model is ADM1278.
