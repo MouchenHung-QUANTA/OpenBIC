@@ -31,3 +31,5 @@ Sample Output
     Hello World! x86
 
 Exit QEMU by pressing :kbd:`CTRL+A` :kbd:`x`.
+
+Scron test
