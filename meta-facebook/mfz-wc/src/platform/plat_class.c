@@ -90,7 +90,7 @@ void init_platform_config()
 	 * The board ID is "0000" if the class type is class1.
 	 * The board ID is "0001" if the class type is calss2.
 	 */
-	if (gpio_get(BOARD_ID0) == GPIO_HIGH) {
+	if (gpio_get(SYS_SKU_ID0) == GPIO_HIGH) {
 		system_class = SYS_CLASS_2;
 	} else {
 		system_class = SYS_CLASS_1;

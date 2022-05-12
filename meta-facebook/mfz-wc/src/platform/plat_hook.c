@@ -109,8 +109,9 @@ bool pre_vol_bat3v_read(uint8_t sensor_num, void *args)
 {
 	ARG_UNUSED(args);
 
+	// Scron: Replace A_P3V_BAT_SCALED_EN_R by FM_P3V_BAT_SCALED_EN_R.
 	if (sensor_num == SENSOR_NUM_VOL_BAT3V) {
-		gpio_set(A_P3V_BAT_SCALED_EN_R, GPIO_HIGH);
+		gpio_set(FM_P3V_BAT_SCALED_EN_R, GPIO_HIGH);
 		k_msleep(1);
 	}
 
@@ -132,8 +133,9 @@ bool post_vol_bat3v_read(uint8_t sensor_num, void *args, int *reading)
 	ARG_UNUSED(args);
 	ARG_UNUSED(reading);
 
+	// Scron: Replace A_P3V_BAT_SCALED_EN_R by FM_P3V_BAT_SCALED_EN_R.
 	if (sensor_num == SENSOR_NUM_VOL_BAT3V)
-		gpio_set(A_P3V_BAT_SCALED_EN_R, GPIO_LOW);
+		gpio_set(FM_P3V_BAT_SCALED_EN_R, GPIO_LOW);
 
 	return true;
 }
