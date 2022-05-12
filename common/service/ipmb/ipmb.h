@@ -64,7 +64,7 @@
 #define IPMB_SEQ_MASK 0xFC
 #define IPMB_SRC_LUN_MASK 0x03
 #define IPMB_RETRY_DELAY_MS 500
-#define IPMB_POLLING_TIME_MS 10
+#define IPMB_POLLING_TIME_MS 1
 #define IPMB_SEQ_TIMEOUT_MS 1000
 #define IPMB_SEQ_TIMEOUT_STACK_SIZE 512
 #define I2C_RETRY_TIME 5
@@ -132,11 +132,11 @@ typedef enum ipmb_error {
 } ipmb_error;
 
 typedef struct ipmi_msg {
-	uint8_t dest_addr; /**< Destination slave address */
+	uint8_t dest_addr; /**< Destination target address */
 	uint8_t netfn; /**< Net Function */
 	uint8_t dest_LUN; /**< Destination LUN (Logical Unit Number) */
 	uint8_t hdr_chksum; /**< Connection Header Checksum */
-	uint8_t src_addr; /**< Source slave address */
+	uint8_t src_addr; /**< Source target address */
 	uint8_t seq_source; /**< Source sequence Number */
 	uint8_t seq_target; /**< Target sequence Number */
 	uint8_t seq; /**< Sequence Number */
