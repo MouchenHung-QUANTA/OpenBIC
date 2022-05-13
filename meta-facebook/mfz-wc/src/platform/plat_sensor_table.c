@@ -275,16 +275,21 @@ void check_vr_type(uint8_t index)
 
 void pal_fix_sensor_config()
 {
-	uint8_t sensor_count;
-	float voltage_hsc_type_adc;
+/* mcadd: TODO: should check whether read by i2c or gpio */
+#if 0
+	uint8_t sensor_count = ARRAY_SIZE(plat_sensor_config);
 
 	/* Check the VR sensor type */
-	sensor_count = ARRAY_SIZE(plat_sensor_config);
 	for (uint8_t index = 0; index < sensor_count; index++) {
 		if (sensor_config[index].type == sensor_dev_isl69259) {
 			check_vr_type(index);
 		}
 	}
+#endif
+
+/* mcadd: TODO: temparary remove until SYS_CLASS or board_revision defined */
+#if 0
+	float voltage_hsc_type_adc;
 
 	/* Fix sensor table according to the different class types and board revisions */
 	if (get_system_class() == SYS_CLASS_1) {
@@ -369,6 +374,7 @@ void pal_fix_sensor_config()
 			add_sensor_config(adm1278_sensor_config_table[index]);
 		}
 	}
+#endif
 
 	if (sensor_config_num != SDR_NUM) {
 		printf("fix sensor SDR and config table not match\n");
