@@ -37,6 +37,13 @@ enum ADM1278_OFFSET {
 	ADM1278_EIN_EXT_OFFSET = 0xDC,
 };
 
+enum INA230_OFFSET {
+	INA230_CFG_OFFSET = 0x00,
+	INA230_PWR_OFFSET = 0x03,
+	INA230_CUR_OFFSET = 0x04,
+	INA230_CAL_OFFSET = 0x05,
+};
+
 enum SENSOR_DEV {
 	sensor_dev_tmp75 = 0,
 	sensor_dev_ast_adc = 0x01,
@@ -53,6 +60,7 @@ enum SENSOR_DEV {
 	sensor_dev_ltc4282 = 0x15,
 	sensor_dev_ast_fan = 0x16,
 	sensor_dev_tmp431 = 0x18,
+	sensor_dev_ina230 = 0x19,
 	sensor_dev_max
 };
 
@@ -91,20 +99,18 @@ static inline float convert_MBR_to_reading(uint8_t sensor_num, uint8_t val)
 	return (val - round_add(sensor_num, val)) * SDR_M(sensor_num) / SDR_Rexp(sensor_num);
 }
 
-enum {
-	SENSOR_READ_SUCCESS,
-	SENSOR_READ_ACUR_SUCCESS,
-	SENSOR_NOT_FOUND,
-	SENSOR_NOT_ACCESSIBLE,
-	SENSOR_FAIL_TO_ACCESS,
-	SENSOR_INIT_STATUS,
-	SENSOR_UNSPECIFIED_ERROR,
-	SENSOR_POLLING_DISABLE,
-	SENSOR_PRE_READ_ERROR,
-	SENSOR_POST_READ_ERROR,
-	SENSOR_READ_API_UNREGISTER,
-	SENSOR_READ_4BYTE_ACUR_SUCCESS
-};
+enum { SENSOR_READ_SUCCESS,
+       SENSOR_READ_ACUR_SUCCESS,
+       SENSOR_NOT_FOUND,
+       SENSOR_NOT_ACCESSIBLE,
+       SENSOR_FAIL_TO_ACCESS,
+       SENSOR_INIT_STATUS,
+       SENSOR_UNSPECIFIED_ERROR,
+       SENSOR_POLLING_DISABLE,
+       SENSOR_PRE_READ_ERROR,
+       SENSOR_POST_READ_ERROR,
+       SENSOR_READ_API_UNREGISTER,
+       SENSOR_READ_4BYTE_ACUR_SUCCESS };
 
 enum { SENSOR_INIT_SUCCESS, SENSOR_INIT_UNSPECIFIED_ERROR };
 
@@ -208,6 +214,31 @@ typedef struct _mp5990_init_arg {
 	bool is_init;
 
 } mp5990_init_arg;
+
+typedef struct _ina230_init_arg {
+	/* value to set configuration register */
+	union {
+		uint16_t value;
+		struct {
+			uint16_t MODE : 3;
+			uint16_t VSH_CT : 3;
+			uint16_t VBUS_CT : 3;
+			uint16_t AVG : 3;
+			uint16_t reserved : 3;
+			uint16_t RST : 1;
+		};
+	} config;
+
+	/* Shunt resistor value */
+	double r_shunt;
+
+	/* Expected maximum current */
+	double i_max;
+
+	/* Initialize function will set following arguments, no need to give value */
+	bool is_init;
+
+} ina230_init_arg;
 
 extern bool enable_sensor_poll_thread;
 extern uint8_t SDR_NUM;
