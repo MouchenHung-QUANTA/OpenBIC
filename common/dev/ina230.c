@@ -8,10 +8,52 @@ static double cur_lsb = 0.0;
 
 uint8_t ina230_read(uint8_t sensor_num, int *reading)
 {
+	double val = 0.0;
+	uint8_t retry = 5;
+	uint16_t reg_val = 0;
+	I2C_MSG msg = { 0 };
+
+	sensor_cfg *cfg;
+	ina230_init_arg *init_args;
+
 	if (!reading || (sensor_num > SENSOR_NUM_MAX)) {
 		return SENSOR_UNSPECIFIED_ERROR;
 	}
 
+	init_args = (ina230_init_arg *)sensor_config[sensor_config_index_map[sensor_num]].init_args;
+	if (init_args->is_init == false) {
+		printf("[%s], device isn't initialized\n", __func__);
+		return SENSOR_UNSPECIFIED_ERROR;
+	}
+
+	cfg = &sensor_config[sensor_config_index_map[sensor_num]];
+
+	msg.bus = cfg->port;
+	msg.target_addr = cfg->target_addr;
+	msg.tx_len = 1;
+	msg.rx_len = 2;
+	msg.data[0] = cfg->offset;
+
+	if (i2c_master_read(&msg, retry))
+		return SENSOR_FAIL_TO_ACCESS;
+
+	reg_val = (msg.data[1] << 8) | msg.data[0];
+
+	switch (cfg->offset) {
+	case INA230_PWR_OFFSET:
+		// The power LSB is internally programmed to equal 25 times the current LSB.
+		val = (double)(reg_val)*cur_lsb * 25.0;
+		break;
+	case INA230_CUR_OFFSET:
+		val = (double)(reg_val)*cur_lsb;
+		break;
+	default:
+		return SENSOR_NOT_FOUND;
+	}
+
+	sensor_val *sval = (sensor_val *)reading;
+	sval->integer = (int)val & 0xFFFF;
+	sval->fraction = (val - sval->integer) * 1000;
 	return SENSOR_READ_SUCCESS;
 }
 
