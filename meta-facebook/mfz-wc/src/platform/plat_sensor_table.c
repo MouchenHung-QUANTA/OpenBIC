@@ -174,6 +174,14 @@ sensor_cfg plat_sensor_config[] = {
 	{ SENSOR_NUM_TEMP_PCH, sensor_dev_pch, I2C_BUS3, PCH_ADDR, ME_SENSOR_NUM_TEMP_PCH,
 	  me_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
 	  NULL },
+
+	// INA230
+	{ SENSOR_NUM_PWR_IOM_P12V, sensor_dev_ina230, I2C_BUS8, INA230_ADDR, INA230_PWR_OFFSET,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
+	  &ina230_init_args[0] },
+	{ SENSOR_NUM_CUR_IOM_P12V, sensor_dev_ina230, I2C_BUS8, INA230_ADDR, INA230_CUR_OFFSET,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
+	  &ina230_init_args[0] },
 };
 
 sensor_cfg mp5990_sensor_config_table[] = {

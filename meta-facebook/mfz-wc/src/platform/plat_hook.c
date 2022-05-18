@@ -24,6 +24,18 @@ mp5990_init_arg mp5990_init_args[] = {
 	[1] = { .is_init = false, .iout_cal_gain = 0x01BF, .iout_oc_fault_limit = 0x0046 }
 };
 
+ina230_init_arg ina230_init_args[] = {
+	[0] = { .is_init = false,
+			.config = {
+				.MODE = 0b111,		// Measure voltage of shunt resistor and bus(default).
+				.VSH_CT = 0b100,	// The Vshunt conversion time is 1.1ms(default).
+				.VBUS_CT = 0b100,	// The Vbus conversion time is 1.1ms(default).
+				.AVG = 0b000,		// Average number is 1(default).
+			},
+			.r_shunt = 0.001,
+			.i_max = 6.0 },
+};
+
 /**************************************************************************************************
  *  PRE-HOOK/POST-HOOK ARGS
  **************************************************************************************************/
