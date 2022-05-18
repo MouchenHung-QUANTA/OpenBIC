@@ -269,22 +269,22 @@ __weak void pal_fix_sensor_config(void)
 	return;
 }
 
-bool stby_access(uint8_t sensor_number)
+bool stby_access(uint8_t sensor_num)
 {
 	return true;
 }
 
-bool dc_access(uint8_t sensor_number)
+bool dc_access(uint8_t sensor_num)
 {
 	return get_DC_on_delayed_status();
 }
 
-bool post_access(uint8_t sensor_number)
+bool post_access(uint8_t sensor_num)
 {
 	return get_post_status();
 }
 
-bool me_access(uint8_t sensor_number)
+bool me_access(uint8_t sensor_num)
 {
 	if (get_me_mode() == ME_NORMAL_MODE) {
 		return get_post_status();

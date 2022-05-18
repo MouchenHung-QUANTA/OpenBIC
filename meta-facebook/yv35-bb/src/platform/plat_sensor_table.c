@@ -10,7 +10,7 @@
 #include "plat_def.h"
 
 #define CONFIG_ISL69260 false
-bool stby_access(uint8_t sensor_number);
+bool stby_access(uint8_t sensor_num);
 
 sensor_cfg plat_sensor_config[] = {
 	/* number,                  type,       port,      address,      offset,
