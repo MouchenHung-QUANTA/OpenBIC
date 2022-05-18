@@ -212,7 +212,7 @@ void check_vr_type(uint8_t index)
 {
 	uint8_t retry = 5;
 	I2C_MSG msg;
-	char *data = (uint8_t *)malloc(sizeof(uint8_t));
+	char data = PMBUS_IC_DEVICE_ID;
 
 	/* Get IC Device ID from VR chip
 	 * - Command code: 0xAD
@@ -230,11 +230,10 @@ void check_vr_type(uint8_t index)
 	uint8_t target_addr = sensor_config[index].target_addr;
 	uint8_t tx_len = 1;
 	uint8_t rx_len = 7;
-	data[0] = PMBUS_IC_DEVICE_ID;
-	msg = construct_i2c_message(bus, target_addr, tx_len, data, rx_len);
+	msg = construct_i2c_message(bus, target_addr, tx_len, &data, rx_len);
 
 	if (i2c_master_read(&msg, retry)) {
-		printf("Failed to read VR register(0x%x)\n", data[0]);
+		printf("Failed to read VR register(0x%x)\n", data);
 		return;
 	}
 
