@@ -2693,9 +2693,6 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SDR_STRING_TYPE_ASCII_8, // ID len, should be same as "size of struct"
 		"FAON VR Pout",
 	},
-};
-
-SDR_Full_sensor hotswap_sdr_table[] = {
 	{
 		// HSC temperature
 		0x00,
@@ -2948,21 +2945,16 @@ uint8_t fix_class2_sdr_table[][10] = {
 	{ SENSOR_NUM_PWR_HSCIN, 0xE0, 0xBD, 0xAB, 0x00, 0x00, 0x00, 0x27, 0x00, 0xF0 },
 };
 
-SDR_Full_sensor fix_1ou_sdr_table[] = {
-	// SDR_Full_sensor struct member
-};
-SDR_Full_sensor fix_dvp_sdr_table[] = {
-	// SDR_Full_sensor struct member
-};
-
 uint8_t load_sdr_table(void)
 {
 	memcpy(full_sdr_table, plat_sdr_table, sizeof(plat_sdr_table));
 	return ARRAY_SIZE(plat_sdr_table);
 }
 
+/* mcadd: TODO: temparary remove until SYS_CLASS or board_revision defined */
 void pal_fix_full_sdr_table()
 {
+#if 0
 	// Fix sdr table according to bic type.
 	uint8_t fix_array_num;
 	float voltage_hsc_type_adc;
@@ -3026,4 +3018,5 @@ void pal_fix_full_sdr_table()
 			}
 		}
 	}
-};
+#endif
+}
