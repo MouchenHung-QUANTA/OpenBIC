@@ -87,26 +87,6 @@ bool pre_isl69259_read(uint8_t sensor_num, void *args)
 	return true;
 }
 
-/* NVME pre read function
- *
- * set mux
- *
- * @param sensor_num sensor number
- * @param args pointer to struct tca9548
- * @param reading pointer to reading from previous step
- * @retval true if setting mux is successful.
- * @retval false if setting mux fails.
- */
-bool pre_nvme_read(uint8_t sensor_num, void *args)
-{
-	if (!args)
-		return false;
-	if (!tca9548_select_chan(sensor_num, (struct tca9548 *)args))
-		return false;
-
-	return true;
-}
-
 /* AST ADC pre read function
  *
  * set gpio high if sensor is "SENSOR_NUM_VOL_BAT3V"

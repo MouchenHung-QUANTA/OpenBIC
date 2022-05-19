@@ -26,23 +26,22 @@ sensor_cfg plat_sensor_config[] = {
 	   access check arg0, arg1, sample_count, cache, cache_status, mux_ADDRess, mux_offset,
 	   pre_sensor_read_fn, pre_sensor_read_args, post_sensor_read_fn, post_sensor_read_fn  */
 
-	// temperature
+	// TMP
 	{ SENSOR_NUM_TEMP_TMP75_IN, sensor_dev_tmp75, I2C_BUS2, TMP75_IN_ADDR, TMP75_TEMP_OFFSET,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
 	  NULL },
 	{ SENSOR_NUM_TEMP_TMP75_OUT, sensor_dev_tmp75, I2C_BUS2, TMP75_OUT_ADDR, TMP75_TEMP_OFFSET,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
 	  NULL },
-	{ SENSOR_NUM_TEMP_TMP75_FIO, sensor_dev_tmp75, I2C_BUS2, TMP75_FIO_ADDR, TMP75_TEMP_OFFSET,
+	{ SENSOR_NUM_TEMP_TMP75_IOM, sensor_dev_tmp75, I2C_BUS8, TMP75_IOM_ADDR, TMP75_TEMP_OFFSET,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
 	  NULL },
 
-	// NVME
+	// NVME, slave address need to be changed
 	{ SENSOR_NUM_TEMP_SSD0, sensor_dev_nvme, I2C_BUS2, SSD0_ADDR, SSD0_OFFSET, post_access, 0,
-	  0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_nvme_read, &mux_conf_addr_0xe2[1],
-	  NULL, NULL, NULL },
+	  0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
 
-	// PECI
+	// PECI, slave address need to be changed
 	{ SENSOR_NUM_TEMP_CPU, sensor_dev_intel_peci, NONE, CPU_PECI_ADDR, PECI_TEMP_CPU,
 	  post_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
 	  NULL },
@@ -170,7 +169,7 @@ sensor_cfg plat_sensor_config[] = {
 	  VR_PWR_CMD, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS,
 	  pre_isl69259_read, &isl69259_pre_read_args[1], NULL, NULL, NULL },
 
-	// ME
+	// ME, slave address need to be changed
 	{ SENSOR_NUM_TEMP_PCH, sensor_dev_pch, I2C_BUS3, PCH_ADDR, ME_SENSOR_NUM_TEMP_PCH,
 	  me_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
 	  NULL },
@@ -182,22 +181,18 @@ sensor_cfg plat_sensor_config[] = {
 	{ SENSOR_NUM_CUR_IOM_P12V, sensor_dev_ina230, I2C_BUS8, INA230_ADDR, INA230_CUR_OFFSET,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
 	  &ina230_init_args[0] },
-};
 
-sensor_cfg mp5990_sensor_config_table[] = {
-	/* number,                  type,       port,      address,      offset,
-	   access check arg0, arg1, sample_count, cache, cache_status, mux_address, mux_offset,
-	   pre_sensor_read_fn, pre_sensor_read_args, post_sensor_read_fn, post_sensor_read_fn  */
-	{ SENSOR_NUM_TEMP_HSC, sensor_dev_mp5990, I2C_BUS2, MPS_MP5990_ADDR,
+	// HSC
+	{ SENSOR_NUM_TEMP_HSC, sensor_dev_mp5990, I2C_BUS5, MPS_MP5990_ADDR,
 	  PMBUS_READ_TEMPERATURE_1, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS,
 	  NULL, NULL, NULL, NULL, &mp5990_init_args[0] },
-	{ SENSOR_NUM_VOL_HSCIN, sensor_dev_mp5990, I2C_BUS2, MPS_MP5990_ADDR, PMBUS_READ_VIN,
+	{ SENSOR_NUM_VOL_HSCIN, sensor_dev_mp5990, I2C_BUS5, MPS_MP5990_ADDR, PMBUS_READ_VIN,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
 	  &mp5990_init_args[0] },
-	{ SENSOR_NUM_CUR_HSCOUT, sensor_dev_mp5990, I2C_BUS2, MPS_MP5990_ADDR, PMBUS_READ_IOUT,
+	{ SENSOR_NUM_CUR_HSCOUT, sensor_dev_mp5990, I2C_BUS5, MPS_MP5990_ADDR, PMBUS_READ_IOUT,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
 	  &mp5990_init_args[0] },
-	{ SENSOR_NUM_PWR_HSCIN, sensor_dev_mp5990, I2C_BUS2, MPS_MP5990_ADDR, PMBUS_READ_PIN,
+	{ SENSOR_NUM_PWR_HSCIN, sensor_dev_mp5990, I2C_BUS5, MPS_MP5990_ADDR, PMBUS_READ_PIN,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
 	  &mp5990_init_args[0] },
 };
