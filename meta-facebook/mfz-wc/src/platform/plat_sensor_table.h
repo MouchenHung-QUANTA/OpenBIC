@@ -15,9 +15,12 @@
 #define MPS_MP5990_ADDR (0x40 >> 1)
 #define PCH_ADDR (0x2C >> 1)
 #define ME_SENSOR_NUM_TEMP_PCH 0x08
-#define PVCCD_HV_ADDR (0xC4 >> 1)
-#define PVCCINFAON_ADDR (0xEC >> 1)
-#define PVCCFA_EHV_ADDR (0xEC >> 1)
+#define PVCCD_HV_ADDR (0xC6 >> 1)
+#define CLASS2_PVCCD_HV_ADDR (0xC4 >> 1)
+#define PVCCINFAON_ADDR (0xC2 >> 1)
+#define CLASS2_PVCCINFAON_ADDR (0xC8 >> 1)
+#define PVCCFA_EHV_ADDR (0xC2 >> 1)
+#define CLASS2_PVCCFA_EHV_ADDR (0xC8 >> 1)
 #define PVCCIN_ADDR (0xC0 >> 1)
 #define PVCCFA_EHV_FIVRA_ADDR (0xC0 >> 1)
 #define VR_VOL_CMD 0x8B

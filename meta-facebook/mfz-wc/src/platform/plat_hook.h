@@ -4,7 +4,7 @@
 typedef struct _isl69259_pre_proc_arg {
 	/* vr page to set */
 	uint8_t vr_page;
-} isl69259_pre_proc_arg;
+} vr_pre_proc_arg;
 
 /**************************************************************************************************
  * INIT ARGS
@@ -18,12 +18,12 @@ extern ina230_init_arg ina230_init_args[];
  *  PRE-HOOK/POST-HOOK ARGS
  **************************************************************************************************/
 extern struct tca9548 mux_conf_addr_0xe2[];
-extern isl69259_pre_proc_arg isl69259_pre_read_args[];
+extern vr_pre_proc_arg vr_pre_read_args[];
 
 /**************************************************************************************************
  *  PRE-HOOK/POST-HOOK FUNC
  **************************************************************************************************/
-bool pre_isl69259_read(uint8_t sensor_num, void *args);
+bool pre_vr_read(uint8_t sensor_num, void *args);
 bool pre_nvme_read(uint8_t sensor_num, void *args);
 bool pre_vol_bat3v_read(uint8_t sensor_num, void *args);
 bool post_vol_bat3v_read(uint8_t sensor_num, void *args, int *reading);

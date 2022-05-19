@@ -103,71 +103,71 @@ sensor_cfg plat_sensor_config[] = {
 
 	// VR voltage
 	{ SENSOR_NUM_VOL_PVCCD_HV, sensor_dev_isl69259, I2C_BUS5, PVCCD_HV_ADDR, VR_VOL_CMD,
-	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_isl69259_read,
-	  &isl69259_pre_read_args[0], NULL, NULL, NULL },
+	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read,
+	  &vr_pre_read_args[0], NULL, NULL, NULL },
 	{ SENSOR_NUM_VOL_PVCCINFAON, sensor_dev_isl69259, I2C_BUS5, PVCCINFAON_ADDR, VR_VOL_CMD,
-	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_isl69259_read,
-	  &isl69259_pre_read_args[0], NULL, NULL, NULL },
+	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read,
+	  &vr_pre_read_args[0], NULL, NULL, NULL },
 	{ SENSOR_NUM_VOL_PVCCFA_EHV, sensor_dev_isl69259, I2C_BUS5, PVCCFA_EHV_ADDR, VR_VOL_CMD,
-	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_isl69259_read,
-	  &isl69259_pre_read_args[1], NULL, NULL, NULL },
+	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read,
+	  &vr_pre_read_args[1], NULL, NULL, NULL },
 	{ SENSOR_NUM_VOL_PVCCIN, sensor_dev_isl69259, I2C_BUS5, PVCCIN_ADDR, VR_VOL_CMD, vr_access,
-	  0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_isl69259_read,
-	  &isl69259_pre_read_args[0], NULL, NULL, NULL },
+	  0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0],
+	  NULL, NULL, NULL },
 	{ SENSOR_NUM_VOL_PVCCFA_EHV_FIVRA, sensor_dev_isl69259, I2C_BUS5, PVCCFA_EHV_FIVRA_ADDR,
-	  VR_VOL_CMD, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS,
-	  pre_isl69259_read, &isl69259_pre_read_args[1], NULL, NULL, NULL },
+	  VR_VOL_CMD, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read,
+	  &vr_pre_read_args[1], NULL, NULL, NULL },
 
 	// VR current
 	{ SENSOR_NUM_CUR_PVCCD_HV, sensor_dev_isl69259, I2C_BUS5, PVCCD_HV_ADDR, VR_CUR_CMD,
-	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_isl69259_read,
-	  &isl69259_pre_read_args[0], NULL, NULL, NULL },
+	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read,
+	  &vr_pre_read_args[0], NULL, NULL, NULL },
 	{ SENSOR_NUM_CUR_PVCCINFAON, sensor_dev_isl69259, I2C_BUS5, PVCCINFAON_ADDR, VR_CUR_CMD,
-	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_isl69259_read,
-	  &isl69259_pre_read_args[0], NULL, NULL, NULL },
+	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read,
+	  &vr_pre_read_args[0], NULL, NULL, NULL },
 	{ SENSOR_NUM_CUR_PVCCFA_EHV, sensor_dev_isl69259, I2C_BUS5, PVCCFA_EHV_ADDR, VR_CUR_CMD,
-	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_isl69259_read,
-	  &isl69259_pre_read_args[1], NULL, NULL, NULL },
+	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read,
+	  &vr_pre_read_args[1], NULL, NULL, NULL },
 	{ SENSOR_NUM_CUR_PVCCIN, sensor_dev_isl69259, I2C_BUS5, PVCCIN_ADDR, VR_CUR_CMD, vr_access,
-	  0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_isl69259_read,
-	  &isl69259_pre_read_args[0], NULL, NULL, NULL },
+	  0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0],
+	  NULL, NULL, NULL },
 	{ SENSOR_NUM_CUR_PVCCFA_EHV_FIVRA, sensor_dev_isl69259, I2C_BUS5, PVCCFA_EHV_FIVRA_ADDR,
-	  VR_CUR_CMD, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS,
-	  pre_isl69259_read, &isl69259_pre_read_args[1], NULL, NULL, NULL },
+	  VR_CUR_CMD, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read,
+	  &vr_pre_read_args[1], NULL, NULL, NULL },
 
 	// VR temperature
 	{ SENSOR_NUM_TEMP_PVCCD_HV, sensor_dev_isl69259, I2C_BUS5, PVCCD_HV_ADDR, VR_TEMP_CMD,
-	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_isl69259_read,
-	  &isl69259_pre_read_args[0], NULL, NULL, NULL },
+	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read,
+	  &vr_pre_read_args[0], NULL, NULL, NULL },
 	{ SENSOR_NUM_TEMP_PVCCINFAON, sensor_dev_isl69259, I2C_BUS5, PVCCINFAON_ADDR, VR_TEMP_CMD,
-	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_isl69259_read,
-	  &isl69259_pre_read_args[0], NULL, NULL, NULL },
+	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read,
+	  &vr_pre_read_args[0], NULL, NULL, NULL },
 	{ SENSOR_NUM_TEMP_PVCCFA_EHV, sensor_dev_isl69259, I2C_BUS5, PVCCFA_EHV_ADDR, VR_TEMP_CMD,
-	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_isl69259_read,
-	  &isl69259_pre_read_args[1], NULL, NULL, NULL },
+	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read,
+	  &vr_pre_read_args[1], NULL, NULL, NULL },
 	{ SENSOR_NUM_TEMP_PVCCIN, sensor_dev_isl69259, I2C_BUS5, PVCCIN_ADDR, VR_TEMP_CMD,
-	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_isl69259_read,
-	  &isl69259_pre_read_args[0], NULL, NULL, NULL },
+	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read,
+	  &vr_pre_read_args[0], NULL, NULL, NULL },
 	{ SENSOR_NUM_TEMP_PVCCFA_EHV_FIVRA, sensor_dev_isl69259, I2C_BUS5, PVCCFA_EHV_FIVRA_ADDR,
-	  VR_TEMP_CMD, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS,
-	  pre_isl69259_read, &isl69259_pre_read_args[1], NULL, NULL, NULL },
+	  VR_TEMP_CMD, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read,
+	  &vr_pre_read_args[1], NULL, NULL, NULL },
 
 	// VR power
 	{ SENSOR_NUM_PWR_PVCCD_HV, sensor_dev_isl69259, I2C_BUS5, PVCCD_HV_ADDR, VR_PWR_CMD,
-	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_isl69259_read,
-	  &isl69259_pre_read_args[0], NULL, NULL, NULL },
+	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read,
+	  &vr_pre_read_args[0], NULL, NULL, NULL },
 	{ SENSOR_NUM_PWR_PVCCINFAON, sensor_dev_isl69259, I2C_BUS5, PVCCINFAON_ADDR, VR_PWR_CMD,
-	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_isl69259_read,
-	  &isl69259_pre_read_args[0], NULL, NULL, NULL },
+	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read,
+	  &vr_pre_read_args[0], NULL, NULL, NULL },
 	{ SENSOR_NUM_PWR_PVCCFA_EHV, sensor_dev_isl69259, I2C_BUS5, PVCCFA_EHV_ADDR, VR_PWR_CMD,
-	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_isl69259_read,
-	  &isl69259_pre_read_args[1], NULL, NULL, NULL },
+	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read,
+	  &vr_pre_read_args[1], NULL, NULL, NULL },
 	{ SENSOR_NUM_PWR_PVCCIN, sensor_dev_isl69259, I2C_BUS5, PVCCIN_ADDR, VR_PWR_CMD, vr_access,
-	  0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_isl69259_read,
-	  &isl69259_pre_read_args[0], NULL, NULL, NULL },
+	  0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0],
+	  NULL, NULL, NULL },
 	{ SENSOR_NUM_PWR_PVCCFA_EHV_FIVRA, sensor_dev_isl69259, I2C_BUS5, PVCCFA_EHV_FIVRA_ADDR,
-	  VR_PWR_CMD, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS,
-	  pre_isl69259_read, &isl69259_pre_read_args[1], NULL, NULL, NULL },
+	  VR_PWR_CMD, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read,
+	  &vr_pre_read_args[1], NULL, NULL, NULL },
 
 	// ME, slave address need to be changed
 	{ SENSOR_NUM_TEMP_PCH, sensor_dev_pch, I2C_BUS3, PCH_ADDR, ME_SENSOR_NUM_TEMP_PCH,
@@ -207,7 +207,7 @@ void check_vr_type(uint8_t index)
 {
 	uint8_t retry = 5;
 	I2C_MSG msg;
-	char *data = (uint8_t *)malloc(sizeof(uint8_t));
+	char data = PMBUS_IC_DEVICE_ID;
 
 	/* Get IC Device ID from VR chip
 	 * - Command code: 0xAD
@@ -225,11 +225,10 @@ void check_vr_type(uint8_t index)
 	uint8_t target_addr = sensor_config[index].target_addr;
 	uint8_t tx_len = 1;
 	uint8_t rx_len = 7;
-	data[0] = PMBUS_IC_DEVICE_ID;
-	msg = construct_i2c_message(bus, target_addr, tx_len, data, rx_len);
+	msg = construct_i2c_message(bus, target_addr, tx_len, &data, rx_len);
 
 	if (i2c_master_read(&msg, retry)) {
-		printf("Failed to read VR register(0x%x)\n", data[0]);
+		printf("Failed to read VR register(0x%x)\n", data);
 		return;
 	}
 

@@ -46,7 +46,7 @@ struct tca9548 mux_conf_addr_0xe2[8] = {
 	[6] = { .addr = 0xe2, .chan = 6 }, [7] = { .addr = 0xe2, .chan = 7 },
 };
 
-isl69259_pre_proc_arg isl69259_pre_read_args[] = {
+vr_pre_proc_arg vr_pre_read_args[] = {
 	[0] = { 0x0 },
 	[1] = { 0x1 },
 };
@@ -54,23 +54,23 @@ isl69259_pre_proc_arg isl69259_pre_read_args[] = {
 /**************************************************************************************************
  *  PRE-HOOK/POST-HOOK FUNC
  **************************************************************************************************/
-/* ISL6925 pre read function
+/* VR sensor pre read function
  *
  * set mux and VR page
  *
  * @param sensor_num sensor number
- * @param args pointer to isl69259_pre_proc_arg
+ * @param args pointer to vr_pre_proc_arg
  * @param reading pointer to reading from previous step
  * @retval true if setting mux and page is successful.
  * @retval false if setting mux or page fails.
  */
-bool pre_isl69259_read(uint8_t sensor_num, void *args)
+bool pre_vr_read(uint8_t sensor_num, void *args)
 {
 	if (args == NULL) {
 		return false;
 	}
 
-	isl69259_pre_proc_arg *pre_proc_args = (isl69259_pre_proc_arg *)args;
+	vr_pre_proc_arg *pre_proc_args = (vr_pre_proc_arg *)args;
 	uint8_t retry = 5;
 	I2C_MSG msg;
 
@@ -81,7 +81,7 @@ bool pre_isl69259_read(uint8_t sensor_num, void *args)
 	msg.data[0] = 0x00;
 	msg.data[1] = pre_proc_args->vr_page;
 	if (i2c_master_write(&msg, retry)) {
-		printf("pre_isl69259_read, set page fail\n");
+		printf("pre_vr_read, set page fail\n");
 		return false;
 	}
 	return true;
