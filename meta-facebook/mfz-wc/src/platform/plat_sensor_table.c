@@ -202,33 +202,6 @@ sensor_cfg mp5990_sensor_config_table[] = {
 	  &mp5990_init_args[0] },
 };
 
-sensor_cfg adm1278_sensor_config_table[] = {
-	/* number,                  type,       port,      address,      offset,
-	   access check arg0, arg1, sample_count, cache, cache_status, mux_address, mux_offset,
-	   pre_sensor_read_fn, pre_sensor_read_args, post_sensor_read_fn, post_sensor_read_fn  */
-	{ SENSOR_NUM_TEMP_HSC, sensor_dev_adm1278, I2C_BUS2, ADI_ADM1278_ADDR,
-	  PMBUS_READ_TEMPERATURE_1, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, NULL, NULL, &adm1278_init_args[0] },
-	{ SENSOR_NUM_VOL_HSCIN, sensor_dev_adm1278, I2C_BUS2, ADI_ADM1278_ADDR, PMBUS_READ_VIN,
-	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
-	  &adm1278_init_args[0] },
-	{ SENSOR_NUM_CUR_HSCOUT, sensor_dev_adm1278, I2C_BUS2, ADI_ADM1278_ADDR, PMBUS_READ_IOUT,
-	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL,
-	  post_adm1278_current_read, NULL, &adm1278_init_args[0] },
-	{ SENSOR_NUM_PWR_HSCIN, sensor_dev_adm1278, I2C_BUS2, ADI_ADM1278_ADDR, PMBUS_READ_PIN,
-	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL,
-	  post_adm1278_power_read, NULL, &adm1278_init_args[0] },
-};
-
-sensor_cfg evt3_class1_adi_temperature_sensor_table[] = {
-	{ SENSOR_NUM_TEMP_TMP75_OUT, sensor_dev_tmp431, I2C_BUS2, TMP431_ADDR,
-	  TMP431_LOCAL_TEMPERATRUE, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, NULL, NULL, NULL },
-	{ SENSOR_NUM_TEMP_HSC, sensor_dev_tmp431, I2C_BUS2, TMP431_ADDR, TMP431_REMOTE_TEMPERATRUE,
-	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
-	  NULL },
-};
-
 uint8_t load_sensor_config(void)
 {
 	memcpy(sensor_config, plat_sensor_config, sizeof(plat_sensor_config));
