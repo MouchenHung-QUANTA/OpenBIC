@@ -7,6 +7,9 @@
 #include "usb.h"
 #include "plat_def.h"
 
+#define LOG_LEVEL LOG_LEVEL_DBG
+LOG_MODULE_REGISTER(usb);
+
 #ifdef CONFIG_USB
 
 RING_BUF_DECLARE(ringbuf, RING_BUF_SIZE);
@@ -28,6 +31,54 @@ static inline void try_ipmi_message(ipmi_msg_cfg *current_msg, int retry)
 		k_msgq_purge(&ipmi_msgq);
 		printf("USB retrying put ipmi msgq\n");
 	}
+}
+
+#define cmd_store_size 500
+void check_valid_msg(uint8_t *msg, int flag)
+{
+	if (flag == true)
+		return;
+
+	static uint8_t cmd_store_arr[cmd_store_size][3] = { 0 };
+
+	char *nf_name = "?";
+	printf("***** USB: \n");
+	for (int j = 0; j < cmd_store_size; j++) {
+		if (cmd_store_arr[j][2]) {
+			switch (cmd_store_arr[j][0]) {
+			case NETFN_OEM_1S_REQ:
+				if (cmd_store_arr[j][1] == CMD_OEM_1S_FW_UPDATE)
+					nf_name = "oem-fwupdate";
+				break;
+
+			default:
+				break;
+			}
+			printf("          [%-3d] - [0x%-2x] [0x%-2x] - %s\n", j,
+			       cmd_store_arr[j][0], cmd_store_arr[j][1], nf_name);
+		}
+	}
+	printf("\n");
+
+	int i = 0;
+	for (i = 0; i < cmd_store_size; i++) {
+		if (cmd_store_arr[i][2]) {
+			if (cmd_store_arr[i][0] == (msg[0] >> 2) && cmd_store_arr[i][1] == msg[1])
+				return;
+		} else
+			break;
+	}
+
+	if (i == cmd_store_size) {
+		//LOG_ERR("Over command collect size %d", cmd_store_size);
+		return;
+	}
+
+	cmd_store_arr[i][2] = 1;
+	cmd_store_arr[i][0] = msg[0] >> 2;
+	cmd_store_arr[i][1] = msg[1];
+
+	return;
 }
 
 void handle_usb_data(uint8_t *rx_buff, int rx_len)
@@ -85,6 +136,7 @@ void handle_usb_data(uint8_t *rx_buff, int rx_len)
 			fwupdate_keep_data = false;
 		}
 	} else {
+		check_valid_msg(rx_buff, 0);
 		current_msg.buffer.netfn = rx_buff[0] >> 2;
 		current_msg.buffer.cmd = rx_buff[1];
 		current_msg.buffer.InF_source = BMC_USB;
