@@ -97,6 +97,8 @@ void init_platform_config()
 	}
 	printf("SYS_SKU: %s Compute System\n", system_class == SYS_CLASS_2 ? "Single" : "Dual");
 
+	printf("BRD_SKU: %s\n", gpio_get(FM_BOARD_SKU_ID0) == GPIO_HIGH ? "VR-INS" : "VR-RTT");
+
 	uint8_t tx_len, rx_len;
 	uint8_t class_type = 0x0;
 	char *data = (uint8_t *)malloc(I2C_DATA_SIZE * sizeof(uint8_t));
