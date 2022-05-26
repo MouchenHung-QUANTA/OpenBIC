@@ -95,6 +95,7 @@ void init_platform_config()
 	} else {
 		system_class = SYS_CLASS_1;
 	}
+	printf("SYS_SKU: %s Compute System\n", system_class == SYS_CLASS_2 ? "Single" : "Dual");
 
 	uint8_t tx_len, rx_len;
 	uint8_t class_type = 0x0;
@@ -153,8 +154,7 @@ void init_platform_config()
 		rx_len = 1;
 		memset(data, 0, I2C_DATA_SIZE);
 		data[0] = CPLD_2OU_EXPANSION_CARD_REG;
-		i2c_msg =
-			construct_i2c_message(I2C_BUS1, CPLD_ADDR, tx_len, data, rx_len);
+		i2c_msg = construct_i2c_message(I2C_BUS1, CPLD_ADDR, tx_len, data, rx_len);
 		if (!i2c_master_read(&i2c_msg, retry)) {
 			switch (i2c_msg.data[0]) {
 			case TYPE_2OU_DPV2:
