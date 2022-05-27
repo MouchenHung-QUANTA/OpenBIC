@@ -11,7 +11,6 @@
 #include <zephyr.h>
 #include <sys/util.h>
 #include <sys/byteorder.h>
-#include <shell/shell.h>
 
 #include "sensor.h"
 #include "hal_i2c.h"
@@ -232,7 +231,7 @@ exit:
 	return rc;
 }
 
-uint8_t pex_access_engine(uint8_t bus, uint8_t addr, pex_access_t key, uint32_t *resp)
+uint8_t pex_access_engine(uint8_t bus, uint8_t addr, uint8_t idx, pex_access_t key, uint32_t *resp)
 {
 	uint8_t rc = 1;
 
@@ -241,8 +240,9 @@ uint8_t pex_access_engine(uint8_t bus, uint8_t addr, pex_access_t key, uint32_t 
 		return 1;
 	}
 
+	/* TODO: Should get specific mutex with idx */
 	if (k_mutex_lock(&mutex_pex89000, K_MSEC(1000))) {
-		printk("%s: mutex get fail!\n", __func__);
+		printk("%s: mutex lock fail!\n", __func__);
 		return 1;
 	}
 
@@ -293,8 +293,9 @@ uint8_t pex_access_engine(uint8_t bus, uint8_t addr, pex_access_t key, uint32_t 
 
 	rc = 0;
 exit:
+	/* TODO: Should unlock specific mutex with idx */
 	if (k_mutex_unlock(&mutex_pex89000))
-		printf("--> unlock filed!\n");
+		printf("%s: mutex unlock filed!\n", __func__);
 	return rc;
 }
 
@@ -388,7 +389,10 @@ static uint8_t pex89000_temp(uint8_t bus, uint8_t addr, uint32_t *val)
 		goto exit;
 	}
 
-	*val = (((int)temp & 0xFFFF) << 16) | (((int)(temp * 1000) % 1000) & 0xFFFF);
+	sensor_val *sval = (sensor_val *)val;
+	sval->integer = (int16_t)temp;
+	sval->fraction = (int16_t)(temp - sval->integer) * 1000;
+
 	rc = 0;
 exit:
 	return rc;
@@ -415,13 +419,16 @@ uint8_t pex89000_read(uint8_t sensor_num, int *reading)
 		return SENSOR_UNSPECIFIED_ERROR;
 	}
 
+	/* TODO: Get from private data */
+	uint8_t px_idx = 0;
+
 	uint8_t rc = SENSOR_UNSPECIFIED_ERROR;
 
 	switch (sensor_config[sensor_config_index_map[sensor_num]].offset) {
 	case PEX_TEMP:
 		if (pex_access_engine(sensor_config[sensor_config_index_map[sensor_num]].port,
 				      sensor_config[sensor_config_index_map[sensor_num]].target_addr,
-				      pex_access_temp, reading)) {
+				      px_idx, pex_access_temp, reading)) {
 			printf("%s: read temp fail!\n", __func__);
 			rc = SENSOR_FAIL_TO_ACCESS;
 			goto exit;
@@ -450,101 +457,3 @@ bool pex89000_init(uint8_t sensor_num)
 	sensor_config[sensor_config_index_map[sensor_num]].read = pex89000_read;
 	return SENSOR_INIT_SUCCESS;
 }
-
-static uint8_t mux_switch(uint8_t ps_idx)
-{
-	uint8_t retry = 5;
-	I2C_MSG msg = { 0 };
-
-	msg.bus = 9;
-	/* change address to 7-bit */
-	msg.target_addr = ((0xe0) >> 1);
-	msg.tx_len = 1;
-	msg.data[0] = (1 << (ps_idx));
-
-	if (i2c_master_write(&msg, retry))
-		return 1;
-
-	return 0;
-}
-
-static int cmd_pex_temp(const struct shell *shell, size_t argc, char **argv)
-{
-	if (argc != 2) {
-		shell_warn(shell, "Help: pex temp <ps_idx>");
-		return 0;
-	}
-	int ps_idx = strtol(argv[1], NULL, 10);
-
-	if (ps_idx > 3) {
-		shell_warn(shell, "<ps_idx> should lower than 4");
-		return 0;
-	}
-
-	printf("pex89000 temp!\n");
-
-	uint8_t bus = 9;
-	uint8_t sa = 0x18 + ps_idx;
-	uint32_t val;
-
-	if (mux_switch(ps_idx)) {
-		printf("--> fail to switch mux!\n");
-		return 0;
-	}
-
-	if (pex_access_engine(bus, sa, pex_access_temp, &val)) {
-		printf("[pex test] F\n");
-		return 0;
-	}
-
-	printf("[pex test] T: %d.%d\n", (val >> 16) & 0xFFFF, val & 0xFFFF);
-
-	return 0;
-}
-
-static int cmd_pex_conf(const struct shell *shell, size_t argc, char **argv)
-{
-	if (argc != 3) {
-		shell_warn(shell, "Help: pex conf <ps_idx> <access_idx>");
-		return 0;
-	}
-
-	printf("pex89000 conf!\n");
-
-	int ps_idx = strtol(argv[1], NULL, 10);
-	int access_idx = strtol(argv[2], NULL, 10);
-
-	if (ps_idx > 3) {
-		shell_warn(shell, "<ps_idx> should lower than 4");
-		return 0;
-	}
-
-	if (access_idx > pex_access_unknown) {
-		shell_warn(shell, "<access_idx> should lower than %d", pex_access_engine);
-		return 0;
-	}
-
-	uint8_t bus = 9;
-	uint8_t sa = 0x18 + ps_idx;
-
-	if (mux_switch(ps_idx)) {
-		printf("--> fail to switch mux!\n");
-		return 0;
-	}
-
-	uint32_t resp;
-	if (pex_access_engine(bus, sa, access_idx, &resp)) {
-		printf("--> fail to get resp!\n");
-		return 0;
-	}
-
-	printf("--> 0x%x\n", resp);
-	return 0;
-}
-
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_pex, SHELL_CMD(temp, NULL, "pex89000 temp ", cmd_pex_temp),
-			       SHELL_CMD(conf, NULL, "pex89000 conf ", cmd_pex_conf),
-			       SHELL_SUBCMD_SET_END /* Array terminated. */
-);
-
-SHELL_CMD_REGISTER(pex, &sub_pex, "pex89000 commands", NULL);

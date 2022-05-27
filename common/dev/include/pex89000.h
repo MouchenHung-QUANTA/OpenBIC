@@ -21,6 +21,6 @@ enum pex_sensor_offset {
 	PEX_ADC,
 };
 
-uint8_t pex_access_engine(uint8_t bus, uint8_t addr, pex_access_t key, uint32_t *resp);
+uint8_t pex_access_engine(uint8_t bus, uint8_t addr, uint8_t idx, pex_access_t key, uint32_t *resp);
 
 #endif
