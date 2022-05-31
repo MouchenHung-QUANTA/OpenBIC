@@ -48,39 +48,6 @@ uint8_t get_2ou_cardtype()
 	return card_type_2ou;
 }
 
-float get_hsc_type_adc_voltage()
-{
-	uint32_t adc_base_address = 0x7e6e9000, adc7_raw, reg_val;
-	long unsigned int engine_control = 0x0, adc_data_of_ch7_and_6 = 0x1C;
-	float reference_voltage = 0.0f;
-	uint8_t reference_voltage_selection;
-
-	/* Get ADC reference voltage from Aspeed chip
-	 * ADC000: Engine Control
-	 * [7:6] Reference Voltage Selection
-	 * 00b - 2.5V / 01b - 1.2V / 10b and 11b - External Voltage
-	 */
-	reg_val = sys_read32(adc_base_address + engine_control);
-	reference_voltage_selection = (reg_val >> 6) & 0x3;
-	if (reference_voltage_selection == 0b00) {
-		reference_voltage = 2.5;
-	} else if (reference_voltage_selection == 0b01) {
-		reference_voltage = 1.2;
-	} else {
-		printf("Not supported the external reference voltage\n");
-	}
-
-	/* Read ADC channel-7 raw value
-	 * ADC01C: Data of Channel 7 and 6
-	 * [25:16] Data of channel 7
-	 */
-	reg_val = sys_read32(adc_base_address + adc_data_of_ch7_and_6);
-	adc7_raw = (reg_val & 0x3FF0000) >> 16;
-
-	// Real voltage = raw data * reference voltage / 2 ^ resolution(10)
-	return ((adc7_raw * reference_voltage) / (1024));
-}
-
 void init_platform_config()
 {
 	I2C_MSG i2c_msg;
@@ -95,6 +62,9 @@ void init_platform_config()
 	} else {
 		system_class = SYS_CLASS_1;
 	}
+	printf("SYS_SKU: %s Compute System\n", system_class == SYS_CLASS_2 ? "Single" : "Dual");
+
+	printf("BRD_SKU: %s\n", gpio_get(FM_BOARD_SKU_ID0) == GPIO_HIGH ? "VR-INS" : "VR-RTT");
 
 	uint8_t tx_len, rx_len;
 	uint8_t class_type = 0x0;
@@ -113,8 +83,8 @@ void init_platform_config()
 	i2c_msg = construct_i2c_message(I2C_BUS1, CPLD_ADDR, tx_len, data, rx_len);
 	if (!i2c_master_read(&i2c_msg, retry)) {
 		class_type = i2c_msg.data[0];
-		is_1ou_present = (class_type & 0x4 ? false : true);
-		is_2ou_present = (class_type & 0x8 ? false : true);
+		is_1ou_present = (class_type & 0x4) ? false : true;
+		is_2ou_present = (class_type & 0x8) ? false : true;
 	} else {
 		printf("Failed to read expansion present from CPLD\n");
 	}
@@ -153,8 +123,7 @@ void init_platform_config()
 		rx_len = 1;
 		memset(data, 0, I2C_DATA_SIZE);
 		data[0] = CPLD_2OU_EXPANSION_CARD_REG;
-		i2c_msg =
-			construct_i2c_message(I2C_BUS1, CPLD_ADDR, tx_len, data, rx_len);
+		i2c_msg = construct_i2c_message(I2C_BUS1, CPLD_ADDR, tx_len, data, rx_len);
 		if (!i2c_master_read(&i2c_msg, retry)) {
 			switch (i2c_msg.data[0]) {
 			case TYPE_2OU_DPV2:
