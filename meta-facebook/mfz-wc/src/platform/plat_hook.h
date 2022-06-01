@@ -13,6 +13,7 @@ extern adc_asd_init_arg adc_asd_init_args[];
 extern adm1278_init_arg adm1278_init_args[];
 extern mp5990_init_arg mp5990_init_args[];
 extern ina230_init_arg ina230_init_args[];
+extern pmic_init_arg pmic_init_args[];
 
 /**************************************************************************************************
  *  PRE-HOOK/POST-HOOK ARGS
@@ -30,5 +31,6 @@ bool post_vol_bat3v_read(uint8_t sensor_num, void *args, int *reading);
 bool post_cpu_margin_read(uint8_t sensor_num, void *args, int *reading);
 bool post_adm1278_power_read(uint8_t sensor_num, void *args, int *reading);
 bool post_adm1278_current_read(uint8_t sensor_num, void *args, int *reading);
+bool pre_pmic_read(uint8_t sensor_num, void *args);
 
 #endif

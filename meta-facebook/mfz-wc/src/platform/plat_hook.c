@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <string.h>
 #include "sensor.h"
+#include "ipmi.h"
 #include "plat_i2c.h"
 #include "plat_gpio.h"
 #include "plat_hook.h"
 #include "plat_sensor_table.h"
 
 #include "i2c-mux-tca9548.h"
+#include "pmic.h"
 
 #define ADJUST_ADM1278_POWER(x) (x * 0.98)
 #define ADJUST_ADM1278_CURRENT(x) ((x * 0.98) + 0.1)
@@ -24,16 +26,26 @@ mp5990_init_arg mp5990_init_args[] = {
 	[1] = { .is_init = false, .iout_cal_gain = 0x01BF, .iout_oc_fault_limit = 0x0046 }
 };
 
+pmic_init_arg pmic_init_args[] = {
+	[0] = { .is_init = false, .smbus_bus_identifier = 0x00, .smbus_addr = 0x90 },
+	[1] = { .is_init = false, .smbus_bus_identifier = 0x00, .smbus_addr = 0x9C },
+	[2] = { .is_init = false, .smbus_bus_identifier = 0x00, .smbus_addr = 0x98 },
+	[3] = { .is_init = false, .smbus_bus_identifier = 0x01, .smbus_addr = 0x90 },
+	[4] = { .is_init = false, .smbus_bus_identifier = 0x01, .smbus_addr = 0x9C },
+	[5] = { .is_init = false, .smbus_bus_identifier = 0x01, .smbus_addr = 0x98 }
+};
+
 ina230_init_arg ina230_init_args[] = {
 	[0] = { .is_init = false,
-			.config = {
-				.MODE = 0b111,		// Measure voltage of shunt resistor and bus(default).
-				.VSH_CT = 0b100,	// The Vshunt conversion time is 1.1ms(default).
-				.VBUS_CT = 0b100,	// The Vbus conversion time is 1.1ms(default).
-				.AVG = 0b000,		// Average number is 1(default).
+		.config =
+			{
+				.MODE = 0b111, // Measure voltage of shunt resistor and bus(default).
+				.VSH_CT = 0b100, // The Vshunt conversion time is 1.1ms(default).
+				.VBUS_CT = 0b100, // The Vbus conversion time is 1.1ms(default).
+				.AVG = 0b000, // Average number is 1(default).
 			},
-			.r_shunt = 0.001,
-			.i_max = 6.0 },
+		.r_shunt = 0.001,
+		.i_max = 6.0 },
 };
 
 /**************************************************************************************************
@@ -201,5 +213,100 @@ bool post_adm1278_current_read(uint8_t sensor_num, void *args, int *reading)
 	val = ADJUST_ADM1278_CURRENT(val);
 	sval->integer = (int)val & 0xFFFF;
 	sval->fraction = (val - sval->integer) * 1000;
+	return true;
+}
+
+bool pre_pmic_read(uint8_t sensor_num, void *args)
+{
+	ARG_UNUSED(args);
+
+	pmic_init_arg *pmic_arg = sensor_config[sensor_config_index_map[sensor_num]].init_args;
+	if (pmic_arg->is_init == false) {
+		static bool is_ME_reset = false;
+		int ret = 0;
+		uint8_t seq_source = 0xFF, write_data = 0x0;
+		uint8_t *compose_memory_write_read_msg = NULL;
+
+		// ME reset to let ME regain bus setting
+		if (is_ME_reset != true) {
+			ret = pmic_ipmb_transfer(NULL, seq_source, NETFN_APP_REQ,
+						 CMD_APP_COLD_RESET, SELF, ME_IPMB, 0x0, NULL);
+			if (ret != 0) {
+				goto PMIC_IPMB_TRANSFER_ERR;
+			}
+			is_ME_reset = true;
+			k_msleep(ME_COLD_RESET_DELAY_MSEC);
+		}
+
+		// Enable PMIC ADC
+		write_data = PMIC_ENABLE_ADC_BIT;
+		compose_memory_write_read_msg =
+			compose_memory_write_read_req(pmic_arg->smbus_bus_identifier,
+						      pmic_arg->smbus_addr, PMIC_ADC_ADDR_VAL,
+						      &write_data, 0x1);
+		if (compose_memory_write_read_msg == NULL) {
+			goto COMPOSE_MSG_ERR;
+		}
+
+		ret = pmic_ipmb_transfer(NULL, seq_source, NETFN_NM_REQ, CMD_SMBUS_WRITE_MEMORY,
+					 SELF, ME_IPMB, PMIC_WRITE_DATA_LEN,
+					 compose_memory_write_read_msg);
+		if (ret != 0) {
+			goto PMIC_IPMB_TRANSFER_ERR;
+		}
+		k_msleep(PMIC_COMMAND_DELAY_MSEC);
+
+		// Initialize PMIC to report total mode (could be total power, total current, etc.)
+		write_data = SET_DEV_REPORT_TOTAL;
+		compose_memory_write_read_msg =
+			compose_memory_write_read_req(pmic_arg->smbus_bus_identifier,
+						      pmic_arg->smbus_addr,
+						      PMIC_TOTAL_INDIV_ADDR_VAL, &write_data, 0x1);
+		if (compose_memory_write_read_msg == NULL) {
+			goto COMPOSE_MSG_ERR;
+		}
+
+		ret = pmic_ipmb_transfer(NULL, seq_source, NETFN_NM_REQ, CMD_SMBUS_WRITE_MEMORY,
+					 SELF, ME_IPMB, PMIC_WRITE_DATA_LEN,
+					 compose_memory_write_read_msg);
+		if (ret != 0) {
+			goto PMIC_IPMB_TRANSFER_ERR;
+		}
+		k_msleep(PMIC_COMMAND_DELAY_MSEC);
+
+		// Initialize PMIC to report power mode
+		write_data = SET_DEV_REPORT_POWER;
+		compose_memory_write_read_msg =
+			compose_memory_write_read_req(pmic_arg->smbus_bus_identifier,
+						      pmic_arg->smbus_addr, PMIC_PWR_CURR_ADDR_VAL,
+						      &write_data, 0x1);
+		if (compose_memory_write_read_msg == NULL) {
+			goto COMPOSE_MSG_ERR;
+		}
+
+		ret = pmic_ipmb_transfer(NULL, seq_source, NETFN_NM_REQ, CMD_SMBUS_WRITE_MEMORY,
+					 SELF, ME_IPMB, PMIC_WRITE_DATA_LEN,
+					 compose_memory_write_read_msg);
+		if (ret != 0) {
+			goto PMIC_IPMB_TRANSFER_ERR;
+		}
+		k_msleep(PMIC_COMMAND_DELAY_MSEC);
+
+		pmic_arg->is_init = true;
+		return true;
+
+	PMIC_IPMB_TRANSFER_ERR:
+		if (write_data == 0x0) {
+			printf("[%s] PMIC ipmb transfer me reset command error\n", __func__);
+		} else {
+			printf("[%s] PMIC ipmb transfer command error write_data: 0x%x\n", __func__,
+			       write_data);
+		}
+		return false;
+
+	COMPOSE_MSG_ERR:
+		printf("[%s] compose msg error write_data: 0x%x\n", __func__, write_data);
+		return false;
+	}
 	return true;
 }

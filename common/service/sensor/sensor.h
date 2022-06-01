@@ -216,7 +216,12 @@ typedef struct _mp5990_init_arg {
 
 } mp5990_init_arg;
 
-<<<<<<< HEAD
+typedef struct _pmic_init_arg {
+	bool is_init;
+	uint8_t smbus_bus_identifier;
+	uint8_t smbus_addr;
+} pmic_init_arg;
+
 typedef struct _ina230_init_arg {
 	/* value to set configuration register */
 	union {
@@ -241,13 +246,6 @@ typedef struct _ina230_init_arg {
 	bool is_init;
 
 } ina230_init_arg;
-=======
-typedef struct _pmic_init_arg {
-	bool is_init;
-	uint8_t smbus_bus_identifier;
-	uint8_t smbus_addr;
-} pmic_init_arg;
->>>>>>> main
 
 extern bool enable_sensor_poll_thread;
 extern uint8_t SDR_NUM;
