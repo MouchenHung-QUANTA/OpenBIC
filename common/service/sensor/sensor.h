@@ -60,7 +60,8 @@ enum SENSOR_DEV {
 	sensor_dev_ltc4282 = 0x15,
 	sensor_dev_ast_fan = 0x16,
 	sensor_dev_tmp431 = 0x18,
-	sensor_dev_ina230 = 0x19,
+	sensor_dev_pmic = 0x19,
+	sensor_dev_ina230 = 0x20,
 	sensor_dev_max
 };
 
@@ -215,6 +216,7 @@ typedef struct _mp5990_init_arg {
 
 } mp5990_init_arg;
 
+<<<<<<< HEAD
 typedef struct _ina230_init_arg {
 	/* value to set configuration register */
 	union {
@@ -239,6 +241,13 @@ typedef struct _ina230_init_arg {
 	bool is_init;
 
 } ina230_init_arg;
+=======
+typedef struct _pmic_init_arg {
+	bool is_init;
+	uint8_t smbus_bus_identifier;
+	uint8_t smbus_addr;
+} pmic_init_arg;
+>>>>>>> main
 
 extern bool enable_sensor_poll_thread;
 extern uint8_t SDR_NUM;

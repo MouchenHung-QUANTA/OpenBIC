@@ -734,12 +734,6 @@ __weak void OEM_1S_ACCURACY_SENSOR_READING(ipmi_msg *msg)
 		msg->completion_code = CC_SUCCESS;
 		break;
 	case SENSOR_READ_4BYTE_ACUR_SUCCESS:
-		res->decimal = (int32_t)reading;
-		if (reading < 0) {
-			res->fraction = (int32_t)((res->decimal - reading + 0.0005) * 1000);
-		} else {
-			res->fraction = (int32_t)((reading - res->decimal + 0.0005) * 1000);
-		}
 		memcpy(msg->data, &reading, sizeof(reading));
 		msg->data[4] = sensor_report_status;
 		msg->data_len = 5;
@@ -1178,6 +1172,18 @@ __weak void OEM_1S_GET_FAN_RPM(ipmi_msg *msg)
 }
 #endif
 
+__weak void OEM_1S_INFORM_PEER_SLED_CYCLE(ipmi_msg *msg)
+{
+	if (msg == NULL) {
+		printf("%s failed due to parameter *msg is NULL\n", __func__);
+		return;
+	}
+
+	msg->data_len = 0;
+	msg->completion_code = CC_NOT_SUPP_IN_CURR_STATE;
+	return;
+}
+
 void IPMI_OEM_1S_handler(ipmi_msg *msg)
 {
 	if (msg == NULL) {
@@ -1271,6 +1277,9 @@ void IPMI_OEM_1S_handler(ipmi_msg *msg)
 		OEM_1S_GET_FAN_RPM(msg);
 		break;
 #endif
+	case CMD_OEM_1S_INFORM_PEER_SLED_CYCLE:
+		OEM_1S_INFORM_PEER_SLED_CYCLE(msg);
+		break;
 	default:
 		printf("Invalid OEM message, netfn(0x%x) cmd(0x%x)\n", msg->netfn, msg->cmd);
 		msg->data_len = 0;
