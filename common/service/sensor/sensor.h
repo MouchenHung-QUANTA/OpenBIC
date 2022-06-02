@@ -61,7 +61,9 @@ enum SENSOR_DEV {
 	sensor_dev_ast_fan = 0x16,
 	sensor_dev_tmp431 = 0x18,
 	sensor_dev_pmic = 0x19,
-	sensor_dev_ina230 = 0x20,
+	sensor_dev_ina233 = 0x20,
+	sensor_dev_isl69254iraz_t = 0x21,
+	sensor_dev_ina230 = 0x22,
 	sensor_dev_max
 };
 
@@ -134,6 +136,7 @@ typedef struct _sensor_cfg__ {
 	void *init_args;
 
 	/* if there is new parameter should be added, please add on above */
+	void *priv_data;
 	uint8_t retry;
 	uint8_t (*init)(uint8_t, int *);
 	uint8_t (*read)(uint8_t, int *);
@@ -246,6 +249,10 @@ typedef struct _ina230_init_arg {
 	bool is_init;
 
 } ina230_init_arg;
+
+typedef struct _ina233_init_arg_ {
+	bool is_init;
+} ina233_init_arg;
 
 extern bool enable_sensor_poll_thread;
 extern uint8_t SDR_NUM;
