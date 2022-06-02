@@ -7,40 +7,22 @@
 #define TMP75_IN_ADDR (0x92 >> 1)
 #define TMP75_OUT_ADDR (0x94 >> 1)
 #define TMP75_IOM_ADDR (0x94 >> 1)
-#define TMP431_ADDR (0x98 >> 1)
 #define TMP75_TEMP_OFFSET 0x00
-#define SSD0_ADDR (0xD4 >> 1)
+#define SSD0_ADDR (0x36 >> 1)
 #define SSD0_OFFSET 0x00
-#define ADI_ADM1278_ADDR (0x80 >> 1)
 #define MPS_MP5990_ADDR (0x40 >> 1)
 #define PCH_ADDR (0x2C >> 1)
 #define ME_SENSOR_NUM_TEMP_PCH 0x08
 #define PVCCD_HV_ADDR (0xC6 >> 1)
-#define CLASS2_PVCCD_HV_ADDR (0xC4 >> 1)
 #define PVCCINFAON_ADDR (0xC2 >> 1)
-#define CLASS2_PVCCINFAON_ADDR (0xC8 >> 1)
 #define PVCCFA_EHV_ADDR (0xC2 >> 1)
-#define CLASS2_PVCCFA_EHV_ADDR (0xC8 >> 1)
 #define PVCCIN_ADDR (0xC0 >> 1)
 #define PVCCFA_EHV_FIVRA_ADDR (0xC0 >> 1)
 #define VR_VOL_CMD 0x8B
 #define VR_CUR_CMD 0x8C
 #define VR_TEMP_CMD 0x8D
 #define VR_PWR_CMD 0x96
-#define SSD0_MUX_ADDR (0xE2 >> 1)
-#define SSD0_CHANNEL 2
 #define CPU_PECI_ADDR 0x30
-#define TEMP_CPU_MARGIN_INDEX 0x02
-#define TEMP_CPU_MARGIN_PARAM 0x00FF
-#define TEMP_CPU_TJMAX_INDEX 0x10
-#define TEMP_CPU_TJMAX_PARAM 0x0000
-#define TEMP_DIMM_INDEX 0x0E
-#define TEMP_DIMM_A_PARAM 0x0000
-#define TEMP_DIMM_C_PARAM 0x0002
-#define TEMP_DIMM_D_PARAM 0x0003
-#define TEMP_DIMM_E_PARAM 0x0004
-#define TEMP_DIMM_G_PARAM 0x0006
-#define TEMP_DIMM_H_PARAM 0x0007
 #define INA230_ADDR (0x82 >> 1)
 
 /*  threshold sensor number, 1 based  */

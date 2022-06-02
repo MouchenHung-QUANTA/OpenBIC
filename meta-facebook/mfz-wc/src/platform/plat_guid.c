@@ -4,7 +4,7 @@
 #include "fru.h"
 
 #define MB_GUID_PORT 0x01
-#define MB_GUID_ADDR 0x54
+#define MB_GUID_ADDR 0x50
 
 const EEPROM_CFG guid_config[] = {
 	{
