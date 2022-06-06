@@ -2,7 +2,7 @@ tests:
   portability.cmsis_rtos_v2:
     tags: cmsis_rtos
 sample:
-  description: mfz_tmp
+  description: wc_tmp
   name: tmp
 common:
     tags: introduction
