@@ -3,7 +3,7 @@
 
 #define PLATFORM_NAME "wc"
 #define PROJECT_NAME "mainboard"
-#define IANA_ID 0x009c9c
+#define IANA_ID 0x00a015
 #define DEVICE_ID 0x00
 #define DEVICE_REVISION 0x80
 /*
