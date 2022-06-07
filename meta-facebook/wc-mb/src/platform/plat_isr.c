@@ -420,7 +420,7 @@ void ISR_RMCA()
 		addsel_msg_t sel_msg;
 		sel_msg.sensor_type = IPMI_SENSOR_TYPE_PROCESSOR;
 		sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPEC;
-		sel_msg.sensor_number = SENSOR_NUM_CATERR;
+		sel_msg.sensor_number = SENSOR_NUM_RMCA;
 		sel_msg.event_data1 = IPMI_OEM_EVENT_OFFSET_MEM_RMCA;
 		sel_msg.event_data2 = 0xFF;
 		sel_msg.event_data3 = 0xFF;
