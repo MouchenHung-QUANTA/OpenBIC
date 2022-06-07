@@ -7,8 +7,20 @@
 
 SCU_CFG scu_cfg[] = {
 	//register    value
-	{ 0x7e6e24b0, 0x00c30000 }, { 0x7e6e2610, 0xffffffff }, { 0x7e6e2614, 0xffffffff },
-	{ 0x7e6e2618, 0x30000000 }, { 0x7e6e261c, 0x00000F04 },
+	/* Set GPIOC0-C1 and GPIOC6-C7 to passthrough mode after gpio init */
+	{ 0x7e6e24b0, 0x00C30000 },
+	/* Set GPIOA/B/C/D internal pull-up/down after gpio init */
+	{ 0x7e6e2610, 0xFFFFFFFF },
+	/* Set GPIOF/G/H internal pull-up/down after gpio init */
+	{ 0x7e6e2614, 0xFFFFFFFF },
+	/* Set GPIOJ/K/L internal pull-up/down after gpio init */
+	{ 0x7e6e2618, 0xF0000000 },
+	/* Set GPIOM/N/OP internal pull-up/down after gpio init */
+	{ 0x7e6e261c, 0x0000000B },
+	/* Set GPIOQ/R/S internal pull-up/down after gpio init */
+	{ 0x7e6e2630, 0x00000007 },
+	/* Set GPIOU/V/X internal pull-up/down after gpio init */
+	{ 0x7e6e2634, 0x0000007D },
 };
 
 void pal_pre_init()
@@ -28,11 +40,9 @@ void pal_set_sys_status()
 	set_DC_status(PWRGD_SYS_PWROK);
 	set_DC_on_delayed_status();
 	set_DC_off_delayed_status();
-	// Scron: Replace FM_BIOS_POST_CMPLT_BMC_N by FM_BIOS_POST_CMPLT_BIC_N.
 	set_post_status(FM_BIOS_POST_CMPLT_BIC_N);
 	set_CPU_power_status(PWRGD_CPU_LVC3);
 	set_post_thread();
-	// Scron: Replace BIC_READY by FM_BIC_READY.
 	set_sys_ready_pin(FM_BIC_READY);
 }
 
