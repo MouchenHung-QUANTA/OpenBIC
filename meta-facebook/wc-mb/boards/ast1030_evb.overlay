@@ -162,12 +162,6 @@
 	};
 };
 
-&fmc_cs1 {
-	status = "disabled";
-	spi-max-buswidth = <4>;
-	spi-max-frequency = <50000000>;
-};
-
 &spi1 {
 	status = "okay";
 };
@@ -179,35 +173,9 @@
 	re-init-support;
 };
 
-&spi1_cs1 {
-	status = "disabled";
-	spi-max-buswidth = <4>;
-	spi-max-frequency = <50000000>;
-	re-init-support;
-};
-
-&spi2 {
-	status = "disabled";
-};
-
-&spi2_cs0 {
-	status = "disabled";
-	spi-max-buswidth = <4>;
-	spi-max-frequency = <50000000>;
-	re-init-support;
-};
-
-&spi2_cs1 {
-	status = "disabled";
-	spi-max-buswidth = <4>;
-	spi-max-frequency = <50000000>;
-	re-init-support;
-};
-
 &wdt0 {
   status = "okay";
 };
-
 
 &wdt1 {
 	status = "okay";
