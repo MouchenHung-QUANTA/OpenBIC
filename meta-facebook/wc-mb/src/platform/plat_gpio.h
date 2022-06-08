@@ -85,7 +85,7 @@
 #define name_gpioM                                                                                 \
 	gpio_name_to_num(BIC_SECUREBOOT) gpio_name_to_num(SELF_MB_ID)                              \
 		gpio_name_to_num(BIC_ESPI_SELECT) gpio_name_to_num(FM_REMOTE_DEBUG_DET)            \
-			gpio_name_to_num(Reserve_GPIOM4) gpio_name_to_num(Reserve_GPIOM5)          \
+			gpio_name_to_num(RST_SGPIO_RESET_N) gpio_name_to_num(IRQ_SGPIO_INTR_N)          \
 				gpio_name_to_num(Reserve_GPIOM6) gpio_name_to_num(Reserve_GPIOM7)
 #define name_gpioN                                                                                 \
 	gpio_name_to_num(SGPIO_BMC_CLK_R) gpio_name_to_num(SGPIO_BMC_LD_R_N)                       \
