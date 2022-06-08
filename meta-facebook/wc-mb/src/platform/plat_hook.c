@@ -27,12 +27,22 @@ mp5990_init_arg mp5990_init_args[] = {
 };
 
 pmic_init_arg pmic_init_args[] = {
-	[0] = { .is_init = false, .smbus_bus_identifier = 0x00, .smbus_addr = 0x90 },
-	[1] = { .is_init = false, .smbus_bus_identifier = 0x00, .smbus_addr = 0x9C },
-	[2] = { .is_init = false, .smbus_bus_identifier = 0x00, .smbus_addr = 0x98 },
-	[3] = { .is_init = false, .smbus_bus_identifier = 0x01, .smbus_addr = 0x90 },
-	[4] = { .is_init = false, .smbus_bus_identifier = 0x01, .smbus_addr = 0x9C },
-	[5] = { .is_init = false, .smbus_bus_identifier = 0x01, .smbus_addr = 0x98 }
+	[0] = { .is_init = false, .smbus_bus_identifier = 0x00, .smbus_addr = 0x90 }, //CHA - DIMM0
+	[1] = { .is_init = false, .smbus_bus_identifier = 0x00, .smbus_addr = 0x92 }, //CHA - DIMM1
+	[2] = { .is_init = false, .smbus_bus_identifier = 0x00, .smbus_addr = 0x94 }, //CHB - DIMM0
+	[3] = { .is_init = false, .smbus_bus_identifier = 0x00, .smbus_addr = 0x96 }, //CHB - DIMM1
+	[4] = { .is_init = false, .smbus_bus_identifier = 0x00, .smbus_addr = 0x98 }, //CHC - DIMM0
+	[5] = { .is_init = false, .smbus_bus_identifier = 0x00, .smbus_addr = 0x9A }, //CHC - DIMM1
+	[6] = { .is_init = false, .smbus_bus_identifier = 0x00, .smbus_addr = 0x9C }, //CHD - DIMM0
+	[7] = { .is_init = false, .smbus_bus_identifier = 0x00, .smbus_addr = 0x9E }, //CHD - DIMM1
+	[8] = { .is_init = false, .smbus_bus_identifier = 0x01, .smbus_addr = 0x90 }, //CHE - DIMM0
+	[9] = { .is_init = false, .smbus_bus_identifier = 0x01, .smbus_addr = 0x92 }, //CHE - DIMM1
+	[10] = { .is_init = false, .smbus_bus_identifier = 0x01, .smbus_addr = 0x94 }, //CHF - DIMM0
+	[11] = { .is_init = false, .smbus_bus_identifier = 0x01, .smbus_addr = 0x96 }, //CHF - DIMM1
+	[12] = { .is_init = false, .smbus_bus_identifier = 0x01, .smbus_addr = 0x98 }, //CHG - DIMM0
+	[13] = { .is_init = false, .smbus_bus_identifier = 0x01, .smbus_addr = 0x9A }, //CHG - DIMM1
+	[14] = { .is_init = false, .smbus_bus_identifier = 0x01, .smbus_addr = 0x9C }, //CHH - DIMM0
+	[15] = { .is_init = false, .smbus_bus_identifier = 0x01, .smbus_addr = 0x9E }, //CHH - DIMM1
 };
 
 ina230_init_arg ina230_init_args[] = {
