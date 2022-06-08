@@ -131,7 +131,7 @@
 		gpio_name_to_num(FM_CPU_RMCA_LVT3_N) gpio_name_to_num(PWRGD_SYS_PWROK)             \
 			gpio_name_to_num(FM_S3M_CPU0_CPLD_CRC_ERROR)                               \
 				gpio_name_to_num(FM_SLPS4_PLD_N) gpio_name_to_num(FM_PCHHOT_N)     \
-					gpio_name_to_num(Reserve_GPIOU7)
+					gpio_name_to_num(FM_ME_BT_DONE)
 
 #define gpio_name_to_num(x) x,
 enum _GPIO_NUMS_ {
