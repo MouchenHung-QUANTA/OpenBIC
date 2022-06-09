@@ -184,10 +184,10 @@ sensor_cfg plat_sensor_config[] = {
 	  &pmic_init_args[12] },
 
 	// INA230
-	{ SENSOR_NUM_PWR_IOM_P12V, sensor_dev_ina230, I2C_BUS8, INA230_ADDR, INA230_PWR_OFFSET,
+	{ SENSOR_NUM_PWR_IOM_INA, sensor_dev_ina230, I2C_BUS8, INA230_ADDR, INA230_PWR_OFFSET,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
 	  &ina230_init_args[0] },
-	{ SENSOR_NUM_CUR_IOM_P12V, sensor_dev_ina230, I2C_BUS8, INA230_ADDR, INA230_CUR_OFFSET,
+	{ SENSOR_NUM_CUR_IOM_INA, sensor_dev_ina230, I2C_BUS8, INA230_ADDR, INA230_CUR_OFFSET,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
 	  &ina230_init_args[0] },
 
