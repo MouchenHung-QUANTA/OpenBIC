@@ -81,11 +81,8 @@ struct sensor_drive_api {
 	SENSOR_DRIVE_TYPE_INIT_MAP(pmic),
 	SENSOR_DRIVE_TYPE_INIT_MAP(ina233),
 	SENSOR_DRIVE_TYPE_INIT_MAP(isl69254iraz_t),
-<<<<<<< HEAD
-	SENSOR_DRIVE_TYPE_INIT_MAP(ina230),
-=======
 	SENSOR_DRIVE_TYPE_INIT_MAP(max16550a),
->>>>>>> main
+	SENSOR_DRIVE_TYPE_INIT_MAP(ina230),
 };
 
 static void init_sensor_num(void)
