@@ -190,6 +190,9 @@ sensor_cfg plat_sensor_config[] = {
 	{ SENSOR_NUM_CUR_IOM_INA, sensor_dev_ina230, I2C_BUS8, INA230_ADDR, INA230_CUR_OFFSET,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
 	  &ina230_init_args[0] },
+	{ SENSOR_NUM_VOL_IOM_INA, sensor_dev_ina230, I2C_BUS8, INA230_ADDR, INA230_BUS_VOL_OFFSET,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
+	  &ina230_init_args[0] },
 
 	// HSC
 	{ SENSOR_NUM_TEMP_HSC, sensor_dev_mp5990, I2C_BUS5, MPS_MP5990_ADDR,
