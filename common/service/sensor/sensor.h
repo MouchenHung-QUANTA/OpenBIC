@@ -37,9 +37,13 @@ enum ADM1278_OFFSET {
 
 enum INA230_OFFSET {
 	INA230_CFG_OFFSET = 0x00,
+	INA230_VSH_VOL_OFFSET = 0x01,
+	INA230_BUS_VOL_OFFSET = 0x02,
 	INA230_PWR_OFFSET = 0x03,
 	INA230_CUR_OFFSET = 0x04,
 	INA230_CAL_OFFSET = 0x05,
+	INA230_MSK_OFFSET = 0x06,
+	INA230_ALT_OFFSET = 0x07,
 };
 
 enum SENSOR_DEV {
@@ -101,20 +105,18 @@ static inline float convert_MBR_to_reading(uint8_t sensor_num, uint8_t val)
 	return (val - round_add(sensor_num, val)) * SDR_M(sensor_num) / SDR_Rexp(sensor_num);
 }
 
-enum {
-	SENSOR_READ_SUCCESS,
-	SENSOR_READ_ACUR_SUCCESS,
-	SENSOR_NOT_FOUND,
-	SENSOR_NOT_ACCESSIBLE,
-	SENSOR_FAIL_TO_ACCESS,
-	SENSOR_INIT_STATUS,
-	SENSOR_UNSPECIFIED_ERROR,
-	SENSOR_POLLING_DISABLE,
-	SENSOR_PRE_READ_ERROR,
-	SENSOR_POST_READ_ERROR,
-	SENSOR_READ_API_UNREGISTER,
-	SENSOR_READ_4BYTE_ACUR_SUCCESS
-};
+enum { SENSOR_READ_SUCCESS,
+       SENSOR_READ_ACUR_SUCCESS,
+       SENSOR_NOT_FOUND,
+       SENSOR_NOT_ACCESSIBLE,
+       SENSOR_FAIL_TO_ACCESS,
+       SENSOR_INIT_STATUS,
+       SENSOR_UNSPECIFIED_ERROR,
+       SENSOR_POLLING_DISABLE,
+       SENSOR_PRE_READ_ERROR,
+       SENSOR_POST_READ_ERROR,
+       SENSOR_READ_API_UNREGISTER,
+       SENSOR_READ_4BYTE_ACUR_SUCCESS };
 
 enum { SENSOR_INIT_SUCCESS, SENSOR_INIT_UNSPECIFIED_ERROR };
 
@@ -226,6 +228,14 @@ typedef struct _pmic_init_arg {
 	uint8_t smbus_addr;
 } pmic_init_arg;
 
+typedef struct _ina233_init_arg_ {
+	bool is_init;
+} ina233_init_arg;
+
+typedef struct _max16550a_init_arg_ {
+	float r_load;
+} max16550a_init_arg;
+
 typedef struct _ina230_init_arg {
 	/* value to set configuration register */
 	union {
@@ -240,24 +250,46 @@ typedef struct _ina230_init_arg {
 		};
 	} config;
 
-	/* Shunt resistor value */
+	/* Shunt resistor value. Unit: Ohm. */
 	double r_shunt;
+
+	/* Alert value.
+	 * The unit is Volt or Watt, depending on the alert function.
+	 */
+	double alert_value;
+
+	/* value to set alert register */
+	union {
+		uint16_t value;
+		struct {
+			uint16_t LEN : 1;
+			uint16_t APOL : 1;
+			uint16_t OVF : 1;
+			uint16_t CVRF : 1;
+			uint16_t AFF : 1;
+			uint16_t reserved : 5;
+			uint16_t CNVR : 1;
+			uint16_t POL : 1; // Lowest priority
+			uint16_t BUL : 1;
+			uint16_t BOL : 1;
+			uint16_t SUL : 1;
+			uint16_t SOL : 1; // Highest priority
+		};
+	} alt_cfg;
 
 	/* Expected maximum current */
 	double i_max;
+
+	/* The current/power value per 1 bit.
+	 * The unit is Amp or Watt, depending on the respective register.
+	 */
+	double cur_lsb;
+	double pwr_lsb;
 
 	/* Initialize function will set following arguments, no need to give value */
 	bool is_init;
 
 } ina230_init_arg;
-
-typedef struct _ina233_init_arg_ {
-	bool is_init;
-} ina233_init_arg;
-
-typedef struct _max16550a_init_arg_ {
-	float r_load;
-} max16550a_init_arg;
 
 extern bool enable_sensor_poll_thread;
 extern uint8_t SDR_NUM;
