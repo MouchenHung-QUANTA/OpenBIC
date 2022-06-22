@@ -46,22 +46,22 @@ pmic_init_arg pmic_init_args[] = {
 };
 
 ina230_init_arg ina230_init_args[] = {
-	[0] = {
-		.is_init = false,
-		.config = {
-			.MODE = 0b111,		// Measure voltage of shunt resistor and bus(default).
-			.VSH_CT = 0b100,	// The Vshunt conversion time is 1.1ms(default).
-			.VBUS_CT = 0b100,	// The Vbus conversion time is 1.1ms(default).
-			.AVG = 0b000,		// Average number is 1(default).
-		},
-		.alt_cfg = {
-			.LEN = 1,			// Alert Latch enabled.
-			.POL = 1,			// Enable the Over-Limit Power alert function.
-		},
+	[0] = { .is_init = false,
+		.config =
+			{
+				.MODE = 0b111, // Measure voltage of shunt resistor and bus(default).
+				.VSH_CT = 0b100, // The Vshunt conversion time is 1.1ms(default).
+				.VBUS_CT = 0b100, // The Vbus conversion time is 1.1ms(default).
+				.AVG = 0b000, // Average number is 1(default).
+			},
+		.alt_cfg =
+			{
+				.LEN = 1, // Alert Latch enabled.
+				.POL = 1, // Enable the Over-Limit Power alert function.
+			},
 		.r_shunt = 0.01,
-		.alert_value = 18.0,	// Unit: Watt
-		.i_max = 16.384
-		},
+		.alert_value = 18.0, // Unit: Watt
+		.i_max = 16.384 },
 };
 
 /**************************************************************************************************
@@ -78,6 +78,11 @@ vr_pre_proc_arg vr_pre_read_args[] = {
 	[0] = { 0x0 },
 	[1] = { 0x1 },
 };
+
+pmic_pre_proc_arg pmic_pre_read_args[] = { [0] = { .pre_read_init = false },
+					   [1] = { .pre_read_init = false },
+					   [2] = { .pre_read_init = false },
+					   [3] = { .pre_read_init = false } };
 
 /**************************************************************************************************
  *  PRE-HOOK/POST-HOOK FUNC
@@ -236,8 +241,14 @@ bool pre_pmic_read(uint8_t sensor_num, void *args)
 {
 	ARG_UNUSED(args);
 
-	pmic_init_arg *pmic_arg = sensor_config[sensor_config_index_map[sensor_num]].init_args;
-	if (pmic_arg->is_init == false) {
+	pmic_init_arg *init_arg = sensor_config[sensor_config_index_map[sensor_num]].init_args;
+	if (init_arg->is_init == false) {
+		return true;
+	}
+
+	pmic_pre_proc_arg *pre_proc_arg =
+		sensor_config[sensor_config_index_map[sensor_num]].pre_sensor_read_args;
+	if (pre_proc_arg->pre_read_init == false) {
 		static bool is_ME_reset = false;
 		int ret = 0;
 		uint8_t seq_source = 0xFF, write_data = 0x0;
@@ -257,8 +268,8 @@ bool pre_pmic_read(uint8_t sensor_num, void *args)
 		// Enable PMIC ADC
 		write_data = PMIC_ENABLE_ADC_BIT;
 		compose_memory_write_read_msg =
-			compose_memory_write_read_req(pmic_arg->smbus_bus_identifier,
-						      pmic_arg->smbus_addr, PMIC_ADC_ADDR_VAL,
+			compose_memory_write_read_req(init_arg->smbus_bus_identifier,
+						      init_arg->smbus_addr, PMIC_ADC_ADDR_VAL,
 						      &write_data, 0x1);
 		if (compose_memory_write_read_msg == NULL) {
 			goto COMPOSE_MSG_ERR;
@@ -275,8 +286,8 @@ bool pre_pmic_read(uint8_t sensor_num, void *args)
 		// Initialize PMIC to report total mode (could be total power, total current, etc.)
 		write_data = SET_DEV_REPORT_TOTAL;
 		compose_memory_write_read_msg =
-			compose_memory_write_read_req(pmic_arg->smbus_bus_identifier,
-						      pmic_arg->smbus_addr,
+			compose_memory_write_read_req(init_arg->smbus_bus_identifier,
+						      init_arg->smbus_addr,
 						      PMIC_TOTAL_INDIV_ADDR_VAL, &write_data, 0x1);
 		if (compose_memory_write_read_msg == NULL) {
 			goto COMPOSE_MSG_ERR;
@@ -293,8 +304,8 @@ bool pre_pmic_read(uint8_t sensor_num, void *args)
 		// Initialize PMIC to report power mode
 		write_data = SET_DEV_REPORT_POWER;
 		compose_memory_write_read_msg =
-			compose_memory_write_read_req(pmic_arg->smbus_bus_identifier,
-						      pmic_arg->smbus_addr, PMIC_PWR_CURR_ADDR_VAL,
+			compose_memory_write_read_req(init_arg->smbus_bus_identifier,
+						      init_arg->smbus_addr, PMIC_PWR_CURR_ADDR_VAL,
 						      &write_data, 0x1);
 		if (compose_memory_write_read_msg == NULL) {
 			goto COMPOSE_MSG_ERR;
@@ -308,7 +319,7 @@ bool pre_pmic_read(uint8_t sensor_num, void *args)
 		}
 		k_msleep(PMIC_COMMAND_DELAY_MSEC);
 
-		pmic_arg->is_init = true;
+		pre_proc_arg->pre_read_init = true;
 		return true;
 
 	PMIC_IPMB_TRANSFER_ERR:

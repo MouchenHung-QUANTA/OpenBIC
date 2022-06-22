@@ -6,6 +6,10 @@ typedef struct _isl69259_pre_proc_arg {
 	uint8_t vr_page;
 } vr_pre_proc_arg;
 
+typedef struct _pmic_pre_proc_arg {
+	bool pre_read_init;
+} pmic_pre_proc_arg;
+
 /**************************************************************************************************
  * INIT ARGS
 **************************************************************************************************/
@@ -20,6 +24,7 @@ extern pmic_init_arg pmic_init_args[];
  **************************************************************************************************/
 extern struct tca9548 mux_conf_addr_0xe2[];
 extern vr_pre_proc_arg vr_pre_read_args[];
+extern pmic_pre_proc_arg pmic_pre_read_args[];
 
 /**************************************************************************************************
  *  PRE-HOOK/POST-HOOK FUNC
