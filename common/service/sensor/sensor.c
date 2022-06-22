@@ -194,6 +194,19 @@ uint8_t get_sensor_reading(uint8_t sensor_num, int *reading, uint8_t read_mode)
 			cfg->cache_status = status;
 			return cfg->cache_status;
 		} else {
+			/* If sensor read fails, let the reading argument in the
+       * post_sensor_read_hook function to NULL.
+       * All post_sensor_read_hook function define in each platform should check
+       * reading whether is NULL to do the corresponding thing. (Ex: mutex_unlock)
+       */
+			if (cfg->post_sensor_read_hook) {
+				if (cfg->post_sensor_read_hook(sensor_num,
+							       cfg->post_sensor_read_args,
+							       NULL) == false) {
+					printf("[%s]sensor number 0x%x reading and post_read fail\n",
+					       __func__, sensor_num);
+				}
+			}
 			/* common retry */
 			if (cfg->retry >= SENSOR_READ_RETRY_MAX)
 				cfg->cache_status = status;
@@ -356,31 +369,48 @@ void add_sensor_config(sensor_cfg config)
 	}
 }
 
+static inline bool init_drive_type(sensor_cfg *p, uint16_t current_drive)
+{
+	int ret = -1;
+	if (p->type == sensor_drive_tbl[current_drive].dev) {
+		return false;
+	}
+
+	if (p->pre_sensor_read_hook) {
+		if (p->pre_sensor_read_hook(p->num, p->pre_sensor_read_args) == false) {
+			printf("[%s] sensor 0x%x pre sensor read failed!\n", __func__, p->num);
+			return false;
+		}
+	}
+
+	ret = sensor_drive_tbl[current_drive].init(p->num);
+	if (ret != SENSOR_INIT_SUCCESS) {
+		printf("sensor num %d initial fail, ret %d\n", p->num, ret);
+	}
+
+	if (p->post_sensor_read_hook) {
+		if (p->post_sensor_read_hook(p->num, p->post_sensor_read_args, NULL) == false) {
+			printf("[%s] sensor 0x%x post sensor read failed!\n", __func__, p->num);
+		}
+	}
+
+	return true;
+}
+
 static void drive_init(void)
 {
-	uint16_t drive_num = ARRAY_SIZE(sensor_drive_tbl);
-	uint16_t i, j;
-	uint8_t ret;
+	const uint16_t max_drive_num = ARRAY_SIZE(sensor_drive_tbl);
+	uint16_t current_drive;
 
-	for (i = 0; i < SDR_NUM; i++) {
+	for (int i = 0; i < SDR_NUM; i++) {
 		sensor_cfg *p = sensor_config + i;
-		for (j = 0; j < drive_num; j++) {
-			if (p->type == sensor_drive_tbl[j].dev) {
-				if (p->pre_sensor_read_hook) {
-					if (p->pre_sensor_read_hook(
-						    p->num, p->pre_sensor_read_args) == false) {
-						printk("[%s] sensor %d pre sensor read failed!\n",
-						       __func__, p->num);
-					}
-				}
-				ret = sensor_drive_tbl[j].init(p->num);
-				if (ret != SENSOR_INIT_SUCCESS)
-					printf("sensor num %d initial fail, ret %d\n", p->num, ret);
+		for (current_drive = 0; current_drive < max_drive_num; current_drive++) {
+			if (init_drive_type(p, current_drive)) {
 				break;
 			}
 		}
 
-		if (j == drive_num) {
+		if (current_drive == max_drive_num) {
 			printf("sensor %d, type = %d is not supported!\n", i, p->type);
 			p->read = NULL;
 		}
