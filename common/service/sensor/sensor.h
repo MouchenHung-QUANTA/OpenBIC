@@ -7,6 +7,7 @@
 
 #include "plat_def.h"
 #include "sdr.h"
+#include "libutil.h"
 
 #define SENSOR_POLL_STACK_SIZE 2048
 #define NONE 0
@@ -27,6 +28,9 @@ enum LTC4282_OFFSET {
 	LTC4282_VSENSE_OFFSET = 0x40,
 	LTC4282_POWER_OFFSET = 0x46,
 	LTC4282_VSOURCE_OFFSET = 0x3A,
+	LTC4282_ADC_CONTROL_OFFSET = 0x1D,
+	LTC4282_ENERGY_OFFSET = 0x12,
+	LTC4282_STATUS_OFFSET = 0x1F,
 };
 
 enum ADM1278_OFFSET {
@@ -54,19 +58,19 @@ enum SENSOR_DEV {
 	sensor_dev_adm1278 = 0x04,
 	sensor_dev_nvme = 0x05,
 	sensor_dev_pch = 0x06,
-	sensor_dev_mp5990 = 0x10,
-	sensor_dev_isl28022 = 0x11,
-	sensor_dev_pex89000 = 0x12,
-	sensor_dev_tps53689 = 0x13,
-	sensor_dev_xdpe15284 = 0x14,
-	sensor_dev_ltc4282 = 0x15,
-	sensor_dev_ast_fan = 0x16,
-	sensor_dev_tmp431 = 0x18,
-	sensor_dev_pmic = 0x19,
-	sensor_dev_ina233 = 0x20,
-	sensor_dev_isl69254iraz_t = 0x21,
-	sensor_dev_max16550a = 0x22,
-	sensor_dev_ina230 = 0x23,
+	sensor_dev_mp5990 = 0x07,
+	sensor_dev_isl28022 = 0x08,
+	sensor_dev_pex89000 = 0x09,
+	sensor_dev_tps53689 = 0x0A,
+	sensor_dev_xdpe15284 = 0x0B,
+	sensor_dev_ltc4282 = 0x0C,
+	sensor_dev_ast_fan = 0x0D,
+	sensor_dev_tmp431 = 0x0E,
+	sensor_dev_pmic = 0x0F,
+	sensor_dev_ina233 = 0x10,
+	sensor_dev_isl69254iraz_t = 0x11,
+	sensor_dev_max16550a = 0x12,
+	sensor_dev_ina230 = 0x13,
 	sensor_dev_max
 };
 
@@ -292,11 +296,10 @@ typedef struct _ina230_init_arg {
 } ina230_init_arg;
 
 extern bool enable_sensor_poll_thread;
-extern uint8_t SDR_NUM;
 extern sensor_cfg *sensor_config;
 // Mapping sensor number to sensor config index
 extern uint8_t sensor_config_index_map[SENSOR_NUM_MAX];
-extern uint8_t sensor_config_num;
+extern uint8_t sensor_config_count;
 
 void clear_unaccessible_sensor_cache(uint8_t sensor_num);
 uint8_t get_sensor_reading(uint8_t sensor_num, int *reading, uint8_t read_mode);
@@ -309,7 +312,7 @@ bool vr_access(uint8_t sensor_num);
 bool sensor_init(void);
 void disable_sensor_poll();
 void enable_sensor_poll();
-void pal_fix_sensor_config(void);
+void pal_extend_sensor_config(void);
 bool check_sensor_num_exist(uint8_t sensor_num);
 void add_sensor_config(sensor_cfg config);
 bool check_is_sensor_ready();
