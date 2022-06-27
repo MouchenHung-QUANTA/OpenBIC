@@ -209,10 +209,15 @@ sensor_cfg plat_sensor_config[] = {
 	  &mp5990_init_args[0] },
 };
 
-uint8_t load_sensor_config(void)
+uint8_t plat_get_config_size()
+{
+	return ARRAY_SIZE(plat_sensor_config);
+}
+
+void load_sensor_config(void)
 {
 	memcpy(sensor_config, plat_sensor_config, sizeof(plat_sensor_config));
-	return ARRAY_SIZE(plat_sensor_config);
+	sensor_config_count = ARRAY_SIZE(plat_sensor_config);
 }
 
 void check_vr_type(uint8_t index)
@@ -274,7 +279,8 @@ void pal_fix_sensor_config()
 	}
 #endif
 
-	if (sensor_config_num != SDR_NUM) {
-		printf("fix sensor SDR and config table not match\n");
+	if (sensor_config_count != sdr_count) {
+		printf("[%s] extend sensor SDR and config table not match, sdr size: 0x%x, sensor config size: 0x%x\n",
+		       __func__, sdr_count, sensor_config_count);
 	}
 }
