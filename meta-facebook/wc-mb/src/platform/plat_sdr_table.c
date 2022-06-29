@@ -2707,6 +2707,7 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SDR_STRING_TYPE_ASCII_8, // ID len, should be same as "size of struct"
 		"HSC Input Pwr",
 	},
+#if PMIC_EN == 1
 	{
 		// DIMMA power
 		0x00,
@@ -2951,6 +2952,7 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SDR_STRING_TYPE_ASCII_8, // ID len, should be same as "size of struct"
 		"DIMMG PMIC_Pout",
 	},
+#endif
 #if VR_EN == 1
 	{
 		// PVCCIN power

@@ -18,6 +18,7 @@
 #include "libutil.h"
 
 #define VR_EN 0
+#define PMIC_EN 0
 
 // Scron: Replace A_P3V_BAT_SCALED_EN_R by FM_P3V_BAT_SCALED_EN_R.
 SET_GPIO_VALUE_CFG pre_bat_3v = { FM_P3V_BAT_SCALED_EN_R, GPIO_HIGH };
@@ -172,6 +173,7 @@ sensor_cfg plat_sensor_config[] = {
 	{ SENSOR_NUM_TEMP_PCH, sensor_dev_pch, I2C_BUS3, PCH_ADDR, ME_SENSOR_NUM_TEMP_PCH,
 	  me_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
 	  NULL },
+#if PMIC_EN == 1
 	{ SENSOR_NUM_PWR_DIMMA_PMIC, sensor_dev_pmic, I2C_BUS3, PCH_ADDR, NONE, me_access, 0, 0,
 	  SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_pmic_read, &pmic_pre_read_args[0], NULL,
 	  NULL, &pmic_init_args[0] },
@@ -184,7 +186,7 @@ sensor_cfg plat_sensor_config[] = {
 	{ SENSOR_NUM_PWR_DIMMG_PMIC, sensor_dev_pmic, I2C_BUS3, PCH_ADDR, NONE, me_access, 0, 0,
 	  SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_pmic_read, &pmic_pre_read_args[3], NULL,
 	  NULL, &pmic_init_args[12] },
-
+#endif
 	// INA230
 	{ SENSOR_NUM_PWR_IOM_INA, sensor_dev_ina230, I2C_BUS8, INA230_ADDR, INA230_PWR_OFFSET,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
