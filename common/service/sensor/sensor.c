@@ -292,7 +292,13 @@ void sensor_poll_handler(void *arug0, void *arug1, void *arug2)
 				continue;
 			}
 			get_sensor_reading(sensor_num, &reading, GET_FROM_SENSOR);
-
+			/*
+			uint8_t ret = get_sensor_reading(sensor_num, &reading, GET_FROM_SENSOR);
+			if (ret == SENSOR_READ_ACUR_SUCCESS || ret == SENSOR_READ_SUCCESS)
+				printf("[0x%x]: success\n", sensor_num);
+			else
+				printf("[0x%x]: failed with code 0x%x\n", sensor_num, ret);
+				*/
 			k_yield();
 		}
 

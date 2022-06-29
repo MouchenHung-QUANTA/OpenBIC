@@ -17,6 +17,8 @@
 #include "tmp431.h"
 #include "libutil.h"
 
+#define VR_EN 0
+
 // Scron: Replace A_P3V_BAT_SCALED_EN_R by FM_P3V_BAT_SCALED_EN_R.
 SET_GPIO_VALUE_CFG pre_bat_3v = { FM_P3V_BAT_SCALED_EN_R, GPIO_HIGH };
 SET_GPIO_VALUE_CFG post_bat_3v = { FM_P3V_BAT_SCALED_EN_R, GPIO_LOW };
@@ -94,7 +96,7 @@ sensor_cfg plat_sensor_config[] = {
 	{ SENSOR_NUM_VOL_STBY1V2, sensor_dev_ast_adc, ADC_PORT8, NONE, NONE, stby_access, 1, 1,
 	  SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
 	  &adc_asd_init_args[0] },
-
+#if VR_EN == 1
 	// VR voltage
 	{ SENSOR_NUM_VOL_PVCCD_HV, sensor_dev_isl69259, I2C_BUS5, PVCCD_HV_ADDR, VR_VOL_CMD,
 	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read,
@@ -165,7 +167,7 @@ sensor_cfg plat_sensor_config[] = {
 	{ SENSOR_NUM_PWR_PVCCFA_EHV_FIVRA, sensor_dev_isl69259, I2C_BUS5, PVCCFA_EHV_FIVRA_ADDR,
 	  VR_PWR_CMD, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read,
 	  &vr_pre_read_args[1], NULL, NULL, NULL },
-
+#endif
 	// ME, slave address need to be changed
 	{ SENSOR_NUM_TEMP_PCH, sensor_dev_pch, I2C_BUS3, PCH_ADDR, ME_SENSOR_NUM_TEMP_PCH,
 	  me_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
