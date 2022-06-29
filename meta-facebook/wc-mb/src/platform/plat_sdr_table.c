@@ -8,6 +8,8 @@
 #include "plat_ipmb.h"
 #include "plat_sensor_table.h"
 
+#define IS_POC 1
+
 SDR_Full_sensor plat_sdr_table[] = {
 	{
 		// TMP75 on board temperature
@@ -741,6 +743,7 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SDR_STRING_TYPE_ASCII_8, // ID len, should be same as "size of struct"
 		"PCH Temp",
 	},
+#if IS_POC == 0
 	{
 		// PVCCIN VR temperature
 		0x00,
@@ -1046,6 +1049,7 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SDR_STRING_TYPE_ASCII_8, // ID len, should be same as "size of struct"
 		"FAON SPS Temp",
 	},
+#endif
 	{
 		// P12V STBY ADC voltage
 		0x00,
@@ -1595,6 +1599,7 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SDR_STRING_TYPE_ASCII_8, // ID len, should be same as "size of struct"
 		"P3V3_M2 Vol",
 	},
+#if IS_POC == 0
 	{
 		// PVCCIN VR voltage
 		0x00,
@@ -2266,6 +2271,7 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SDR_STRING_TYPE_ASCII_8, // ID len, should be same as "size of struct"
 		"FAON VR Cur",
 	},
+#endif
 	{
 		// CPU power
 		0x00,
@@ -2327,6 +2333,7 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SDR_STRING_TYPE_ASCII_8, // ID len, should be same as "size of struct"
 		"CPU Pwr",
 	},
+#if IS_POC == 0
 	{
 		// PVCCIN power
 		0x00,
@@ -2632,6 +2639,7 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SDR_STRING_TYPE_ASCII_8, // ID len, should be same as "size of struct"
 		"FAON VR Pout",
 	},
+#endif
 	{
 		// HSC temperature
 		0x00,
@@ -2876,6 +2884,7 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SDR_STRING_TYPE_ASCII_8, // ID len, should be same as "size of struct"
 		"HSC Input Pwr",
 	},
+#if IS_POC == 0
 	{
 		// DIMMA power
 		0x00,
@@ -3120,6 +3129,7 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SDR_STRING_TYPE_ASCII_8, // ID len, should be same as "size of struct"
 		"DIMMG PMIC_Pout",
 	},
+#endif
 	{
 		// IOM INA230 voltage
 		0x00,

@@ -88,7 +88,7 @@ void snoop_read()
 		printf("snoop read buffer alloc fail\n");
 		return;
 	}
-
+	printf("--------------> Start reading POSTCODE loop\n");
 	while (1) {
 		rc = snoop_aspeed_read(snoop_dev, 0, snoop_data, true);
 		if (rc == 0) {
