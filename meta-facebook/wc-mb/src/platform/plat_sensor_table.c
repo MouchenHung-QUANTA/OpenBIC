@@ -96,7 +96,7 @@ sensor_cfg plat_sensor_config[] = {
 	{ SENSOR_NUM_VOL_STBY1V2, sensor_dev_ast_adc, ADC_PORT8, NONE, NONE, stby_access, 1, 1,
 	  SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
 	  &adc_asd_init_args[0] },
-
+#if IS_POC == 0
 	// VR voltage
 	{ SENSOR_NUM_VOL_PVCCD_HV, sensor_dev_isl69259, I2C_BUS5, PVCCD_HV_ADDR, VR_VOL_CMD,
 	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read,
@@ -113,7 +113,7 @@ sensor_cfg plat_sensor_config[] = {
 	{ SENSOR_NUM_VOL_PVCCFA_EHV_FIVRA, sensor_dev_isl69259, I2C_BUS5, PVCCFA_EHV_FIVRA_ADDR,
 	  VR_VOL_CMD, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read,
 	  &vr_pre_read_args[1], NULL, NULL, NULL },
-#if IS_POC == 0
+
 	// VR current
 	{ SENSOR_NUM_CUR_PVCCD_HV, sensor_dev_isl69259, I2C_BUS5, PVCCD_HV_ADDR, VR_CUR_CMD,
 	  vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, pre_vr_read,
