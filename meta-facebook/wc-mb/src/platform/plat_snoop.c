@@ -14,6 +14,13 @@ k_tid_t postcode_led_ctl_tid;
 K_THREAD_STACK_DEFINE(postcode_led_ctl_thread, POSTCODE_LED_THREAD_STACK_SIZE);
 struct k_thread postcode_led_thread_handler;
 
+void pal_postcode_led_ctl(uint8_t postcode)
+{
+	printf("setting led...\n");
+	for (int i = 0; i < 8; i++)
+		gpio_set(LED_POSTCODE_0 + i, postcode & BIT(i) >> i);
+}
+
 static void postcode_led_ctl()
 {
 	int cur_postcode_num = 0;
@@ -40,6 +47,8 @@ static void postcode_led_ctl()
 
 void abort_postcode_led_thread()
 {
+	return;
+
 	if (postcode_led_ctl_tid != NULL &&
 	    strcmp(k_thread_state_str(postcode_led_ctl_tid), "dead") != 0) {
 		k_thread_abort(postcode_led_ctl_tid);
@@ -51,6 +60,8 @@ void abort_postcode_led_thread()
 
 void init_postcode_led_ctl()
 {
+	return;
+
 	if (postcode_led_ctl_tid != NULL &&
 	    strcmp(k_thread_state_str(postcode_led_ctl_tid), "dead") != 0) {
 		return;

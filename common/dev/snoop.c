@@ -26,6 +26,11 @@ k_tid_t send_postcode_tid;
 
 struct k_mutex snoop_mutex;
 
+__weak void pal_postcode_led_ctl(uint8_t postcode)
+{
+	return;
+}
+
 void snoop_init()
 {
 	snoop_dev = device_get_binding(DT_LABEL(DT_NODELABEL(snoop)));
@@ -96,6 +101,8 @@ void snoop_read()
 			if (!k_mutex_lock(&snoop_mutex, K_MSEC(1000))) {
 				snoop_read_buffer[snoop_read_num % SNOOP_MAX_LEN] = *snoop_data;
 				snoop_read_num++;
+				printf("** get new poscode 0x%x\n", *snoop_data);
+				pal_postcode_led_ctl(*snoop_data);
 			} else {
 				printf("snoop read lock fail\n");
 			}
