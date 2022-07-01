@@ -17,8 +17,9 @@ struct k_thread postcode_led_thread_handler;
 
 void pal_postcode_led_ctl(uint8_t postcode)
 {
-	for (int i = 0; i < 8; i++)
-		gpio_set(LED_POSTCODE_0 + i, postcode & BIT(i) >> i);
+	for (int i = 0; i < 8; i++) {
+		gpio_set(LED_POSTCODE_0 + i, (int)(postcode & BIT(i)) >> i);
+	}
 }
 
 static void postcode_led_ctl()
