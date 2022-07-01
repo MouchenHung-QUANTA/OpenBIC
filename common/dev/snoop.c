@@ -101,7 +101,6 @@ void snoop_read()
 			if (!k_mutex_lock(&snoop_mutex, K_MSEC(1000))) {
 				snoop_read_buffer[snoop_read_num % SNOOP_MAX_LEN] = *snoop_data;
 				snoop_read_num++;
-				printf("** get new poscode 0x%x\n", *snoop_data);
 				pal_postcode_led_ctl(*snoop_data);
 			} else {
 				printf("snoop read lock fail\n");

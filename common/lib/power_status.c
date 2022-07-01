@@ -4,7 +4,6 @@
 
 #include "hal_gpio.h"
 #include "snoop.h"
-#include "plat_snoop.h"
 
 static bool is_DC_on = false;
 static bool is_DC_on_delayed = false;
@@ -70,7 +69,6 @@ void set_post_thread()
 	if (CPU_power_good() == true) {
 		init_snoop_thread();
 		init_send_postcode_thread();
-		init_postcode_led_ctl();
 	}
 }
 
