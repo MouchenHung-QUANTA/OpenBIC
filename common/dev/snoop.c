@@ -93,14 +93,13 @@ void snoop_read()
 		printf("snoop read buffer alloc fail\n");
 		return;
 	}
-	printf("--------------> Start reading POSTCODE loop\n");
+
 	while (1) {
 		rc = snoop_aspeed_read(snoop_dev, 0, snoop_data, true);
 		if (rc == 0) {
 			proc_postcode_ok = true;
 			if (!k_mutex_lock(&snoop_mutex, K_MSEC(1000))) {
 				snoop_read_buffer[snoop_read_num % SNOOP_MAX_LEN] = *snoop_data;
-				printf("******** new postcode 0x%x ********\n", *snoop_data);
 				pal_postcode_led_ctl(*snoop_data);
 				snoop_read_num++;
 			} else {
