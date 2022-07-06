@@ -54,6 +54,7 @@ uint8_t pch_read(uint8_t sensor_num, int *reading)
 			sensor_val *sval = (sensor_val *)reading;
 			memset(sval, 0, sizeof(sensor_val));
 			sval->integer = bridge_msg->data[0];
+			printf("pch_read: reading ... %d\n", sval->integer);
 			SAFE_FREE(bridge_msg);
 			return SENSOR_READ_SUCCESS;
 		} else if (bridge_msg->completion_code == CC_NODE_BUSY) {

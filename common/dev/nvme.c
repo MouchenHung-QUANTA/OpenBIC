@@ -43,6 +43,7 @@ uint8_t nvme_read(uint8_t sensor_num, int *reading)
 	sensor_val *sval = (sensor_val *)reading;
 	sval->integer = val & 0xFF;
 	sval->fraction = 0;
+	//printf("nvme_read: get reading %d\n", val & 0xFF);
 
 	return SENSOR_READ_SUCCESS;
 }
