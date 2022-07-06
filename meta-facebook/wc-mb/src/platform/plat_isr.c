@@ -8,7 +8,6 @@
 #include "plat_gpio.h"
 #include "plat_ipmi.h"
 #include "plat_sensor_table.h"
-#include "plat_snoop.h"
 #include "oem_1s_handler.h"
 #include "hal_gpio.h"
 #include "util_sys.h"
@@ -153,12 +152,11 @@ void ISR_PWRGD_CPU()
 	if (gpio_get(PWRGD_CPU_LVC3) == GPIO_HIGH) {
 		init_snoop_thread();
 		init_send_postcode_thread();
-		init_postcode_led_ctl();
+
 		/* start thread proc_fail_handler after 10 seconds */
 		k_work_schedule(&PROC_FAIL_work, K_SECONDS(PROC_FAIL_START_DELAY_SECOND));
 	} else {
 		abort_snoop_thread();
-		abort_postcode_led_thread();
 
 		if (k_work_cancel_delayable(&PROC_FAIL_work) != 0) {
 			printf("Cancel proc_fail delay work fail\n");
