@@ -16,8 +16,8 @@
 #define MAX_IPMB_IDX 3
 
 enum { BMC_IPMB_IDX,
-       PEER_BMC_IPMB_IDX,
        ME_IPMB_IDX,
+       PEER_BMC_IPMB_IDX,
 };
 
 extern IPMB_config pal_IPMB_config_table[];
