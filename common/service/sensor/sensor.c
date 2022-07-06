@@ -15,6 +15,10 @@
 #include "plat_def.h"
 #include "libutil.h"
 
+#include <shell/shell.h>
+int me_access_force = 0;
+int post_access_force = 0;
+
 #define SENSOR_DRIVE_INIT_DECLARE(name) uint8_t name##_init(uint8_t sensor_num)
 
 #define SENSOR_DRIVE_TYPE_INIT_MAP(name)                                                           \
@@ -361,11 +365,17 @@ bool dc_access(uint8_t sensor_num)
 
 bool post_access(uint8_t sensor_num)
 {
+	if (post_access_force)
+		return true;
+
 	return get_post_status();
 }
 
 bool me_access(uint8_t sensor_num)
 {
+	if (me_access_force)
+		return true;
+
 	if (get_me_mode() == ME_NORMAL_MODE) {
 		return get_post_status();
 	} else {
@@ -518,3 +528,49 @@ bool check_is_sensor_ready()
 {
 	return is_sensor_ready_flag;
 }
+
+enum {
+	ACCESS_ME,
+	ACCESS_POST,
+};
+
+static void cmd_access_enable(const struct shell *shell, size_t argc, char **argv)
+{
+	if (argc != 2) {
+		shell_warn(shell, "Help: dbg_sensor access_enable ");
+		return;
+	}
+
+	int access_type = strtol(argv[1], NULL, 10);
+
+	if (access_type == ACCESS_ME)
+		me_access_force = 1;
+	else if (access_type == ACCESS_POST)
+		post_access_force = 1;
+	else
+		printf("Invalid access type!\n");
+}
+
+static void cmd_access_disable(const struct shell *shell, size_t argc, char **argv)
+{
+	if (argc != 2) {
+		shell_warn(shell, "Help: dbg_sensor access_disable multifnctl");
+		return;
+	}
+
+	int access_type = strtol(argv[1], NULL, 10);
+
+	if (access_type == ACCESS_ME)
+		me_access_force = 0;
+	else if (access_type == ACCESS_POST)
+		post_access_force = 0;
+	else
+		printf("Invalid access type!\n");
+}
+
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_cmds,
+			       SHELL_CMD(access_enable, NULL, "enable access.", cmd_access_enable),
+			       SHELL_CMD(access_disable, NULL, "disable access.", cmd_access_disable),
+			       SHELL_SUBCMD_SET_END);
+
+SHELL_CMD_REGISTER(dbg_sensor, &sub_cmds, "sensor debug commands", NULL);
