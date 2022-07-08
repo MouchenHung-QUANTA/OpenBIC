@@ -8,7 +8,7 @@
 #define TMP75_OUT_ADDR (0x94 >> 1)
 #define TMP75_IOM_ADDR (0x94 >> 1)
 #define TMP75_TEMP_OFFSET 0x00
-#define SSD0_ADDR (0x36 >> 1)
+#define SSD0_ADDR (0xD4 >> 1)
 #define SSD0_OFFSET 0x00
 #define MPS_MP5990_ADDR (0x40 >> 1)
 #define PCH_ADDR (0x2C >> 1)

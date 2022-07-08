@@ -325,7 +325,6 @@ uint8_t intel_peci_read(uint8_t sensor_num, int *reading)
 	default:
 		break;
 	}
-	//printf("intel_peci: get sensor 0x%x : %d\n", sensor_num, *reading);
 
 	return ret_val ? SENSOR_READ_SUCCESS : SENSOR_FAIL_TO_ACCESS;
 }
