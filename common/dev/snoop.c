@@ -96,6 +96,7 @@ void snoop_read()
 			if (!k_mutex_lock(&snoop_mutex, K_MSEC(1000))) {
 				snoop_read_buffer[snoop_read_num % SNOOP_MAX_LEN] = *snoop_data;
 				snoop_read_num++;
+				printf("** get new postcode 0x%x\n", *snoop_data);
 			} else {
 				printf("snoop read lock fail\n");
 			}
