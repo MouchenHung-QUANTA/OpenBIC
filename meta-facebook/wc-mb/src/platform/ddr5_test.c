@@ -103,6 +103,11 @@ static int cmd_ddr5_write_read(const struct shell *shell, size_t argc, char **ar
 	xfer[1].data.out = out;
 
 	ret = i3c_master_priv_xfer(&slave, xfer, 2);
+	if (ret) {
+		LOG_ERR("failed to transfer message\n");
+		return 0;
+	}
+
 	LOG_HEXDUMP_INF(out, read_len, "Read data");
 
 	ret = i3c_master_detach_device(master, &slave);
@@ -147,6 +152,11 @@ static int cmd_ddr5_read(const struct shell *shell, size_t argc, char **argv)
 	xfer.data.out = out;
 
 	ret = i3c_master_priv_xfer(&slave, &xfer, 1);
+	if (ret) {
+		LOG_ERR("failed to transfer message\n");
+		return 0;
+	}
+
 	LOG_HEXDUMP_INF(out, read_len, "Read data");
 
 	ret = i3c_master_detach_device(master, &slave);
@@ -195,6 +205,10 @@ static int cmd_ddr5_write(const struct shell *shell, size_t argc, char **argv)
 	xfer.data.in = in;
 
 	ret = i3c_master_priv_xfer(&slave, &xfer, 1);
+	if (ret) {
+		LOG_ERR("failed to transfer message\n");
+		return 0;
+	}
 
 	ret = i3c_master_detach_device(master, &slave);
 	if (ret) {
