@@ -61,6 +61,10 @@ SENSOR_DRIVE_INIT_DECLARE(ina233);
 SENSOR_DRIVE_INIT_DECLARE(isl69254iraz_t);
 SENSOR_DRIVE_INIT_DECLARE(max16550a);
 SENSOR_DRIVE_INIT_DECLARE(ina230);
+SENSOR_DRIVE_INIT_DECLARE(xdpe12284c);
+SENSOR_DRIVE_INIT_DECLARE(raa229621);
+SENSOR_DRIVE_INIT_DECLARE(nct7718w);
+SENSOR_DRIVE_INIT_DECLARE(ltc4286);
 
 struct sensor_drive_api {
 	enum SENSOR_DEV dev;
@@ -85,6 +89,10 @@ struct sensor_drive_api {
 	SENSOR_DRIVE_TYPE_INIT_MAP(isl69254iraz_t),
 	SENSOR_DRIVE_TYPE_INIT_MAP(max16550a),
 	SENSOR_DRIVE_TYPE_INIT_MAP(ina230),
+	SENSOR_DRIVE_TYPE_INIT_MAP(xdpe12284c),
+	SENSOR_DRIVE_TYPE_INIT_MAP(raa229621),
+	SENSOR_DRIVE_TYPE_INIT_MAP(nct7718w),
+	SENSOR_DRIVE_TYPE_INIT_MAP(ltc4286),
 };
 
 static void init_sensor_num(void)
@@ -275,6 +283,7 @@ void sensor_poll_handler(void *arug0, void *arug1, void *arug2)
 	uint8_t index = 0, sensor_num = 0;
 	int sensor_poll_interval_ms;
 	int reading;
+
 	k_msleep(1000); // delay 1 second to wait for drivers ready before start sensor polling
 
 	pal_set_sensor_poll_interval(&sensor_poll_interval_ms);
@@ -286,11 +295,28 @@ void sensor_poll_handler(void *arug0, void *arug1, void *arug2)
 			if (sensor_poll_enable_flag == false) { /* skip if disable sensor poll */
 				break;
 			}
+
+			// Check whether monitoring sensor is enabled
+			sensor_cfg *config = &sensor_config[sensor_config_index_map[sensor_num]];
+			if (config->is_enable_polling == DISABLE_SENSOR_POLLING) {
+				config->cache = SENSOR_FAIL;
+				config->cache_status = SENSOR_POLLING_DISABLE;
+				continue;
+			}
+
 			if (sdr_index_map[sensor_num] == SENSOR_NULL) { // Check sensor info
 				printf("[%s] fail to find sensor SDR info, sensor number: 0x%x\n",
 				       __func__, sensor_num);
 				continue;
 			}
+
+			if (sensor_config[index].poll_time != POLL_TIME_DEFAULT) {
+				if (pal_is_time_to_poll(sensor_num,
+							sensor_config[index].poll_time) == false) {
+					continue;
+				}
+			}
+
 			get_sensor_reading(sensor_num, &reading, GET_FROM_SENSOR);
 
 			k_yield();
@@ -300,6 +326,11 @@ void sensor_poll_handler(void *arug0, void *arug1, void *arug2)
 
 		k_msleep(sensor_poll_interval_ms);
 	}
+}
+
+__weak bool pal_is_time_to_poll(uint8_t sensor_num, int poll_time)
+{
+	return true;
 }
 
 __weak void pal_set_sensor_poll_interval(int *interval_ms)

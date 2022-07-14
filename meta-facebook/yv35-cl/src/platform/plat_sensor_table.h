@@ -12,6 +12,7 @@
 #define SSD0_ADDR (0xD4 >> 1)
 #define SSD0_OFFSET 0x00
 #define ADI_ADM1278_ADDR (0x80 >> 1)
+#define ADI_LTC4286_ADDR (0x84 >> 1)
 #define MPS_MP5990_ADDR (0x16 >> 1)
 #define PCH_ADDR (0x2C >> 1)
 #define ME_SENSOR_NUM_TEMP_PCH 0x08
@@ -112,6 +113,8 @@
 #define SENSOR_NUM_CUR_DPV2OUT 0x93
 #define SENSOR_NUM_TEMP_DPV2_EFUSE 0x94
 #define SENSOR_NUM_PWR_DPV2 0x95
+
+#define POLL_TIME_BAT3V 3600 // sec
 
 uint8_t plat_get_config_size();
 uint8_t pal_get_extend_sensor_config();

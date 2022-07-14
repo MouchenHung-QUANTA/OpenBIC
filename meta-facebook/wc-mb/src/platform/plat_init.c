@@ -23,6 +23,7 @@ SCU_CFG scu_cfg[] = {
 	{ 0x7e6e2634, 0x0000007D },
 };
 
+/* port80 bypass signal to GPIOF(postcode led) */
 static void postcode_led_ctl()
 {
 	uint32_t val = 0;
@@ -48,10 +49,10 @@ static void postcode_led_ctl()
 	sys_write32((val & 0xFFFFFEFF) | 0x0, 0x7e78006C);
 
 	/* Super IO config - set SIOR7_30h to 0x80 */
-	// Thiese configs should set by BIOS
+	// These configs should set by BIOS
 
 	/* Super IO config - set SIOR7_38h to 0x5(GPIOF) */
-	// Thiese configs should set by BIOS
+	// These configs should set by BIOS
 }
 
 void pal_pre_init()
@@ -59,8 +60,6 @@ void pal_pre_init()
 	init_platform_config();
 	disable_PRDY_interrupt();
 	scu_init(scu_cfg, sizeof(scu_cfg) / sizeof(SCU_CFG));
-
-	/* port80 bypass signal to GPIOF(postcode led) */
 	postcode_led_ctl();
 }
 

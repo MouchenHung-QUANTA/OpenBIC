@@ -19,6 +19,9 @@
 #define REG_GPIO_BASE 0x7e780000
 #define REG_SCU 0x7E6E2000
 
+/* According to IPMI specification Table 43, length of sensor name maximum is 16 bytes. */
+#define MAX_SENSOR_NAME_LENGTH 17 // 16 bytes sensor name and 1 byte null character
+
 int num_of_pin_in_one_group_lst[NUM_OF_GROUP] = { 32, 32, 32, 32, 32, 16 };
 char GPIO_GROUP_NAME_LST[NUM_OF_GROUP][10] = { "GPIO0_A_D", "GPIO0_E_H", "GPIO0_I_L",
 					       "GPIO0_M_P", "GPIO0_Q_T", "GPIO0_U_V" };
@@ -62,14 +65,15 @@ enum GPIO_ACCESS { GPIO_READ, GPIO_WRITE };
 const char *const sensor_type_name[] = {
 	sensor_name_to_num(tmp75) sensor_name_to_num(adc) sensor_name_to_num(
 		peci) sensor_name_to_num(isl69259) sensor_name_to_num(hsc) sensor_name_to_num(nvme)
-		sensor_name_to_num(pch) sensor_name_to_num(mp5990) sensor_name_to_num(isl28022)
-			sensor_name_to_num(pex89000) sensor_name_to_num(tps53689)
-				sensor_name_to_num(xdpe15284) sensor_name_to_num(ltc4282)
-					sensor_name_to_num(fan) sensor_name_to_num(tmp431)
-						sensor_name_to_num(pmic) sensor_name_to_num(ina233)
-							sensor_name_to_num(isl69254)
-								sensor_name_to_num(max16550a)
-									sensor_name_to_num(ina230)
+		sensor_name_to_num(pch) sensor_name_to_num(mp5990) sensor_name_to_num(
+			isl28022) sensor_name_to_num(pex89000) sensor_name_to_num(tps53689)
+			sensor_name_to_num(xdpe15284) sensor_name_to_num(
+				ltc4282) sensor_name_to_num(fan) sensor_name_to_num(tmp431)
+				sensor_name_to_num(pmic) sensor_name_to_num(ina233)
+					sensor_name_to_num(isl69254) sensor_name_to_num(max16550a)
+						sensor_name_to_num(ina230)
+							sensor_name_to_num(raa229621)
+								sensor_name_to_num(nct7718w)
 };
 
 const char *const sensor_status_name[] = {

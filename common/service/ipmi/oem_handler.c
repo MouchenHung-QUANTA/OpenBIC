@@ -3,7 +3,6 @@
 #include "sensor.h"
 #include "plat_sensor_table.h"
 #include "guid.h"
-#include "plat_guid.h"
 #ifdef ENABLE_FAN
 #include "plat_fan.h"
 #endif
@@ -17,7 +16,6 @@ __weak void OEM_NM_SENSOR_READ(ipmi_msg *msg)
 
 	uint8_t status, sensor_num;
 	int reading;
-	int val;
 
 	// only input enable status
 	if (msg->data_len < 3) {
@@ -29,20 +27,18 @@ __weak void OEM_NM_SENSOR_READ(ipmi_msg *msg)
 	if (msg->data[0] == 0x00) {
 		sensor_num = SENSOR_NUM_PWR_HSCIN;
 		status = get_sensor_reading(sensor_num, &reading, GET_FROM_CACHE);
-
-		val = (calculate_accurate_MBR(sensor_num, (int)reading) / 1000) & 0xffff;
-
-		// scale down to one byte and times SDR to get original reading
-		val = (val >> 8) * SDR_M(sensor_num);
 	} else {
 		msg->completion_code = CC_INVALID_DATA_FIELD;
 		return;
 	}
 
+	sensor_val *sval = (sensor_val *)(&reading);
 	switch (status) {
 	case SENSOR_READ_SUCCESS:
-		msg->data[1] = val & 0xFF;
-		msg->data[2] = (val >> 8) & 0xFF;
+	case SENSOR_READ_ACUR_SUCCESS:
+	case SENSOR_READ_4BYTE_ACUR_SUCCESS:
+		msg->data[1] = sval->integer & 0xFF;
+		msg->data[2] = (sval->integer >> 8) & 0xFF;
 		msg->data_len = 3;
 		msg->completion_code = CC_SUCCESS;
 		break;
@@ -65,6 +61,7 @@ __weak void OEM_NM_SENSOR_READ(ipmi_msg *msg)
 	}
 	return;
 }
+#endif
 
 __weak void OEM_SET_SYSTEM_GUID(ipmi_msg *msg)
 {
@@ -77,14 +74,7 @@ __weak void OEM_SET_SYSTEM_GUID(ipmi_msg *msg)
 		return;
 	}
 
-	uint8_t status;
-	EEPROM_ENTRY guid_entry;
-
-	guid_entry.offset = 0;
-	guid_entry.data_len = msg->data_len;
-	guid_entry.config.dev_id = MB_SYS_GUID_ID;
-	memcpy(&guid_entry.data[0], &msg->data, guid_entry.data_len);
-	status = GUID_write(&guid_entry);
+	uint8_t status = set_system_guid(&msg->data_len, &msg->data[0]);
 
 	switch (status) {
 	case GUID_WRITE_SUCCESS:
@@ -107,7 +97,6 @@ __weak void OEM_SET_SYSTEM_GUID(ipmi_msg *msg)
 	msg->data_len = 0;
 	return;
 }
-#endif
 
 #ifdef ENABLE_FAN
 __weak void OEM_SET_FAN_DUTY_MANUAL(ipmi_msg *msg)

@@ -8,7 +8,6 @@
 #define IPMB_PEER_BMC_BUS I2C_BUS8
 #define IPMB_ME_BUS I2C_BUS3
 
-/* mcadd: TODO: Slave address need to be set! */
 #define BMC_I2C_ADDRESS 0x10
 #define PEER_BMC_I2C_ADDRESS 0x10
 #define ME_I2C_ADDRESS 0x16

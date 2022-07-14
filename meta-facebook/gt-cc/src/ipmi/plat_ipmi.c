@@ -38,6 +38,7 @@ struct bridge_compnt_info_s {
 };
 
 extern struct k_mutex i2c_bus6_mutex;
+extern struct k_mutex i2c_bus10_mutex;
 struct bridge_compnt_info_s bridge_compnt_info[] = {
 	[0] = { .compnt_id = GT_COMPNT_VR0,
 		.i2c_bus = I2C_BUS6,
@@ -364,7 +365,7 @@ void OEM_1S_GET_FW_VERSION(ipmi_msg *msg)
 	case GT_COMPNT_PEX2:
 	case GT_COMPNT_PEX3: {
 		/* Only can be read when DC is on */
-		if (!get_DC_status()) {
+		if (is_mb_dc_on() == false) {
 			msg->completion_code = CC_UNSPECIFIED_ERROR;
 			return;
 		}
@@ -378,11 +379,32 @@ void OEM_1S_GET_FW_VERSION(ipmi_msg *msg)
 		sensor_cfg *cfg = &sensor_config[sensor_config_index_map[pex_sensor_num]];
 		pex89000_unit *p = (pex89000_unit *)cfg->priv_data;
 
+		if (cfg->pre_sensor_read_hook) {
+			if (cfg->pre_sensor_read_hook(cfg->num, cfg->pre_sensor_read_args) ==
+			    false) {
+				printf("[%s] pex%d pre-read failed!\n", __func__,
+				       component - GT_COMPNT_PEX0);
+				msg->completion_code = CC_UNSPECIFIED_ERROR;
+				return;
+			}
+		}
+
 		if (pex_access_engine(cfg->port, cfg->target_addr, p->idx, pex_access_flash_ver,
 				      &reading)) {
+			if (k_mutex_unlock(&i2c_bus10_mutex))
+				printf("[%s]mutex unlock fail on PEX bus\n", __func__);
 			msg->completion_code = CC_UNSPECIFIED_ERROR;
 			return;
 		}
+
+		if (cfg->post_sensor_read_hook) {
+			if (cfg->post_sensor_read_hook(cfg->num, cfg->post_sensor_read_args,
+						       NULL) == false) {
+				printf("[%s] pex%d post-read failed!\n", __func__,
+				       component - GT_COMPNT_PEX0);
+			}
+		}
+
 		memcpy(&msg->data[2], &reading, sizeof(reading));
 
 		msg->data[0] = component;
@@ -480,7 +502,7 @@ void OEM_1S_GET_FW_VERSION(ipmi_msg *msg)
 	case GT_COMPNT_NIC6:
 	case GT_COMPNT_NIC7: {
 		/* Only can be read when DC is on */
-		if (!get_DC_status()) {
+		if (is_mb_dc_on() == false) {
 			msg->completion_code = CC_UNSPECIFIED_ERROR;
 			return;
 		}

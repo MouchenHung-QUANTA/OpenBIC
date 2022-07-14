@@ -134,7 +134,6 @@ bool pre_vol_bat3v_read(uint8_t sensor_num, void *args)
 {
 	ARG_UNUSED(args);
 
-	// Scron: Replace A_P3V_BAT_SCALED_EN_R by FM_P3V_BAT_SCALED_EN_R.
 	if (sensor_num == SENSOR_NUM_VOL_BAT3V) {
 		gpio_set(FM_P3V_BAT_SCALED_EN_R, GPIO_HIGH);
 		k_msleep(1);
@@ -158,7 +157,6 @@ bool post_vol_bat3v_read(uint8_t sensor_num, void *args, int *reading)
 	ARG_UNUSED(args);
 	ARG_UNUSED(reading);
 
-	// Scron: Replace A_P3V_BAT_SCALED_EN_R by FM_P3V_BAT_SCALED_EN_R.
 	if (sensor_num == SENSOR_NUM_VOL_BAT3V)
 		gpio_set(FM_P3V_BAT_SCALED_EN_R, GPIO_LOW);
 
@@ -242,12 +240,17 @@ bool pre_pmic_read(uint8_t sensor_num, void *args)
 	ARG_UNUSED(args);
 
 	pmic_init_arg *init_arg = sensor_config[sensor_config_index_map[sensor_num]].init_args;
-	if (init_arg->is_init == false) {
+	if (init_arg == NULL || init_arg->is_init == false) {
 		return true;
 	}
 
 	pmic_pre_proc_arg *pre_proc_arg =
 		sensor_config[sensor_config_index_map[sensor_num]].pre_sensor_read_args;
+
+	if (pre_proc_arg == NULL) {
+		return false;
+	}
+
 	if (pre_proc_arg->pre_read_init == false) {
 		int ret = 0;
 		uint8_t seq_source = 0xFF, write_data = 0x0;

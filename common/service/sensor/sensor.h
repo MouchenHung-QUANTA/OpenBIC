@@ -23,6 +23,8 @@
 
 #define SAMPLE_COUNT_DEFAULT 1
 
+#define POLL_TIME_DEFAULT 1
+
 enum LTC4282_OFFSET {
 	LTC4282_ADJUST_OFFSET = 0x11,
 	LTC4282_VSENSE_OFFSET = 0x40,
@@ -37,6 +39,12 @@ enum ADM1278_OFFSET {
 	ADM1278_PEAK_IOUT_OFFSET = 0xD0,
 	ADM1278_PEAK_PIN_OFFSET = 0xDA,
 	ADM1278_EIN_EXT_OFFSET = 0xDC,
+};
+
+enum NCT7718W_OFFSET {
+	NCT7718W_LOCAL_TEMP_OFFSET = 0x00,
+	NCT7718W_REMOTE_TEMP_MSB_OFFSET = 0x01,
+	NCT7718W_REMOTE_TEMP_LSB_OFFSET = 0x10,
 };
 
 enum INA230_OFFSET {
@@ -71,7 +79,16 @@ enum SENSOR_DEV {
 	sensor_dev_isl69254iraz_t = 0x11,
 	sensor_dev_max16550a = 0x12,
 	sensor_dev_ina230 = 0x13,
+	sensor_dev_xdpe12284c = 0x14,
+	sensor_dev_raa229621 = 0x15,
+	sensor_dev_nct7718w = 0x16,
+	sensor_dev_ltc4286 = 0x17,
 	sensor_dev_max
+};
+
+enum CONTROL_SENSOR_POLLING_OPTION {
+	DISABLE_SENSOR_POLLING = false,
+	ENABLE_SENSOR_POLLING = true,
 };
 
 typedef struct _sensor_val {
@@ -134,6 +151,8 @@ typedef struct _sensor_cfg__ {
 	int arg0;
 	int arg1;
 	int sample_count;
+	int64_t poll_time; // sec
+	bool is_enable_polling;
 	int cache;
 	uint8_t cache_status;
 	bool (*pre_sensor_read_hook)(uint8_t, void *);
@@ -148,6 +167,11 @@ typedef struct _sensor_cfg__ {
 	uint8_t (*init)(uint8_t, int *);
 	uint8_t (*read)(uint8_t, int *);
 } sensor_cfg;
+
+typedef struct _sensor_poll_time_cfg {
+	uint8_t sensor_num;
+	int64_t last_access_time;
+} sensor_poll_time_cfg;
 
 /* INIT arg */
 typedef struct _isl28022_init_arg {
@@ -214,6 +238,24 @@ typedef struct _ltc4282_init_arg {
 	float r_sense;
 
 } ltc4282_init_arg;
+
+typedef struct _ltc4286_init_arg {
+	/* value to get/set MFR CONFIG 1 register */
+	union {
+		uint16_t value;
+		struct {
+			uint16_t vpwr_select : 1;
+			uint16_t vrange_select : 1;
+			uint16_t reserved_1 : 8; // bit[9:2] are reserved.
+			uint16_t ilim : 4;
+			uint16_t reserved_2 : 2; // bit[15:14] are reserved.
+		} fields;
+	} mfr_config_1;
+	/* Rsense valus, unit: milliohm */
+	float r_sense_mohm;
+	/* Initailize function will set following arguments, no need to give value */
+	bool is_init;
+} ltc4286_init_arg;
 
 typedef struct _mp5990_init_arg {
 	/* value to sets the gain for output current reporting */
@@ -316,5 +358,6 @@ void pal_extend_sensor_config(void);
 bool check_sensor_num_exist(uint8_t sensor_num);
 void add_sensor_config(sensor_cfg config);
 bool check_is_sensor_ready();
+bool pal_is_time_to_poll(uint8_t sensor_num, int poll_time);
 
 #endif

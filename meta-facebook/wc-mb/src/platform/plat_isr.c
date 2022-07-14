@@ -71,7 +71,6 @@ void ISR_SLP3()
 
 void ISR_POST_COMPLETE()
 {
-	// Scron: Replace FM_BIOS_POST_CMPLT_BMC_N by FM_BIOS_POST_CMPLT_BIC_N.
 	set_post_status(FM_BIOS_POST_CMPLT_BIC_N);
 
 	if (gpio_get(FM_BIOS_POST_CMPLT_BIC_N) == GPIO_LOW) { // Post complete
@@ -118,7 +117,6 @@ void ISR_DC_ON()
 
 void ISR_BMC_PRDY()
 {
-	// Scron: Replace H_BMC_PRDY_BUF_N by JTAG_DBP_BMC_PRDY_N.
 	send_gpio_interrupt(JTAG_DBP_BMC_PRDY_N);
 }
 
@@ -169,8 +167,6 @@ void ISR_PWRGD_CPU()
 
 static void CAT_ERR_handler(struct k_work *work)
 {
-	// Scron: Replace RST_PLTRST_BUF_N by RST_PLTRST_BIC_N.
-	// Scron: Replace FM_CPU_RMCA_CATERR_LVT3_N by FM_CPU_CATERR_LVT3_N.
 	if ((gpio_get(RST_PLTRST_BIC_N) == GPIO_HIGH) || (gpio_get(PWRGD_SYS_PWROK) == GPIO_HIGH)) {
 		addsel_msg_t sel_msg;
 		bool ret = false;
@@ -199,7 +195,6 @@ K_WORK_DELAYABLE_DEFINE(CAT_ERR_work, CAT_ERR_handler);
 #define CATERR_START_DELAY_SECOND 2
 void ISR_CATERR()
 {
-	// Scron: Replace RST_PLTRST_BUF_N by RST_PLTRST_BIC_N.
 	if ((gpio_get(RST_PLTRST_BIC_N) == GPIO_HIGH)) {
 		if (k_work_cancel_delayable(&CAT_ERR_work) != 0) {
 			printf("Cancel caterr delay work fail\n");
@@ -211,7 +206,6 @@ void ISR_CATERR()
 
 void ISR_PLTRST()
 {
-	// Scron: Replace RST_PLTRST_BUF_N by RST_PLTRST_BIC_N.
 	send_gpio_interrupt(RST_PLTRST_BIC_N);
 }
 
@@ -242,7 +236,6 @@ void ISR_FM_THROTTLE()
 
 void ISR_HSC_THROTTLE()
 {
-	// Scron: Replace IRQ_SML1_PMBUS_ALERT_N by IRQ_SML1_PMBUS_BMC_ALERT_N.
 	addsel_msg_t sel_msg;
 	static bool is_hsc_throttle_assert = false; // Flag for filt out fake alert
 	if (gpio_get(RST_RSMRST_BMC_N) == GPIO_HIGH) {
@@ -276,8 +269,7 @@ void ISR_HSC_THROTTLE()
 
 void ISR_MB_THROTTLE()
 {
-	// Scron: TODO
-	// Remove code due to using undefined macro: 'FAST_PROCHOT_N'.
+	// TODO
 }
 
 void ISR_SOC_THMALTRIP()
@@ -353,13 +345,11 @@ void ISR_PCH_THMALTRIP()
 
 void ISR_HSC_OC()
 {
-	// Scron: TODO
-	// Remove code due to using undefined macro: 'FM_HSC_TIMER'.
+	// TODO
 }
 
 void ISR_CPU_MEMHOT()
 {
-	// Scron: Replace H_CPU_MEMHOT_OUT_LVC3_N by H_CPU0_MEMHOT_OUT_LVC3_N.
 	addsel_msg_t sel_msg;
 	if ((gpio_get(RST_PLTRST_PLD_N) == GPIO_HIGH) && (gpio_get(PWRGD_SYS_PWROK) == GPIO_HIGH)) {
 		if (gpio_get(H_CPU0_MEMHOT_OUT_LVC3_N) == GPIO_HIGH) {
@@ -416,7 +406,6 @@ void ISR_PCH_PWRGD()
 
 void ISR_RMCA()
 {
-	// Scron: Replace RST_PLTRST_BUF_N by RST_PLTRST_BIC_N.
 	if ((gpio_get(RST_PLTRST_BIC_N) == GPIO_HIGH) || (gpio_get(PWRGD_CPU_LVC3) == GPIO_HIGH)) {
 		addsel_msg_t sel_msg;
 		sel_msg.sensor_type = IPMI_SENSOR_TYPE_PROCESSOR;

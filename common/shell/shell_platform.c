@@ -42,6 +42,7 @@
 
 /* Include SENSOR */
 #include "sensor.h"
+#include "sdr.h"
 
 /* Include config settings */
 #include "shell_platform.h"
@@ -207,14 +208,32 @@ static int sensor_get_idx_by_sensor_num(uint16_t sensor_num)
 	return -1;
 }
 
+static int get_sdr_index_by_sensor_num(uint8_t sensor_num)
+{
+	int index = 0;
+	for (index = 0; index < sdr_count; ++index) {
+		if (sensor_num == full_sdr_table[index].sensor_num) {
+			return index;
+		}
+	}
+
+	return -1;
+}
+
 static int sensor_access(const struct shell *shell, int sensor_num, enum SENSOR_ACCESS mode)
 {
 	if (!shell) {
-		return 1;
+		return -1;
 	}
 
 	if (sensor_num >= SENSOR_NUM_MAX || sensor_num < 0) {
-		return 1;
+		return -1;
+	}
+
+	int sdr_index = get_sdr_index_by_sensor_num(sensor_num);
+	if (sdr_index == -1) {
+		shell_error(shell, "[%s] can't find sensor number in sdr table.\n", __func__);
+		return -1;
 	}
 
 	switch (mode) {
@@ -223,12 +242,15 @@ static int sensor_access(const struct shell *shell, int sensor_num, enum SENSOR_
 		int sen_idx = sensor_get_idx_by_sensor_num(sensor_num);
 		if (sen_idx == -1) {
 			shell_error(shell, "No such sensor number!");
-			return 1;
+			return -1;
 		}
+		char sensor_name[MAX_SENSOR_NAME_LENGTH] = { 0 };
+		snprintf(sensor_name, sizeof(sensor_name), "%s", full_sdr_table[sdr_index].ID_str);
+
 		char *check_access =
 			(sensor_access_check(sensor_config[sen_idx].num) == true) ? "O" : "X";
-		shell_print(shell, "[0x%-2x] %-35s: %-10s | access[%s] | %-30s | %-8d",
-			    sensor_config[sen_idx].num, "Unsupported name",
+		shell_print(shell, "[0x%-2x] %-25s: %-10s | access[%s] | %-25s | %-8d",
+			    sensor_config[sen_idx].num, sensor_name,
 			    sensor_type_name[sensor_config[sen_idx].type], check_access,
 			    sensor_status_name[sensor_config[sen_idx].cache_status],
 			    sensor_config[sen_idx].cache);
@@ -474,6 +496,37 @@ static void cmd_sensor_cfg_get(const struct shell *shell, size_t argc, char **ar
 	sensor_access(shell, sen_num, SENSOR_READ);
 }
 
+static void cmd_control_sensor_polling(const struct shell *shell, size_t argc, char **argv)
+{
+	if (argc != 3) {
+		shell_warn(shell, "[%s]: input parameter count is invalid", __func__);
+		return;
+	}
+
+	uint8_t sensor_num = strtol(argv[1], NULL, 16);
+	uint8_t operation = strtol(argv[2], NULL, 16);
+	int sensor_index = sensor_get_idx_by_sensor_num(sensor_num);
+	if (sensor_index == -1) {
+		shell_warn(
+			shell,
+			"[%s]: can't find sensor number in sensor config table, sensor number: 0x%x",
+			__func__, sensor_num);
+		return;
+	}
+
+	if ((operation != DISABLE_SENSOR_POLLING) && (operation != ENABLE_SENSOR_POLLING)) {
+		shell_warn(shell, "[%s]: operation is invalid, operation: %d", __func__, operation);
+		return;
+	}
+
+	sensor_config[sensor_index].is_enable_polling =
+		((operation == DISABLE_SENSOR_POLLING) ? DISABLE_SENSOR_POLLING :
+							       ENABLE_SENSOR_POLLING);
+	shell_print(shell, "Sensor number 0x%x %s sensor polling success", sensor_num,
+		    ((operation == DISABLE_SENSOR_POLLING) ? "disable" : "enable"));
+	return;
+}
+
 /*********************************************************************************************************
  * COMMAND DECLARE SECTION
 **********************************************************************************************************/
@@ -517,6 +570,9 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_sensor_cmds,
 			       SHELL_CMD(list_all, NULL, "List all SENSOR config.",
 					 cmd_sensor_cfg_list_all),
 			       SHELL_CMD(get, NULL, "Get SENSOR config", cmd_sensor_cfg_get),
+			       SHELL_CMD(control_sensor_polling, NULL,
+					 "Enable/Disable sensor polling",
+					 cmd_control_sensor_polling),
 			       SHELL_SUBCMD_SET_END);
 
 /* MAIN command */

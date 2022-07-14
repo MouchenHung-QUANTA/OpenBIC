@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "libutil.h"
 #include "ipmi.h"
@@ -14,6 +15,11 @@ bool add_sel_evt_record(addsel_msg_t *sel_msg)
 	uint8_t system_event_record = 0x02; // IPMI spec definition
 	uint8_t evt_msg_version = 0x04; // IPMI spec definition
 	static uint16_t record_id = 0x1;
+
+	if (sel_msg == NULL) {
+		printf("sel_msg was passed in as NULL\n");
+		return false;
+	}
 
 	// According to IPMI spec, record id 0h and FFFFh is reserved for special usage
 	if ((record_id == 0) || (record_id == 0xFFFF)) {
@@ -53,13 +59,15 @@ bool add_sel_evt_record(addsel_msg_t *sel_msg)
 
 	status = ipmb_read(msg, IPMB_inf_index_map[msg->InF_target]);
 	SAFE_FREE(msg);
-	if (status == IPMB_ERROR_FAILURE) {
+
+	switch (status) {
+	case IPMB_ERROR_FAILURE:
 		printf("Fail to post msg to txqueue for addsel\n");
 		return false;
-	} else if (status == IPMB_ERROR_GET_MESSAGE_QUEUE) {
+	case IPMB_ERROR_GET_MESSAGE_QUEUE:
 		printf("No response from bmc for addsel\n");
 		return false;
+	default:
+		return true;
 	}
-
-	return true;
 }
