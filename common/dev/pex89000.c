@@ -16,6 +16,8 @@
 #include "sensor.h"
 #include "hal_i2c.h"
 #include "pex89000.h"
+#include <shell/shell.h>
+#include "plat_gpio.h"
 
 #define BRCM_I2C5_CMD_READ 0b100
 #define BRCM_I2C5_CMD_WRITE 0b011
@@ -251,6 +253,62 @@ static uint8_t pex89000_chime_to_axi_read(uint8_t bus, uint8_t addr, uint32_t of
 	rc = pex_api_success;
 
 exit:
+	return rc;
+}
+
+uint8_t pex_write_read(pex89000_i2c_msg_t *pex_msg, pex_w_r_mode_t key)
+{
+	if (!pex_msg) {
+		printf("%s: *pex_msg is NULL!\n", __func__);
+		return pex_api_unspecific_err;
+	}
+
+	pex89000_unit *p = find_pex89000_from_idx(pex_msg->idx);
+	if (!p) {
+		printk("%s: pex89000 node %d not found!\n", __func__, pex_msg->idx);
+		return pex_api_unspecific_err;
+	}
+
+	int ret = k_mutex_lock(&p->mutex, K_MSEC(5000));
+	if (ret) {
+		printk("%s: pex89000 mutex %d lock failed status: %x\n", __func__, p->idx, ret);
+		return pex_api_mutex_err;
+	}
+
+	uint8_t rc = pex_api_success;
+
+	switch (key) {
+	case pex_do_write:
+		if (!pex_msg->axi_data) {
+			printf("%s: axi_data not given!\n", __func__);
+			return pex_api_unspecific_err;
+		}
+
+		if (pex89000_chime_to_axi_write(pex_msg->bus, pex_msg->address, pex_msg->axi_reg,
+						pex_msg->axi_data)) {
+			printf("%s: Register 0x%x write 0x%x failed!\n", __func__, pex_msg->axi_reg,
+			       pex_msg->axi_data);
+			rc = pex_api_unspecific_err;
+		}
+		break;
+
+	case pex_do_read:
+		if (pex89000_chime_to_axi_read(pex_msg->bus, pex_msg->address, pex_msg->axi_reg,
+					       &pex_msg->axi_data)) {
+			printf("%s: Register 0x%x read failed!\n", __func__, pex_msg->axi_reg);
+			rc = pex_api_unspecific_err;
+		}
+		break;
+
+	default:
+		printf("%s: Invalid key %d\n", __func__, key);
+		rc = pex_api_unspecific_err;
+		break;
+	}
+
+	if (k_mutex_unlock(&p->mutex))
+		printf("%s: pex89000 mutex %d unlock failed!\n", __func__, p->idx);
+
 	return rc;
 }
 
@@ -504,3 +562,104 @@ uint8_t pex89000_init(uint8_t sensor_num)
 
 	return SENSOR_INIT_SUCCESS;
 }
+
+static void cmd_pex_read(const struct shell *shell, size_t argc, char **argv)
+{
+	if (argc != 3) {
+		shell_warn(shell, "Help: pex read <ps_idx> <pex_reg>");
+		return;
+	}
+
+	int ps_idx = strtol(argv[1], NULL, 10);
+	char *endptr;
+	uint32_t pex_reg = strtoul(argv[2], &endptr, 16);
+
+	/* switch mux */
+	I2C_MSG i2c_msg;
+	i2c_msg.bus = 0x09;
+	i2c_msg.target_addr = 0xe0 >> 1;
+	i2c_msg.rx_len = 0;
+	i2c_msg.tx_len = 1;
+	i2c_msg.data[0] = 0x01 << ps_idx;
+
+	uint8_t retry = 3;
+
+	if (i2c_master_write(&i2c_msg, retry)) {
+		printf("mux switch to idx %d failed!\n", ps_idx);
+		return;
+	}
+
+	pex89000_i2c_msg_t *pex_msg;
+	pex_msg = malloc(sizeof(pex89000_i2c_msg_t));
+	if (!pex_msg) {
+		shell_error(shell, "pex msg malloc failed!");
+		return;
+	}
+
+	pex_msg->idx = ps_idx;
+	pex_msg->bus = 0x09;
+	pex_msg->address = 0xd8 >> 1;
+	pex_msg->axi_reg = pex_reg;
+
+	if (pex_write_read(pex_msg, pex_do_read)) {
+		shell_error(shell, "pex read failed!");
+		return;
+	}
+
+	shell_print(shell, "PX_IDX[%d] - PEX_REG[0x%x]: 0x%x", ps_idx, pex_reg, pex_msg->axi_data);
+}
+
+static void cmd_pex_write(const struct shell *shell, size_t argc, char **argv)
+{
+	if (argc != 4) {
+		shell_warn(shell, "Help: pex write <ps_idx> <pex_reg> <pex_data>");
+		return;
+	}
+
+	int ps_idx = strtol(argv[1], NULL, 10);
+	char *endptr;
+	uint32_t pex_reg = strtoul(argv[2], &endptr, 16);
+	uint32_t pex_data = strtoul(argv[3], &endptr, 16);
+
+	/* switch mux */
+	I2C_MSG i2c_msg;
+	i2c_msg.bus = 0x09;
+	i2c_msg.target_addr = 0xe0 >> 1;
+	i2c_msg.rx_len = 0;
+	i2c_msg.tx_len = 1;
+	i2c_msg.data[0] = 0x01 << ps_idx;
+
+	uint8_t retry = 3;
+
+	if (i2c_master_write(&i2c_msg, retry)) {
+		printf("mux switch to idx %d failed!\n", ps_idx);
+		return;
+	}
+
+	pex89000_i2c_msg_t *pex_msg;
+	pex_msg = malloc(sizeof(pex89000_i2c_msg_t));
+	if (!pex_msg) {
+		shell_error(shell, "pex msg malloc failed!");
+		return;
+	}
+
+	pex_msg->idx = ps_idx;
+	pex_msg->bus = 0x09;
+	pex_msg->address = 0xd8 >> 1;
+	pex_msg->axi_reg = pex_reg;
+	pex_msg->axi_data = pex_data;
+
+	if (pex_write_read(pex_msg, pex_do_write)) {
+		shell_error(shell, "pex write failed!");
+		return;
+	}
+
+	shell_print(shell, "PX_IDX[%d] - PEX_REG[0x%x] write success!", ps_idx, pex_reg);
+}
+
+/* MAIN command */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_pex_cmds, SHELL_CMD(read, NULL, "pex read.", cmd_pex_read),
+			       SHELL_CMD(write, NULL, "pex write.", cmd_pex_write),
+			       SHELL_SUBCMD_SET_END);
+
+SHELL_CMD_REGISTER(pex, &sub_pex_cmds, "PEX commands", NULL);

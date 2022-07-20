@@ -219,6 +219,90 @@ exit:
 	return;
 }
 
+void OEM_1S_PEX_CLEAR_TEC_ERR(ipmi_msg *msg)
+{
+	if (!msg) {
+		printf("<error> OEM_1S_PEX_CLEAR_TEC_ERR: parameter msg is NULL\n");
+		return;
+	}
+
+	if (msg->data_len != 0) {
+		msg->completion_code = CC_INVALID_LENGTH;
+		return;
+	}
+
+	msg->data_len = 0;
+	msg->completion_code = CC_SUCCESS;
+
+	/* before pex access */
+	if (is_mb_dc_on() == false) {
+		printf("<warn> wait for dc on!\n");
+		msg->completion_code = CC_NOT_SUPP_IN_CURR_STATE;
+		return;
+	}
+	disable_sensor_poll();
+
+	/* do script */
+	int ps_total_cnt = 4;
+	int ps_total_port = 72;
+
+	pex89000_i2c_msg_t *pex_msg;
+	pex_msg = malloc(sizeof(pex89000_i2c_msg_t));
+	if (!pex_msg) {
+		printf("PEX msg malloc failed!\n");
+		msg->completion_code = CC_UNSPECIFIED_ERROR;
+		goto exit;
+	}
+
+	pex_msg->bus = 0x09;
+	pex_msg->address = 0xd8 >> 1;
+
+	for (int i = 0; i < ps_total_cnt; i++) {
+		/* switch mux */
+		I2C_MSG i2c_msg;
+		i2c_msg.bus = 0x09;
+		i2c_msg.target_addr = 0xe0 >> 1;
+		i2c_msg.rx_len = 0;
+		i2c_msg.tx_len = 1;
+		i2c_msg.data[0] = 0x01 << i;
+
+		uint8_t retry = 3;
+		if (i2c_master_write(&i2c_msg, retry)) {
+			printf("Mux switch to idx %d failed!\n", i);
+			msg->completion_code = CC_I2C_BUS_ERROR;
+			goto exit;
+		}
+
+		for (int j = 0; j < ps_total_port; j++) {
+			pex_msg->idx = i;
+			pex_msg->axi_reg = 0x6080085c + (j * 0x1000);
+			pex_msg->axi_data = 0;
+			if (pex_write_read(pex_msg, pex_do_read)) {
+				printf("<error> script stop cause of reading error!\n");
+				msg->completion_code = CC_I2C_BUS_ERROR;
+				goto exit;
+			}
+			//printf("ps[%d] port[%d] reg[0x%x] -> data[0x%x]\n", i, j, pex_msg->axi_reg, *(pex_msg->resp));
+
+			if (!pex_msg->axi_data)
+				continue;
+
+			printf("Get error status on ps[%d] port[%d] reg[0x%x] with data[0x%x], try to write back.\n",
+					i, j, pex_msg->axi_reg, pex_msg->axi_data);
+
+			if (pex_write_read(pex_msg, pex_do_write)) {
+				printf("<error> script stop cause of writting error!");
+				msg->completion_code = CC_I2C_BUS_ERROR;
+				goto exit;
+			}
+		}
+	}
+
+exit:
+	/* after pex access */
+	enable_sensor_poll();
+}
+
 void OEM_1S_GET_FPGA_USER_CODE(ipmi_msg *msg)
 {
 	if (!msg) {

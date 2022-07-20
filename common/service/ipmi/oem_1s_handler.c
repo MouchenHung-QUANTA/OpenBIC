@@ -1288,6 +1288,11 @@ __weak void OEM_1S_PEX_FLASH_READ(ipmi_msg *msg)
 	return;
 }
 
+__weak void OEM_1S_PEX_CLEAR_TEC_ERR(ipmi_msg *msg)
+{
+	return;
+}
+
 __weak void OEM_1S_GET_FPGA_USER_CODE(ipmi_msg *msg)
 {
 	return;
@@ -1514,6 +1519,9 @@ void IPMI_OEM_1S_handler(ipmi_msg *msg)
 		break;
 	case CMD_OEM_1S_PEX_FLASH_READ:
 		OEM_1S_PEX_FLASH_READ(msg);
+		break;
+	case CMD_OEM_1S_PEX_CLEAR_TEC_ERR:
+		OEM_1S_PEX_CLEAR_TEC_ERR(msg);
 		break;
 	case CMD_OEM_1S_GET_FPGA_USER_CODE:
 		OEM_1S_GET_FPGA_USER_CODE(msg);

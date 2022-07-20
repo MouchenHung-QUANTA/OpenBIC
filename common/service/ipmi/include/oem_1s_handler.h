@@ -61,6 +61,7 @@ void OEM_1S_PEX_FLASH_READ(ipmi_msg *msg);
 void OEM_1S_GET_FPGA_USER_CODE(ipmi_msg *msg);
 void OEM_1S_GET_CARD_TYPE(ipmi_msg *msg);
 void OEM_1S_CLEAR_CMOS(ipmi_msg *msg);
+void OEM_1S_PEX_CLEAR_TEC_ERR(ipmi_msg *msg);
 
 #ifdef CONFIG_IPMI_KCS_ASPEED
 void OEM_1S_GET_POST_CODE(ipmi_msg *msg);

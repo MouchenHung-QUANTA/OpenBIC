@@ -5,6 +5,11 @@
 
 typedef enum pex_dev { pex_dev_atlas1, pex_dev_atlas2, pex_dev_unknown } pex_dev_t;
 
+typedef enum pex_w_r_mode {
+	pex_do_write,
+	pex_do_read,
+} pex_w_r_mode_t;
+
 typedef enum pex_access {
 	pex_access_temp,
 	pex_access_adc,
@@ -28,6 +33,14 @@ enum pex_sensor_offset {
 };
 
 typedef struct {
+	uint8_t idx;
+	uint8_t bus;
+	uint8_t address;
+	uint32_t axi_reg;
+	uint32_t axi_data;
+} pex89000_i2c_msg_t;
+
+typedef struct {
 	uint8_t idx; // Create index based on init variable
 	struct k_mutex mutex;
 	pex_dev_t pex_type;
@@ -35,6 +48,7 @@ typedef struct {
 } pex89000_unit;
 
 /* Note: Could be used only after pex89000 sensor init successed */
+uint8_t pex_write_read(pex89000_i2c_msg_t *pex_msg, pex_w_r_mode_t key);
 uint8_t pex_access_engine(uint8_t bus, uint8_t addr, uint8_t idx, pex_access_t key, uint32_t *resp);
 uint8_t pex89000_init(uint8_t sensor_num);
 
