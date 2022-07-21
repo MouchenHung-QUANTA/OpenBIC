@@ -243,8 +243,8 @@ void OEM_1S_PEX_CLEAR_TEC_ERR(ipmi_msg *msg)
 	disable_sensor_poll();
 
 	/* do script */
-	int ps_total_cnt = 4;
-	int ps_total_port = 72;
+	int pex_total_cnt = 4;
+	int pex_total_port = 72;
 
 	pex89000_i2c_msg_t *pex_msg;
 	pex_msg = malloc(sizeof(pex89000_i2c_msg_t));
@@ -257,7 +257,7 @@ void OEM_1S_PEX_CLEAR_TEC_ERR(ipmi_msg *msg)
 	pex_msg->bus = 0x09;
 	pex_msg->address = 0xd8 >> 1;
 
-	for (int i = 0; i < ps_total_cnt; i++) {
+	for (int i = 0; i < pex_total_cnt; i++) {
 		/* switch mux */
 		I2C_MSG i2c_msg;
 		i2c_msg.bus = 0x09;
@@ -273,7 +273,7 @@ void OEM_1S_PEX_CLEAR_TEC_ERR(ipmi_msg *msg)
 			goto exit;
 		}
 
-		for (int j = 0; j < ps_total_port; j++) {
+		for (int j = 0; j < pex_total_port; j++) {
 			pex_msg->idx = i;
 			pex_msg->axi_reg = 0x6080085c + (j * 0x1000);
 			pex_msg->axi_data = 0;
@@ -282,13 +282,12 @@ void OEM_1S_PEX_CLEAR_TEC_ERR(ipmi_msg *msg)
 				msg->completion_code = CC_I2C_BUS_ERROR;
 				goto exit;
 			}
-			//printf("ps[%d] port[%d] reg[0x%x] -> data[0x%x]\n", i, j, pex_msg->axi_reg, *(pex_msg->resp));
 
 			if (!pex_msg->axi_data)
 				continue;
 
-			printf("Get error status on ps[%d] port[%d] reg[0x%x] with data[0x%x], try to write back.\n",
-					i, j, pex_msg->axi_reg, pex_msg->axi_data);
+			printf("Get error status on pex[%d] port[%d] reg[0x%x] with data[0x%x], try to write back.\n",
+			       i, j, pex_msg->axi_reg, pex_msg->axi_data);
 
 			if (pex_write_read(pex_msg, pex_do_write)) {
 				printf("<error> script stop cause of writting error!");
@@ -513,7 +512,7 @@ void OEM_1S_GET_FW_VERSION(ipmi_msg *msg)
 		uint8_t buf[5] = { 0 };
 		/* Assign VR 0/1 related sensor number to get information for accessing VR */
 		uint8_t sensor_num = (component == GT_COMPNT_VR0) ? SENSOR_NUM_TEMP_PEX_1 :
-									  SENSOR_NUM_TEMP_PEX_3;
+								    SENSOR_NUM_TEMP_PEX_3;
 		if (!tca9548_select_chan(sensor_num, &mux_conf_addr_0xe0[6])) {
 			msg->completion_code = CC_UNSPECIFIED_ERROR;
 			return;
