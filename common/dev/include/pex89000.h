@@ -3,6 +3,21 @@
 
 #include <stdint.h>
 
+#define PEX_TOTAL_PORT_NUMBER 72
+#define PEX_AXI_PORT_OFFSET 0x1000
+
+/* Boardcom AXI register */
+#define BRCM_REG_TEMP_SNR0_CTL 0xFFE78504
+#define BRCM_REG_TEMP_SNR0_STAT 0xFFE78538
+#define BRCM_REG_CHIP_ID 0xFFF00000
+#define BRCM_REG_CHIP_REVID 0xFFF00004
+#define BRCM_REG_SBR_ID 0xFFF00008
+#define BRCM_REG_FLASH_VER 0x100005f8
+#define BRCM_REG_TEC_ERROR_STATUS 0x6080085c
+
+/* Boardcom AXI value */
+#define BRCM_VAL_TEMP_SNR0_CTL_RESET 0x000653E8
+
 typedef enum pex_dev { pex_dev_atlas1, pex_dev_atlas2, pex_dev_unknown } pex_dev_t;
 
 typedef enum pex_w_r_mode {

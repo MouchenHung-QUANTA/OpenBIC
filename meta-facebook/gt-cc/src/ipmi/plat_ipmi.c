@@ -56,6 +56,11 @@ struct bridge_compnt_info_s bridge_compnt_info[] = {
 		.bus_mutex = &i2c_bus6_mutex },
 };
 
+const static uint8_t pex_sensor_num_table[PEX_MAX_NUMBER] = { SENSOR_NUM_BB_TEMP_PEX_0,
+							      SENSOR_NUM_BB_TEMP_PEX_1,
+							      SENSOR_NUM_BB_TEMP_PEX_2,
+							      SENSOR_NUM_BB_TEMP_PEX_3 };
+
 void OEM_1S_FW_UPDATE(ipmi_msg *msg)
 {
 	if (msg == NULL) {
@@ -222,7 +227,7 @@ exit:
 void OEM_1S_PEX_CLEAR_TEC_ERR(ipmi_msg *msg)
 {
 	if (!msg) {
-		printf("<error> OEM_1S_PEX_CLEAR_TEC_ERR: parameter msg is NULL\n");
+		printf("[%s]parameter msg is NULL\n", __func__);
 		return;
 	}
 
@@ -234,71 +239,67 @@ void OEM_1S_PEX_CLEAR_TEC_ERR(ipmi_msg *msg)
 	msg->data_len = 0;
 	msg->completion_code = CC_SUCCESS;
 
-	/* before pex access */
 	if (is_mb_dc_on() == false) {
-		printf("<warn> wait for dc on!\n");
+		printf("[%s] Can't access PEX when DC off!\n", __func__);
 		msg->completion_code = CC_NOT_SUPP_IN_CURR_STATE;
 		return;
 	}
 	disable_sensor_poll();
 
-	/* do script */
-	int pex_total_cnt = 4;
-	int pex_total_port = 72;
-
 	pex89000_i2c_msg_t *pex_msg;
 	pex_msg = malloc(sizeof(pex89000_i2c_msg_t));
 	if (!pex_msg) {
-		printf("PEX msg malloc failed!\n");
+		printf("[%s]PEX msg malloc failed!\n", __func__);
 		msg->completion_code = CC_UNSPECIFIED_ERROR;
-		goto exit;
+		enable_sensor_poll();
+		return;
 	}
 
-	pex_msg->bus = 0x09;
-	pex_msg->address = 0xd8 >> 1;
+	for (int i = 0; i < PEX_MAX_NUMBER; i++) {
+		uint8_t pex_sensor_num = pex_sensor_num_table[i];
+		sensor_cfg *cfg = &sensor_config[sensor_config_index_map[pex_sensor_num]];
 
-	for (int i = 0; i < pex_total_cnt; i++) {
-		/* switch mux */
-		I2C_MSG i2c_msg;
-		i2c_msg.bus = 0x09;
-		i2c_msg.target_addr = 0xe0 >> 1;
-		i2c_msg.rx_len = 0;
-		i2c_msg.tx_len = 1;
-		i2c_msg.data[0] = 0x01 << i;
-
-		uint8_t retry = 3;
-		if (i2c_master_write(&i2c_msg, retry)) {
-			printf("Mux switch to idx %d failed!\n", i);
-			msg->completion_code = CC_I2C_BUS_ERROR;
-			goto exit;
+		if (cfg->pre_sensor_read_hook) {
+			if (cfg->pre_sensor_read_hook(cfg->num, cfg->pre_sensor_read_args) ==
+			    false) {
+				printf("[%s] pex%d pre-read failed!\n", __func__, i);
+			}
 		}
 
-		for (int j = 0; j < pex_total_port; j++) {
+		for (int j = 0; j < PEX_TOTAL_PORT_NUMBER; j++) {
+			pex_msg->bus = cfg->port;
+			pex_msg->address = cfg->target_addr;
 			pex_msg->idx = i;
-			pex_msg->axi_reg = 0x6080085c + (j * 0x1000);
+			pex_msg->axi_reg = BRCM_REG_TEC_ERROR_STATUS + (j * PEX_AXI_PORT_OFFSET);
 			pex_msg->axi_data = 0;
 			if (pex_write_read(pex_msg, pex_do_read)) {
-				printf("<error> script stop cause of reading error!\n");
-				msg->completion_code = CC_I2C_BUS_ERROR;
-				goto exit;
+				printf("[%s] Reading pex[%d] reg[0x%x] port[%d] failed !\n",
+				       __func__, i, BRCM_REG_TEC_ERROR_STATUS, j);
 			}
 
+			/* Read zero can continue directly, no need to it write back to clear the register */
 			if (!pex_msg->axi_data)
 				continue;
 
-			printf("Get error status on pex[%d] port[%d] reg[0x%x] with data[0x%x], try to write back.\n",
+			printf("Get error status on ps[%d] port[%d] reg[0x%x] with data[0x%x], write back to clear the status.\n",
 			       i, j, pex_msg->axi_reg, pex_msg->axi_data);
 
 			if (pex_write_read(pex_msg, pex_do_write)) {
-				printf("<error> script stop cause of writting error!");
-				msg->completion_code = CC_I2C_BUS_ERROR;
-				goto exit;
+				printf("[%s] Writing pex[%d] reg[0x%x] port[%d] value[0x%x] failed !\n",
+				       __func__, i, BRCM_REG_TEC_ERROR_STATUS, j,
+				       pex_msg->axi_data);
+			}
+		}
+
+		if (cfg->post_sensor_read_hook) {
+			if (cfg->post_sensor_read_hook(cfg->num, cfg->post_sensor_read_args,
+						       NULL) == false) {
+				printf("[%s] pex%d post-read failed!\n", __func__, i);
 			}
 		}
 	}
 
-exit:
-	/* after pex access */
+	SAFE_FREE(pex_msg);
 	enable_sensor_poll();
 }
 
@@ -452,10 +453,7 @@ void OEM_1S_GET_FW_VERSION(ipmi_msg *msg)
 			msg->completion_code = CC_UNSPECIFIED_ERROR;
 			return;
 		}
-		uint8_t pex_sensor_num_table[PEX_MAX_NUMBER] = { SENSOR_NUM_BB_TEMP_PEX_0,
-								 SENSOR_NUM_BB_TEMP_PEX_1,
-								 SENSOR_NUM_BB_TEMP_PEX_2,
-								 SENSOR_NUM_BB_TEMP_PEX_3 };
+
 		int reading;
 
 		uint8_t pex_sensor_num = pex_sensor_num_table[component - GT_COMPNT_PEX0];
