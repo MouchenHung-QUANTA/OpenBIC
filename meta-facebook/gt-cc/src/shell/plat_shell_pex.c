@@ -91,6 +91,11 @@ void cmd_pex_read(const struct shell *shell, size_t argc, char **argv)
 	}
 
 	int pex_idx = strtol(argv[1], NULL, 10);
+	if (pex_idx >= PEX_MAX_NUMBER) {
+		shell_error(shell, "<pex_idx> should lower than %d with 0 based", PEX_MAX_NUMBER);
+		return;
+	}
+
 	char *endptr;
 	uint32_t pex_reg = strtoul(argv[2], &endptr, 16);
 
@@ -124,6 +129,11 @@ void cmd_pex_write(const struct shell *shell, size_t argc, char **argv)
 	}
 
 	int pex_idx = strtol(argv[1], NULL, 10);
+	if (pex_idx >= PEX_MAX_NUMBER) {
+		shell_error(shell, "<pex_idx> should lower than %d with 0 based", PEX_MAX_NUMBER);
+		return;
+	}
+
 	char *endptr;
 	uint32_t pex_reg = strtoul(argv[2], &endptr, 16);
 	uint32_t pex_data = strtoul(argv[3], &endptr, 16);
