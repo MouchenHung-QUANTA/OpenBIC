@@ -12,34 +12,28 @@
 #include "plat_sensor_table.h"
 
 typedef enum {
-	pex_pre_access,
-	pex_post_access,
+	PEX_PRE_ACCESS,
+	PEX_POST_ACCESS,
 } pex_access_moment_t;
 
-typedef struct {
-	int idx;
-	uint8_t bus;
-	uint8_t addr;
-} pex_info_t;
-
-uint8_t pex_access_check(pex_access_moment_t moment, pex_info_t *pex_info)
+uint8_t pex_access_check(const struct shell *shell, pex89000_i2c_msg_t *pex_info,
+			 pex_access_moment_t moment)
 {
 	switch (moment) {
-	case pex_pre_access:
+	case PEX_PRE_ACCESS:
 		if (!is_mb_dc_on()) {
-			printf("<warn> wait for dc on!\n");
+			shell_warn(shell, "%s: Try again after dc on!", __func__);
 			return 1;
 		}
 		disable_sensor_poll();
 
-		/* before access pex */
 		for (int i = 0; i < plat_get_config_size(); i++) {
 			sensor_cfg *cfg = &sensor_config[i];
 			if (cfg->type != sensor_dev_pex89000)
 				continue;
 
 			pex_info->bus = cfg->port;
-			pex_info->addr = cfg->target_addr;
+			pex_info->address = cfg->target_addr;
 
 			pex89000_init_arg *init_arg = cfg->init_args;
 			if (!init_arg)
@@ -48,17 +42,16 @@ uint8_t pex_access_check(pex_access_moment_t moment, pex_info_t *pex_info)
 				continue;
 			if (!cfg->pre_sensor_read_hook)
 				continue;
-			if (cfg->pre_sensor_read_hook(cfg->num, cfg->pre_sensor_read_args) ==
-			    false) {
-				printf("PEX[%d] pre-access failed!\n", pex_info->idx);
+			if (!cfg->pre_sensor_read_hook(cfg->num, cfg->pre_sensor_read_args)) {
+				shell_error(shell, "%s: PEX[%d] pre-access failed!\n", __func__,
+					    pex_info->idx);
 				return 1;
 			}
 			break;
 		}
 		break;
 
-	case pex_post_access:
-		/* after access pex */
+	case PEX_POST_ACCESS:
 		for (int i = 0; i < plat_get_config_size(); i++) {
 			sensor_cfg *cfg = &sensor_config[i];
 			if (cfg->type != sensor_dev_pex89000)
@@ -71,9 +64,10 @@ uint8_t pex_access_check(pex_access_moment_t moment, pex_info_t *pex_info)
 				continue;
 			if (!cfg->post_sensor_read_hook)
 				continue;
-			if (cfg->post_sensor_read_hook(cfg->num, cfg->post_sensor_read_args,
-						       NULL) == false) {
-				printf("PEX[%d] post-access failed!\n", pex_info->idx);
+			if (!cfg->post_sensor_read_hook(cfg->num, cfg->post_sensor_read_args,
+							NULL)) {
+				shell_error(shell, "%s: PEX[%d] post-access failed!\n", __func__,
+					    pex_info->idx);
 				return 1;
 			}
 			break;
@@ -82,7 +76,7 @@ uint8_t pex_access_check(pex_access_moment_t moment, pex_info_t *pex_info)
 		break;
 
 	default:
-		printf("%s: Invalid access moment %d\n", __func__, moment);
+		shell_error(shell, "%s: Invalid access moment %d\n", __func__, moment);
 		return 1;
 	}
 
@@ -100,17 +94,13 @@ void cmd_pex_read(const struct shell *shell, size_t argc, char **argv)
 	char *endptr;
 	uint32_t pex_reg = strtoul(argv[2], &endptr, 16);
 
-	pex_info_t pex_info = { 0 };
-	pex_info.idx = pex_idx;
-	if (pex_access_check(pex_pre_access, &pex_info)) {
+	pex89000_i2c_msg_t pex_msg = { 0 };
+	pex_msg.idx = pex_idx;
+	if (pex_access_check(shell, &pex_msg, PEX_PRE_ACCESS)) {
 		shell_error(shell, "Failed to do pex pre-access");
 		goto exit;
 	}
 
-	pex89000_i2c_msg_t pex_msg;
-	pex_msg.idx = pex_idx;
-	pex_msg.bus = pex_info.bus;
-	pex_msg.address = pex_info.addr;
 	pex_msg.axi_reg = pex_reg;
 
 	if (pex_write_read(&pex_msg, pex_do_read)) {
@@ -120,7 +110,7 @@ void cmd_pex_read(const struct shell *shell, size_t argc, char **argv)
 	shell_print(shell, "PEX_IDX[%d] - PEX_REG[0x%x]: 0x%x", pex_idx, pex_reg, pex_msg.axi_data);
 
 exit:
-	if (pex_access_check(pex_post_access, &pex_info)) {
+	if (pex_access_check(shell, &pex_msg, PEX_POST_ACCESS)) {
 		shell_error(shell, "Failed to do pex post-access");
 		return;
 	}
@@ -138,17 +128,13 @@ void cmd_pex_write(const struct shell *shell, size_t argc, char **argv)
 	uint32_t pex_reg = strtoul(argv[2], &endptr, 16);
 	uint32_t pex_data = strtoul(argv[3], &endptr, 16);
 
-	pex_info_t pex_info = { 0 };
-	pex_info.idx = pex_idx;
-	if (pex_access_check(pex_pre_access, &pex_info)) {
+	pex89000_i2c_msg_t pex_msg = { 0 };
+	pex_msg.idx = pex_idx;
+	if (pex_access_check(shell, &pex_msg, PEX_PRE_ACCESS)) {
 		shell_error(shell, "Failed to do pex pre-access");
 		goto exit;
 	}
 
-	pex89000_i2c_msg_t pex_msg;
-	pex_msg.idx = pex_idx;
-	pex_msg.bus = pex_info.bus;
-	pex_msg.address = pex_info.addr;
 	pex_msg.axi_reg = pex_reg;
 	pex_msg.axi_data = pex_data;
 
@@ -161,7 +147,7 @@ void cmd_pex_write(const struct shell *shell, size_t argc, char **argv)
 		    pex_msg.axi_data);
 
 exit:
-	if (pex_access_check(pex_post_access, &pex_info)) {
+	if (pex_access_check(shell, &pex_msg, PEX_POST_ACCESS)) {
 		shell_error(shell, "Failed to do pex post-access");
 		return;
 	}
