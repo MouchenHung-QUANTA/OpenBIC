@@ -795,104 +795,6 @@ __weak void OEM_1S_ACCURACY_SENSOR_READING(ipmi_msg *msg)
 	return;
 }
 
-enum { GPIO_GET_FAST, GPIO_SET_FAST };
-
-#define NUM_OF_GROUP 6
-#define REG_GPIO_BASE 0x7e780000
-#define CMD_OEM_1S_GET_SET_GPIO_FAST 0x42
-#define GET_BIT_VAL_1(val, n) ((val & BIT(n)) >> (n))
-
-uint32_t GPIO_GROUP_REG_ACCESS_1[NUM_OF_GROUP] = {
-	REG_GPIO_BASE + 0x00, /* GPIO_A/B/C/D Data Value Register */
-	REG_GPIO_BASE + 0x20, /* GPIO_E/F/G/H Data Value Register */
-	REG_GPIO_BASE + 0x70, /* GPIO_I/J/K/L Data Value Register */
-	REG_GPIO_BASE + 0x78, /* GPIO_M/N/O/P Data Value Register */
-	REG_GPIO_BASE + 0x80, /* GPIO_Q/R/S/T Data Value Register */
-	REG_GPIO_BASE + 0x88 /* GPIO_U Data Value Register */
-};
-
-__weak void OEM_1S_GET_SET_GPIO_FAST(ipmi_msg *msg)
-{
-	if (msg == NULL) {
-		return;
-	}
-
-	uint8_t completion_code = CC_INVALID_LENGTH;
-
-	if (msg->data_len < 2 || msg->data_len > 3) {
-		msg->completion_code = completion_code;
-		return;
-	}
-
-	if (msg->data[0] == GPIO_GET_FAST) {
-		if (msg->data_len != 2) {
-			msg->completion_code = CC_INVALID_LENGTH;
-			return;
-		}
-	} else if (msg->data[0] == GPIO_SET_FAST) {
-		if (msg->data_len != 3) {
-			msg->completion_code = CC_INVALID_LENGTH;
-			return;
-		}
-	}
-
-	uint8_t gpio_idx = msg->data[1];
-
-	if (gpio_idx >= GPIO_CFG_SIZE || gpio_idx < 0) {
-		completion_code = CC_PARAM_OUT_OF_RANGE;
-		goto skip;
-	}
-
-	if (gpio_cfg[gpio_idx].is_init == DISABLE) {
-		completion_code = CC_INVALID_DATA_FIELD;
-		goto skip;
-	}
-
-	uint8_t val = 0xFF;
-	uint8_t dir = 0xFF;
-	uint32_t g_val = sys_read32(GPIO_GROUP_REG_ACCESS_1[gpio_idx / 32]);
-	uint32_t g_dir = sys_read32(GPIO_GROUP_REG_ACCESS_1[gpio_idx / 32] + 0x4);
-
-	val = GET_BIT_VAL_1(g_val, gpio_idx % 32);
-	if (g_dir & BIT(gpio_idx % 32))
-		dir = 0x01;
-	else
-		dir = 0x00;
-
-	switch (msg->data[0]) {
-	case GPIO_GET_FAST:
-		if (msg->data_len == 2) {
-			msg->data[0] = gpio_idx;
-			msg->data[1] = dir;
-			msg->data[2] = val;
-			completion_code = CC_SUCCESS;
-		}
-		break;
-	case GPIO_SET_FAST:
-		if (msg->data_len == 3) {
-			msg->data[0] = gpio_idx;
-			gpio_set(gpio_idx, msg->data[2]);
-			g_dir = sys_read32(GPIO_GROUP_REG_ACCESS_1[gpio_idx / 32] + 0x4);
-			msg->data[1] = (g_dir & BIT(gpio_idx % 32)) >> (gpio_idx % 32);
-			msg->data[2] = gpio_get(gpio_idx);
-			completion_code = CC_SUCCESS;
-		}
-		break;
-	default:
-		printf("[%s] Unknown options(0x%x)", __func__, msg->data[0]);
-		return;
-	}
-
-skip:
-	if (completion_code != CC_SUCCESS) {
-		msg->data_len = 0;
-	} else {
-		msg->data_len = 3; // Return GPIO number, dir, status
-	}
-	msg->completion_code = completion_code;
-	return;
-}
-
 __weak void OEM_1S_GET_SET_GPIO(ipmi_msg *msg)
 {
 	if (msg == NULL) {
@@ -1002,7 +904,7 @@ __weak void OEM_1S_CONTROL_SENSOR_POLLING(ipmi_msg *msg)
 			// Enable or Disable sensor polling
 			sensor_config[control_sensor_index].is_enable_polling =
 				((operation == DISABLE_SENSOR_POLLING) ? DISABLE_SENSOR_POLLING :
-									       ENABLE_SENSOR_POLLING);
+									 ENABLE_SENSOR_POLLING);
 			msg->data[return_data_index + 1] =
 				sensor_config[control_sensor_index].is_enable_polling;
 		} else {
@@ -1511,9 +1413,6 @@ void IPMI_OEM_1S_handler(ipmi_msg *msg)
 		break;
 	case CMD_OEM_1S_GET_SET_GPIO:
 		OEM_1S_GET_SET_GPIO(msg);
-		break;
-	case CMD_OEM_1S_GET_SET_GPIO_FAST:
-		OEM_1S_GET_SET_GPIO_FAST(msg);
 		break;
 	case CMD_OEM_1S_CONTROL_SENSOR_POLLING:
 		OEM_1S_CONTROL_SENSOR_POLLING(msg);
