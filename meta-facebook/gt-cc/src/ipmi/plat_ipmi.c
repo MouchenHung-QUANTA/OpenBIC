@@ -224,6 +224,10 @@ exit:
 	return;
 }
 
+/*
+	Due to TEC error heapened while HOST reset which would cause host bring up failed in current state.
+	A workaround steps should be taken by this oem command. 
+*/
 void OEM_1S_PEX_CLEAR_TEC_ERR(ipmi_msg *msg)
 {
 	if (!msg) {
@@ -239,6 +243,7 @@ void OEM_1S_PEX_CLEAR_TEC_ERR(ipmi_msg *msg)
 	msg->data_len = 0;
 	msg->completion_code = CC_SUCCESS;
 
+	printf("[%s] DC is %s\n", __func__, is_mb_dc_on() ? "ON" : "OFF");
 	if (is_mb_dc_on() == false) {
 		printf("[%s] Can't access PEX when DC off!\n", __func__);
 		msg->completion_code = CC_NOT_SUPP_IN_CURR_STATE;
@@ -255,46 +260,65 @@ void OEM_1S_PEX_CLEAR_TEC_ERR(ipmi_msg *msg)
 		return;
 	}
 
-	for (int i = 0; i < PEX_MAX_NUMBER; i++) {
-		uint8_t pex_sensor_num = pex_sensor_num_table[i];
+	for (int pex_idx = 0; pex_idx < PEX_MAX_NUMBER; pex_idx++) {
+		uint8_t pex_sensor_num = pex_sensor_num_table[pex_idx];
 		sensor_cfg *cfg = &sensor_config[sensor_config_index_map[pex_sensor_num]];
 
 		if (cfg->pre_sensor_read_hook) {
 			if (cfg->pre_sensor_read_hook(cfg->num, cfg->pre_sensor_read_args) ==
 			    false) {
-				printf("[%s] pex%d pre-read failed!\n", __func__, i);
+				printf("[%s] pex%d pre-read failed!\n", __func__, pex_idx);
 			}
 		}
 
-		for (int j = 0; j < PEX_TOTAL_PORT_NUMBER; j++) {
+		uint32_t pex_access_reg[2] = { BRCM_REG_TEC_ERROR_STATUS,
+					       BRCM_REG_SWITCH_ERROR_STATUS_6 };
+		for (int port_num = 0; port_num < PEX_TOTAL_PORT_NUMBER; port_num++) {
 			pex_msg->bus = cfg->port;
 			pex_msg->address = cfg->target_addr;
-			pex_msg->idx = i;
-			pex_msg->axi_reg = BRCM_REG_TEC_ERROR_STATUS + (j * PEX_AXI_PORT_OFFSET);
-			pex_msg->axi_data = 0;
-			if (pex_write_read(pex_msg, pex_do_read)) {
-				printf("[%s] Reading pex[%d] reg[0x%x] port[%d] failed !\n",
-				       __func__, i, BRCM_REG_TEC_ERROR_STATUS, j);
-			}
+			pex_msg->idx = pex_idx;
 
-			/* Read zero can continue directly, no need to it write back to clear the register */
-			if (!pex_msg->axi_data)
-				continue;
+			for (int reg_idx = 0; reg_idx < ARRAY_SIZE(pex_access_reg); reg_idx++) {
+				pex_msg->axi_reg =
+					pex_access_reg[reg_idx] + (port_num * PEX_AXI_PORT_OFFSET);
+				pex_msg->axi_data = 0;
+				if (pex_write_read(pex_msg, pex_do_read)) {
+					printf("[%s] Reading pex[%d] reg[0x%x] port[%d] failed !\n",
+					       __func__, pex_idx, BRCM_REG_TEC_ERROR_STATUS,
+					       port_num);
+				}
 
-			printf("Get error status on ps[%d] port[%d] reg[0x%x] with data[0x%x], write back to clear the status.\n",
-			       i, j, pex_msg->axi_reg, pex_msg->axi_data);
+				/* Read zero can continue directly, no need to it write back to clear the register */
+				if (!pex_msg->axi_data)
+					continue;
 
-			if (pex_write_read(pex_msg, pex_do_write)) {
-				printf("[%s] Writing pex[%d] reg[0x%x] port[%d] value[0x%x] failed !\n",
-				       __func__, i, BRCM_REG_TEC_ERROR_STATUS, j,
-				       pex_msg->axi_data);
+				printf("Get error status on ps[%d] port[%d] reg[0x%x] with data[0x%x], write back to clear the status.\n",
+				       pex_idx, port_num, pex_msg->axi_reg, pex_msg->axi_data);
+
+				if (pex_write_read(pex_msg, pex_do_write)) {
+					printf("[%s] Writing pex[%d] reg[0x%x] port[%d] value[0x%x] failed !\n",
+					       __func__, pex_idx, BRCM_REG_TEC_ERROR_STATUS,
+					       port_num, pex_msg->axi_data);
+				}
+
+				/* Clear value and read back to confirm whether is clear the register */
+				pex_msg->axi_data = 0;
+
+				if (pex_write_read(pex_msg, pex_do_read)) {
+					printf("[%s] Reading back pex[%d] reg[0x%x] port[%d] failed !\n",
+					       __func__, pex_idx, BRCM_REG_TEC_ERROR_STATUS,
+					       port_num);
+				}
+
+				printf("Read back status on ps[%d] port[%d] reg[0x%x] with data[0x%x] \n\n",
+				       pex_idx, port_num, pex_msg->axi_reg, pex_msg->axi_data);
 			}
 		}
 
 		if (cfg->post_sensor_read_hook) {
 			if (cfg->post_sensor_read_hook(cfg->num, cfg->post_sensor_read_args,
 						       NULL) == false) {
-				printf("[%s] pex%d post-read failed!\n", __func__, i);
+				printf("[%s] pex%d post-read failed!\n", __func__, pex_idx);
 			}
 		}
 	}
