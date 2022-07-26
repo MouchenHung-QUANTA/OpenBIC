@@ -44,6 +44,10 @@
 #include "sensor.h"
 #include "sdr.h"
 
+/* Include FLASH */
+#include <drivers/spi_nor.h>
+#include <drivers/flash.h>
+
 /* Include config settings */
 #include "shell_platform.h"
 
@@ -521,9 +525,34 @@ static void cmd_control_sensor_polling(const struct shell *shell, size_t argc, c
 
 	sensor_config[sensor_index].is_enable_polling =
 		((operation == DISABLE_SENSOR_POLLING) ? DISABLE_SENSOR_POLLING :
-							       ENABLE_SENSOR_POLLING);
+							 ENABLE_SENSOR_POLLING);
 	shell_print(shell, "Sensor number 0x%x %s sensor polling success", sensor_num,
 		    ((operation == DISABLE_SENSOR_POLLING) ? "disable" : "enable"));
+	return;
+}
+
+/* 
+    Command FLASH
+*/
+static void cmd_flash_re_init(const struct shell *shell, size_t argc, char **argv)
+{
+	if (argc != 2) {
+		shell_warn(shell, "Help: platform flash re_init <spi_device>");
+		return;
+	}
+
+	const struct device *flash_dev;
+	flash_dev = device_get_binding(argv[1]);
+
+	if (!flash_dev) {
+		shell_error(shell, "Can't find any binding device with label %s", argv[1]);
+	}
+
+	if (spi_nor_re_init(flash_dev)) {
+		shell_error(shell, "%s re-init failed!", argv[1]);
+	}
+
+	shell_print(shell, "%s re-init success!", argv[1]);
 	return;
 }
 
@@ -575,12 +604,34 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_sensor_cmds,
 					 cmd_control_sensor_polling),
 			       SHELL_SUBCMD_SET_END);
 
-/* MAIN command */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_platform_cmds,
-			       SHELL_CMD(note, NULL, "Note list.", cmd_info_print),
-			       SHELL_CMD(gpio, &sub_gpio_cmds, "GPIO relative command.", NULL),
-			       SHELL_CMD(sensor, &sub_sensor_cmds, "SENSOR relative command.",
-					 NULL),
+/* Flash sub command */
+static void device_spi_name_get(size_t idx, struct shell_static_entry *entry)
+{
+	const struct device *dev = shell_device_lookup(idx, SPI_DEVICE_PREFIX);
+
+	if (entry == NULL) {
+		printf("%s passed null entry\n", __func__);
+		return;
+	}
+
+	entry->syntax = (dev != NULL) ? dev->name : NULL;
+	entry->handler = NULL;
+	entry->help = NULL;
+	entry->subcmd = NULL;
+}
+SHELL_DYNAMIC_CMD_CREATE(spi_device_name, device_spi_name_get);
+
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_flash_cmds,
+			       SHELL_CMD(re_init, &spi_device_name, "Re-init spi config",
+					 cmd_flash_re_init),
 			       SHELL_SUBCMD_SET_END);
+
+/* MAIN command */
+SHELL_STATIC_SUBCMD_SET_CREATE(
+	sub_platform_cmds, SHELL_CMD(note, NULL, "Note list.", cmd_info_print),
+	SHELL_CMD(gpio, &sub_gpio_cmds, "GPIO relative command.", NULL),
+	SHELL_CMD(sensor, &sub_sensor_cmds, "SENSOR relative command.", NULL),
+	SHELL_CMD(flash, &sub_flash_cmds, "FLASH(spi) relative command.", NULL),
+	SHELL_SUBCMD_SET_END);
 
 SHELL_CMD_REGISTER(platform, &sub_platform_cmds, "Platform commands", NULL);

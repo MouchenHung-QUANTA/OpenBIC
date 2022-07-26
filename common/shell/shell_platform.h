@@ -13,6 +13,7 @@
 /* Declare GPIO */
 #define PINMASK_RESERVE_CHECK 1
 #define GPIO_DEVICE_PREFIX "GPIO0_"
+#define SPI_DEVICE_PREFIX "spi"
 #define GPIO_RESERVE_PREFIX "Reserve"
 #define NUM_OF_GROUP 6
 #define NUM_OF_GPIO_IS_DEFINE 167
