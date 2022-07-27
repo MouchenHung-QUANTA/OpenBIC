@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "plat_isr.h": "c",
+        "hal_gpio.h": "c",
+        "plat_gpio.h": "c"
+    }
+}

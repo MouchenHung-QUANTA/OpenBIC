@@ -48,6 +48,9 @@
 #include <drivers/spi_nor.h>
 #include <drivers/flash.h>
 
+/* Include DDR */
+#include <drivers/i3c/i3c.h>
+
 /* Include config settings */
 #include "shell_platform.h"
 
@@ -556,6 +559,110 @@ static void cmd_flash_re_init(const struct shell *shell, size_t argc, char **arg
 	return;
 }
 
+/* 
+    Command DDR
+*/
+#define I3C_SHELL_MAX_DESC_NUM		8
+#define I3C_SHELL_MAX_XFER_NUM		2
+#define I3C_SHELL_MAX_BUF_SIZE		16
+static struct i3c_dev_desc i3c_shell_desc_tbl[I3C_SHELL_MAX_DESC_NUM];
+static int i3c_shell_num_of_descs;
+static uint8_t data_buf[I3C_SHELL_MAX_XFER_NUM][I3C_SHELL_MAX_BUF_SIZE];
+
+enum {
+	GET_DDR_POWER,
+	GET_DDR_TEMPERATURE,
+};
+
+static void cmd_ddr_sensor_get(const struct shell *shell, size_t argc, char **argv)
+{
+	if (argc != 1) {
+		shell_warn(shell, "Help: platform ddr get_power/get_temperature");
+		return;
+	}
+
+	uint8_t mode = 0xFF;
+	if (!strcmp(argv[0], "get_power")) {
+		shell_print(shell, "Get ddr power by PMIC via i3c.");
+		mode = GET_DDR_POWER;
+	}
+	else if (!strcmp(argv[0], "get_temperature")) {
+		shell_print(shell, "Get ddr temperature by PMIC via i3c.");
+		mode = GET_DDR_TEMPERATURE;
+	}
+	else {
+		shell_error(shell, "%s: Invalid read mode!", __func__);
+		return;
+	}
+
+	gpio_set(FM_SPD_REMOTE_R_EN, GPIO_HIGH);
+
+	const struct device *i3c_dev_0;
+	i3c_dev_0 = device_get_binding("I3C_2");
+
+	int ret;
+	struct i3c_ccc_cmd ccc;
+	ccc.rnw = 0;
+	ccc.addr = I3C_BROADCAST_ADDR;
+	ccc.id = 0x06;
+	ccc.ret = 0;
+	ret = i3c_master_send_ccc(i3c_dev_0, &ccc);
+	if (ret) {
+		shell_print(shell, "Failed to send ccc 0x06: %d\n", ret);
+		goto exit;
+	}
+
+	ccc.rnw = 0;
+	ccc.addr = I3C_BROADCAST_ADDR;
+	ccc.id = 0x29;
+	ccc.ret = 0;
+	ret = i3c_master_send_ccc(i3c_dev_0, &ccc);
+	if (ret) {
+		shell_print(shell, "Failed to send ccc 0x29: %d\n", ret);
+		goto exit;
+	}
+
+	switch (mode)
+	{
+	case GET_DDR_POWER:
+		;
+		int nxfers;
+
+		/* I3C_2 attach 0x48 */
+		static struct i3c_dev_desc slave;
+		slave.info.i2c_mode = 0;
+		slave.info.assigned_dynamic_addr = 0x48;
+		slave.info.static_addr = slave.info.assigned_dynamic_addr;
+		ret = i3c_master_attach_device(i3c_dev_0, &slave);
+		if (ret) {
+			shell_print(shell, "Failed to attach device: %d\n", ret);
+			goto exit;
+		}
+
+		/* I3C_2 transfer data */
+		struct i3c_priv_xfer xfer;
+		xfer.rnw = 0;
+		xfer.len = 2;
+		xfer.data.in = in;
+		ret = i3c_master_priv_xfer(desc, xfers, nxfers);
+		if (ret) {
+			shell_print(shell, "Failed to private transfer: %d\n", ret);
+		}
+		break;
+	
+	case GET_DDR_TEMPERATURE:
+		shell_warn(shell, "DDR temperature read not support now!");
+		break;
+	
+	default:
+		shell_error(shell, "%s: Invalid read mode!", __func__);
+		break;
+	}
+
+exit:
+	gpio_set(FM_SPD_REMOTE_R_EN, GPIO_LOW);
+}
+
 /*********************************************************************************************************
  * COMMAND DECLARE SECTION
 **********************************************************************************************************/
@@ -626,12 +733,37 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_flash_cmds,
 					 cmd_flash_re_init),
 			       SHELL_SUBCMD_SET_END);
 
+/* DDR sub command */
+static void device_i3c_name_get(size_t idx, struct shell_static_entry *entry)
+{
+	const struct device *dev = shell_device_lookup(idx, I3C_DEVICE_PREFIX);
+
+	if (entry == NULL) {
+		printf("%s passed null entry\n", __func__);
+		return;
+	}
+
+	entry->syntax = (dev != NULL) ? dev->name : NULL;
+	entry->handler = NULL;
+	entry->help = NULL;
+	entry->subcmd = NULL;
+}
+SHELL_DYNAMIC_CMD_CREATE(i3c_device_name, device_i3c_name_get);
+
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ddr_cmds,
+			       SHELL_CMD(get_power, &i3c_device_name, "Get ddr power from PMIC",
+					 cmd_ddr_sensor_get),
+					 SHELL_CMD(get_temperature, &i3c_device_name, "Get ddr temperature from PMIC",
+					 cmd_ddr_sensor_get),
+			       SHELL_SUBCMD_SET_END);
+
 /* MAIN command */
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	sub_platform_cmds, SHELL_CMD(note, NULL, "Note list.", cmd_info_print),
 	SHELL_CMD(gpio, &sub_gpio_cmds, "GPIO relative command.", NULL),
 	SHELL_CMD(sensor, &sub_sensor_cmds, "SENSOR relative command.", NULL),
 	SHELL_CMD(flash, &sub_flash_cmds, "FLASH(spi) relative command.", NULL),
+	SHELL_CMD(ddr, &sub_ddr_cmds, "DDR(i3c) relative command.", NULL),
 	SHELL_SUBCMD_SET_END);
 
 SHELL_CMD_REGISTER(platform, &sub_platform_cmds, "Platform commands", NULL);
