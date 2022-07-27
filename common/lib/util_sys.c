@@ -16,6 +16,9 @@
 
 static uint8_t ME_mode = ME_INIT_MODE;
 
+uint8_t ISL69254_DEVICE_ID[5] = { 0x04, 0x00, 0x67, 0xD2, 0x49 };
+uint8_t XDPE12284C_DEVICE_ID[3] = { 0x02, 0x79, 0x02 };
+
 /* Check AC lost */
 bool is_ac_lost()
 {
@@ -30,7 +33,7 @@ bool is_ac_lost()
 }
 
 /* bic warm reset work */
-#define bic_warm_reset_delay 100
+#define bic_warm_reset_delay 200
 
 void bic_warm_reset()
 {
@@ -79,6 +82,11 @@ __weak int pal_submit_bmc_cold_reset()
 __weak int pal_submit_12v_cycle_slot()
 {
 	return NOT_SUPPORT_12V_CYCLE_SLOT;
+}
+
+__weak int pal_clear_cmos()
+{
+	return -1;
 }
 
 /* The byte-2 of ME response for "Get Self-Test Result" command */

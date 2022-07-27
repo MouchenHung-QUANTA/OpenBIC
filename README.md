@@ -5,7 +5,7 @@ OpenBIC is an open software framework to build a complete firmware image for a B
 | Platform | Status | Description |
 |-------|--------|-------------|
 obgt-cc | ![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/goldenbug/62fb115c4fa43a02acad226534e10932/raw/gt-cc.json) | Grand Teton Clear Creek
-obwc-mb | ![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/goldenbug/62fb115c4fa43a02acad226534e10932/raw/wf-mb.json) | Waimea Canyon Mainboard
+obwc-mb | ![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/goldenbug/62fb115c4fa43a02acad226534e10932/raw/wc-mb.json) | Waimea Canyon Mainboard
 oby3-dl | ![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/goldenbug/62fb115c4fa43a02acad226534e10932/raw/y3-dl.json) | Yosemite v3 Delta Lake
 oby35-bb | ![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/goldenbug/62fb115c4fa43a02acad226534e10932/raw/yv35-bb.json) | Yosemite v3.5 Baseboard
 oby35-cl | ![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/goldenbug/62fb115c4fa43a02acad226534e10932/raw/yv35-cl.json) | Yosemite v3.5 Crater Lake
@@ -87,6 +87,20 @@ Clean build application and Zephyr code
 cd $zephyrproject/openbic.odm
 touch meta-facebook/yv35-cl/CMakeLists.txt
 west build -p auto -b ast1030_evb meta-facebook/yv35-cl/
+```
+
+## Contributing
+
+### Git Hooks
+
+This repository uses clang-format to format all c code.
+Getting code merged requires that it conforms to the clang-format style file.
+
+The easiest way to do this is to copy the git pre-commit hook from the scripts directory so that the code
+is automatically formatted whenever code is added to a commit.
+
+```
+cp scripts/hooks/pre-commit .git/hooks/
 ```
 
 ## License

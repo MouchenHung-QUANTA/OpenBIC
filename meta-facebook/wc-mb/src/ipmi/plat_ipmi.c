@@ -92,11 +92,11 @@ bool add_sel_evt_record(addsel_msg_t *sel_msg)
   - Description: OEM command NetFn:0x38 Cmd:0x41
   - Request:
 		Byte 1:3 - MFG ID
-		Byte 4 - option 
+		Byte 4 - option
 			0x00 - get gpio status
 			0x01 - set gpio status
 		Byte 5 - gpio number
-		Byte 6 - (if Byte4 = 0x01)set value 
+		Byte 6 - (if Byte4 = 0x01)set value
   - Response:
 		Byte 1 - Completion Code
 		Byte 2:4 - MFG ID
@@ -131,7 +131,7 @@ void OEM_1S_GET_SET_GPIO(ipmi_msg *msg)
 
 	uint8_t gpio_idx = msg->data[1];
 
-	if (gpio_idx >= GPIO_CFG_SIZE || gpio_idx < 0) {
+	if (gpio_idx >= GPIO_CFG_SIZE) {
 		completion_code = CC_PARAM_OUT_OF_RANGE;
 		goto exit;
 	}

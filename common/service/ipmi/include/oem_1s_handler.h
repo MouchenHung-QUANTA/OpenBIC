@@ -60,6 +60,7 @@ void OEM_1S_INFORM_PEER_SLED_CYCLE(ipmi_msg *msg);
 void OEM_1S_PEX_FLASH_READ(ipmi_msg *msg);
 void OEM_1S_GET_FPGA_USER_CODE(ipmi_msg *msg);
 void OEM_1S_GET_CARD_TYPE(ipmi_msg *msg);
+void OEM_1S_CLEAR_CMOS(ipmi_msg *msg);
 
 #ifdef CONFIG_IPMI_KCS_ASPEED
 void OEM_1S_GET_POST_CODE(ipmi_msg *msg);
@@ -67,6 +68,13 @@ void OEM_1S_GET_POST_CODE(ipmi_msg *msg);
 
 #ifdef CONFIG_PECI
 void OEM_1S_PECI_ACCESS(ipmi_msg *msg);
+#endif
+
+#ifdef ENABLE_APML
+void OEM_1S_APML_READ(ipmi_msg *msg);
+void OEM_1S_APML_WRITE(ipmi_msg *msg);
+void OEM_1S_SEND_APML_REQUEST(ipmi_msg *msg);
+void OEM_1S_GET_APML_RESPONSE(ipmi_msg *msg);
 #endif
 
 #ifdef CONFIG_JTAG

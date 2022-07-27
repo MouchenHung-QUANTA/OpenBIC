@@ -247,17 +247,18 @@ sensor_cfg ltc4286_sensor_config_table[] = {
 	   access check arg0, arg1, sample_count, cache, cache_status, mux_address, mux_offset,
 	   pre_sensor_read_fn, pre_sensor_read_args, post_sensor_read_fn, post_sensor_read_fn  */
 	{ SENSOR_NUM_TEMP_HSC, sensor_dev_ltc4286, I2C_BUS2, ADI_LTC4286_ADDR,
-	  PMBUS_READ_TEMPERATURE_1, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, NULL, NULL, &ltc4286_init_args[0] },
-	{ SENSOR_NUM_VOL_HSCIN, sensor_dev_ltc4286, I2C_BUS2, ADI_LTC4286_ADDR, PMBUS_READ_VIN,
-	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
+	  PMBUS_READ_TEMPERATURE_1, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
 	  &ltc4286_init_args[0] },
+	{ SENSOR_NUM_VOL_HSCIN, sensor_dev_ltc4286, I2C_BUS2, ADI_LTC4286_ADDR, PMBUS_READ_VIN,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &ltc4286_init_args[0] },
 	{ SENSOR_NUM_CUR_HSCOUT, sensor_dev_ltc4286, I2C_BUS2, ADI_LTC4286_ADDR, PMBUS_READ_IOUT,
-	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL,
-	  post_ltc4286_read, NULL, &ltc4286_init_args[0] },
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, post_ltc4286_read, NULL, &ltc4286_init_args[0] },
 	{ SENSOR_NUM_PWR_HSCIN, sensor_dev_ltc4286, I2C_BUS2, ADI_LTC4286_ADDR, PMBUS_READ_PIN,
-	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, 0, SENSOR_INIT_STATUS, NULL, NULL,
-	  post_ltc4286_read, NULL, &ltc4286_init_args[0] },
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, post_ltc4286_read, NULL, &ltc4286_init_args[0] },
 };
 
 sensor_cfg evt3_class1_adi_temperature_sensor_table[] = {
@@ -407,7 +408,6 @@ void pal_extend_sensor_config()
 	CARD_STATUS _2ou_status = get_2ou_status();
 
 	int arg_index = (_2ou_status.present) ? 1 : 0;
-	int gpio_state = (_2ou_status.present) ? GPIO_HIGH : GPIO_LOW;
 
 	sensor_count = ARRAY_SIZE(mp5990_sensor_config_table);
 	for (int index = 0; index < sensor_count; index++) {
@@ -417,7 +417,6 @@ void pal_extend_sensor_config()
 	for (int index = 0; index < sensor_count; index++) {
 		ltc4286_sensor_config_table[index].init_args = &ltc4286_init_args[arg_index];
 	}
-	gpio_set(HSC_SET_EN_R, gpio_state);
 
 	switch (hsc_module) {
 	case HSC_MODULE_ADM1278:
@@ -493,3 +492,9 @@ bool pal_is_time_to_poll(uint8_t sensor_num, int poll_time)
 	printf("[%s] can't find sensor 0x%x last accest time\n", __func__, sensor_num);
 	return true;
 }
+
+uint8_t get_hsc_pwr_reading(int *reading)
+{
+	return get_sensor_reading(SENSOR_NUM_PWR_HSCIN, reading, GET_FROM_CACHE);
+}
+
