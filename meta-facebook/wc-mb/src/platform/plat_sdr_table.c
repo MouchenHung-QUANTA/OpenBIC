@@ -8,7 +8,7 @@
 #include "plat_ipmb.h"
 #include "plat_sensor_table.h"
 
-#define VR_EN 0
+#define VR_EN 1
 
 SDR_Full_sensor plat_sdr_table[] = {
 	{
