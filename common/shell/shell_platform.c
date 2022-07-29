@@ -837,6 +837,20 @@ static void cmd_flash_sfdp_read(const struct shell *shell, size_t argc, char **a
 		return;
 	}
 
+	uint8_t raw[256] = {0};
+	int rc1 = flash_sfdp_read(flash_dev, 0, raw, sizeof(raw));
+	if (rc1) {
+		shell_error(shell, "read err!");
+		return;
+	}
+	printf("sfdp raw:");
+	for (int i=0; i<256; i++) {
+		if (!(i%10))
+			printf("\n");
+		printf("0x%.2x ", raw[i]);
+	}
+	printf("\n");
+
 	const uint8_t decl_nph = 5;
 	union {
 		uint8_t raw[JESD216_SFDP_SIZE(decl_nph)];
