@@ -254,13 +254,16 @@ static int sensor_access(const struct shell *shell, int sensor_num, enum SENSOR_
 		char sensor_name[MAX_SENSOR_NAME_LENGTH] = { 0 };
 		snprintf(sensor_name, sizeof(sensor_name), "%s", full_sdr_table[sdr_index].ID_str);
 
+		int16_t fraction = sensor_config[sen_idx].cache >> 16;
+		int16_t integer = sensor_config[sen_idx].cache & 0xFFFF;
+
 		char *check_access =
 			(sensor_access_check(sensor_config[sen_idx].num) == true) ? "O" : "X";
-		shell_print(shell, "[0x%-2x] %-25s: %-10s | access[%s] | %-25s | %-8d",
+		shell_print(shell, "[0x%-2x] %-25s: %-10s | access[%s] | %-25s | %.2f",
 			    sensor_config[sen_idx].num, sensor_name,
 			    sensor_type_name[sensor_config[sen_idx].type], check_access,
 			    sensor_status_name[sensor_config[sen_idx].cache_status],
-			    sensor_config[sen_idx].cache);
+			    integer + (0.001 * fraction));
 		break;
 
 	case SENSOR_WRITE:
