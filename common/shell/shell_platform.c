@@ -562,9 +562,48 @@ static void cmd_flash_re_init(const struct shell *shell, size_t argc, char **arg
 
 	if (spi_nor_re_init(flash_dev)) {
 		shell_error(shell, "%s re-init failed!", argv[1]);
+		return;
 	}
 
 	shell_print(shell, "%s re-init success!", argv[1]);
+	return;
+}
+
+#define SFDP_BUFF_SIZE 256
+static void cmd_flash_sfdp_read(const struct shell *shell, size_t argc, char **argv)
+{
+	if (argc != 2) {
+		shell_warn(shell, "Help: platform flash sfdp_read <spi_device>");
+		return;
+	}
+
+	const struct device *flash_dev;
+	flash_dev = device_get_binding(argv[1]);
+
+	if (!flash_dev) {
+		shell_error(shell, "Can't find any binding device with label %s", argv[1]);
+	}
+
+	if (!device_is_ready(flash_dev)) {
+		shell_error(shell, "%s: device not ready", flash_dev->name);
+		return;
+	}
+
+	uint8_t raw[SFDP_BUFF_SIZE] = { 0 };
+	int rc1 = flash_sfdp_read(flash_dev, 0, raw, sizeof(raw));
+	if (rc1) {
+		shell_error(shell, "read err!");
+		return;
+	}
+	printf("sfdp raw with %d:", SFDP_BUFF_SIZE);
+	for (int i = 0; i < SFDP_BUFF_SIZE; i++) {
+		if (!(i % 4)) {
+			printf("\n[%-3x] ", i);
+		}
+		printf("%.2x ", raw[i]);
+	}
+	printf("\n");
+
 	return;
 }
 
@@ -636,6 +675,8 @@ SHELL_DYNAMIC_CMD_CREATE(spi_device_name, device_spi_name_get);
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_flash_cmds,
 			       SHELL_CMD(re_init, &spi_device_name, "Re-init spi config",
 					 cmd_flash_re_init),
+			       SHELL_CMD(sfpd_read, &spi_device_name, "SFPD read",
+					 cmd_flash_sfdp_read),
 			       SHELL_SUBCMD_SET_END);
 
 /* MAIN command */
