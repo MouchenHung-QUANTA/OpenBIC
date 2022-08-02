@@ -565,9 +565,6 @@ static void cmd_flash_re_init(const struct shell *shell, size_t argc, char **arg
 #define I3C_SHELL_MAX_DESC_NUM		8
 #define I3C_SHELL_MAX_XFER_NUM		2
 #define I3C_SHELL_MAX_BUF_SIZE		16
-static struct i3c_dev_desc i3c_shell_desc_tbl[I3C_SHELL_MAX_DESC_NUM];
-static int i3c_shell_num_of_descs;
-static uint8_t data_buf[I3C_SHELL_MAX_XFER_NUM][I3C_SHELL_MAX_BUF_SIZE];
 
 enum {
 	GET_DDR_POWER,
@@ -626,7 +623,7 @@ static void cmd_ddr_sensor_get(const struct shell *shell, size_t argc, char **ar
 	{
 	case GET_DDR_POWER:
 		;
-		int nxfers;
+		uint8_t wr_data[2] = {0};
 
 		/* I3C_2 attach 0x48 */
 		static struct i3c_dev_desc slave;
@@ -635,7 +632,7 @@ static void cmd_ddr_sensor_get(const struct shell *shell, size_t argc, char **ar
 		slave.info.static_addr = slave.info.assigned_dynamic_addr;
 		ret = i3c_master_attach_device(i3c_dev_0, &slave);
 		if (ret) {
-			shell_print(shell, "Failed to attach device: %d\n", ret);
+			shell_error(shell, "Failed to attach device: %d\n", ret);
 			goto exit;
 		}
 
@@ -643,11 +640,39 @@ static void cmd_ddr_sensor_get(const struct shell *shell, size_t argc, char **ar
 		struct i3c_priv_xfer xfer;
 		xfer.rnw = 0;
 		xfer.len = 2;
-		xfer.data.in = in;
-		ret = i3c_master_priv_xfer(desc, xfers, nxfers);
+		wr_data[0] = 0x32;
+		wr_data[1] = 0xE0;
+		xfer.data.in = &wr_data;
+		ret = i3c_master_priv_xfer(&slave, &xfer, 1);
 		if (ret) {
-			shell_print(shell, "Failed to private transfer: %d\n", ret);
+			shell_error(shell, "Failed to private transfer: %d\n", ret);
+			goto exit;
 		}
+
+		xfer.rnw = 0;
+		xfer.len = 1;
+		wr_data[0] = 0x32;
+		xfer.data.in = &wr_data;
+		ret = i3c_master_priv_xfer(&slave, &xfer, 1);
+		if (ret) {
+			shell_error(shell, "Failed to private transfer: %d\n", ret);
+		}
+
+		xfer.rnw = 1;
+		xfer.len = 1;
+		xfer.data.out = &wr_data;
+		ret = i3c_master_priv_xfer(&slave, &xfer, 1);
+		if (ret) {
+			shell_error(shell, "Failed to private transfer: %d\n", ret);
+		}
+		shell_print(shell, "rd 0x%x: 0x%x", 0x32, xfer.data.out);
+
+		ret = i3c_master_detach_device(i3c_dev_0, &slave);
+		if (ret) {
+			shell_error(shell, "failed to detach slave\n");
+			goto exit;
+		}
+
 		break;
 	
 	case GET_DDR_TEMPERATURE:
