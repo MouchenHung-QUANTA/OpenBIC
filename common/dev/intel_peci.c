@@ -81,8 +81,7 @@ static bool read_cpu_power(uint8_t addr, int *reading)
 	if (diff_time == 0) {
 		goto cleanup;
 	} else {
-		*reading = ((float)diff_energy / (float)diff_time *
-			    0.06103515625); // energy / unit time
+		*reading = ((float)diff_energy / (float)diff_time) * 0.0078125; // power / unit time
 		SAFE_FREE(readbuf);
 		return true;
 	}
