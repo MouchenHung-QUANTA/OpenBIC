@@ -10,15 +10,53 @@
 #define RDPKG_IDX_PKG_TEMP 0x02
 #define RDPKG_IDX_DIMM_TEMP 0x0E
 #define RDPKG_IDX_TJMAX_TEMP 0x10
+#define RDPKG_IDX_PWR_SKU_UNIT_READ 0x1E
 
 #define DIMM_TEMP_OFS_0 0x01
 #define DIMM_TEMP_OFS_1 0x02
 
-static bool read_cpu_power(uint8_t addr, int *reading)
+static bool read_power_sku_unit(uint8_t addr, int *reading)
 {
 	if (reading == NULL) {
 		return false;
 	}
+
+	uint8_t command = PECI_RD_PKG_CFG0_CMD;
+	uint8_t readlen = 0x05;
+	uint8_t *readbuf = (uint8_t *)malloc(readlen * sizeof(uint8_t));
+	int ret = 0;
+
+	ret = peci_read(command, addr, RDPKG_IDX_PWR_SKU_UNIT_READ, 0, readlen, readbuf);
+	if (ret) {
+		goto cleanup;
+	}
+
+	if (readbuf[0] != PECI_CC_RSP_SUCCESS) {
+		if (readbuf[0] == PECI_CC_ILLEGAL_REQUEST) {
+			printf("Unknown request\n");
+		} else {
+			printf("PECI control hardware, firmware or associated logic error\n");
+		}
+		goto cleanup;
+	}
+
+	*reading = readbuf[1] | (readbuf[2] << 8) | (readbuf[3] << 16) | (readbuf[4] << 24);
+	SAFE_FREE(readbuf);
+	return true;
+
+cleanup:
+	SAFE_FREE(readbuf);
+	return false;
+}
+
+static bool read_cpu_power(uint8_t sensor_num, uint8_t addr, int *reading)
+{
+	if (reading == NULL) {
+		return false;
+	}
+
+	intel_peci_unit *p =
+		(intel_peci_unit *)sensor_config[sensor_config_index_map[sensor_num]].priv_data;
 
 	uint8_t command = PECI_RD_PKG_CFG0_CMD;
 	uint8_t readlen = 0x05;
@@ -80,11 +118,13 @@ static bool read_cpu_power(uint8_t addr, int *reading)
 
 	if (diff_time == 0) {
 		goto cleanup;
-	} else {
-		*reading = ((float)diff_energy / (float)diff_time) * 0.0078125; // power / unit time
-		SAFE_FREE(readbuf);
-		return true;
 	}
+
+	float pwr_scale = (float)(1 << p->power_unit) / (1 << p->time_unit);
+	*reading = ((float)diff_energy / (float)diff_time) * pwr_scale; // power / unit time
+	SAFE_FREE(readbuf);
+	return true;
+
 cleanup:
 	SAFE_FREE(readbuf);
 	return false;
@@ -132,14 +172,14 @@ static bool get_cpu_margin(uint8_t addr, int *reading)
 	return true;
 }
 
-static bool get_cpu_pwr(uint8_t addr, int *reading)
+static bool get_cpu_pwr(uint8_t sensor_num, uint8_t addr, int *reading)
 {
 	if (!reading) {
 		return false;
 	}
 
 	int pwr = 0;
-	if (read_cpu_power(addr, &pwr) == false) {
+	if (read_cpu_power(sensor_num, addr, &pwr) == false) {
 		return false;
 	}
 
@@ -300,7 +340,7 @@ uint8_t intel_peci_read(uint8_t sensor_num, int *reading)
 		ret_val = get_cpu_temp(cfg->target_addr, reading);
 		break;
 	case PECI_PWR_CPU:
-		ret_val = get_cpu_pwr(cfg->target_addr, reading);
+		ret_val = get_cpu_pwr(sensor_num, cfg->target_addr, reading);
 		break;
 	default:
 		break;
@@ -314,14 +354,31 @@ uint8_t intel_peci_init(uint8_t sensor_num)
 		return SENSOR_INIT_UNSPECIFIED_ERROR;
 	}
 
+	static intel_peci_unit p;
 	static bool is_init = false;
-	sensor_config[sensor_config_index_map[sensor_num]].read = intel_peci_read;
 	if (!is_init) {
 		int ret;
 		ret = peci_init();
 		if (ret)
 			return SENSOR_INIT_UNSPECIFIED_ERROR;
+
+		uint32_t pwr_sku_unit;
+		ret = read_power_sku_unit(
+			sensor_config[sensor_config_index_map[sensor_num]].target_addr,
+			&pwr_sku_unit);
+		if (!ret) {
+			return SENSOR_INIT_UNSPECIFIED_ERROR;
+		}
+
+		p.time_unit = (pwr_sku_unit >> 16) & 0xF;
+		p.energy_unit = (pwr_sku_unit >> 8) & 0x1F;
+		p.power_unit = pwr_sku_unit & 0xF;
+
 		is_init = true;
 	}
+
+	sensor_config[sensor_config_index_map[sensor_num]].priv_data = &p;
+	sensor_config[sensor_config_index_map[sensor_num]].read = intel_peci_read;
+
 	return SENSOR_INIT_SUCCESS;
 }
