@@ -289,10 +289,7 @@ sensor_cfg DPV2_sensor_config_table[] = {
 	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &max16550a_init_args[0] },
 };
 
-uint8_t plat_get_config_size()
-{
-	return ARRAY_SIZE(plat_sensor_config);
-}
+const int SENSOR_CONFIG_SIZE = ARRAY_SIZE(plat_sensor_config);
 
 void load_sensor_config(void)
 {
@@ -392,6 +389,7 @@ void pal_extend_sensor_config()
 {
 	uint8_t sensor_count = 0;
 	uint8_t hsc_module = get_hsc_module();
+	uint8_t board_revision = get_board_revision();
 
 	/* Check the VR sensor type */
 	sensor_count = ARRAY_SIZE(plat_sensor_config);
@@ -442,7 +440,12 @@ void pal_extend_sensor_config()
 		printf("[%s] unsupported HSC module, HSC module: 0x%x\n", __func__, hsc_module);
 		break;
 	}
-	if (get_board_revision() == SYS_BOARD_EVT3_HOTSWAP) {
+
+	switch (board_revision) {
+	case SYS_BOARD_EVT3_HOTSWAP:
+	case SYS_BOARD_DVT_HOTSWAP:
+	case SYS_BOARD_PVT_HOTSWAP:
+	case SYS_BOARD_MP_HOTSWAP:
 		/* Replace the temperature sensors configuration including "HSC Temp" and "MB Outlet Temp."
 		 * For these two sensors, the reading values are read from TMP431 chip.data.num
 		 */
@@ -450,6 +453,9 @@ void pal_extend_sensor_config()
 		for (int index = 0; index < sensor_count; index++) {
 			add_sensor_config(evt3_class1_adi_temperature_sensor_table[index]);
 		}
+		break;
+	default:
+		break;
 	}
 
 	/* Fix sensor table if 2ou card is present */
@@ -473,12 +479,12 @@ bool pal_is_time_to_poll(uint8_t sensor_num, int poll_time)
 {
 	int i = 0;
 	int table_size = sizeof(diff_poll_time_sensor_table) / sizeof(sensor_poll_time_cfg);
-	int64_t current_access_time = k_uptime_get();
-	int64_t last_access_time = diff_poll_time_sensor_table[i].last_access_time;
-	int64_t diff_time = (current_access_time - last_access_time) / 1000; // sec
 
 	for (i = 0; i < table_size; i++) {
 		if (sensor_num == diff_poll_time_sensor_table[i].sensor_num) {
+			int64_t current_access_time = k_uptime_get();
+			int64_t last_access_time = diff_poll_time_sensor_table[i].last_access_time;
+			int64_t diff_time = (current_access_time - last_access_time) / 1000; // sec
 			if ((last_access_time != 0) && (diff_time < poll_time)) {
 				return false;
 			} else {
@@ -497,4 +503,3 @@ uint8_t get_hsc_pwr_reading(int *reading)
 {
 	return get_sensor_reading(SENSOR_NUM_PWR_HSCIN, reading, GET_FROM_CACHE);
 }
-

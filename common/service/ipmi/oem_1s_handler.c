@@ -915,7 +915,7 @@ __weak void OEM_1S_CONTROL_SENSOR_POLLING(ipmi_msg *msg)
 			// Enable or Disable sensor polling
 			sensor_config[control_sensor_index].is_enable_polling =
 				((operation == DISABLE_SENSOR_POLLING) ? DISABLE_SENSOR_POLLING :
-									 ENABLE_SENSOR_POLLING);
+									       ENABLE_SENSOR_POLLING);
 			msg->data[return_data_index + 1] =
 				sensor_config[control_sensor_index].is_enable_polling;
 		} else {
@@ -927,6 +927,58 @@ __weak void OEM_1S_CONTROL_SENSOR_POLLING(ipmi_msg *msg)
 	msg->completion_code = CC_SUCCESS;
 	return;
 }
+
+#ifdef CONFIG_CRYPTO_ASPEED
+__weak void OEM_1S_GET_FW_SHA256(ipmi_msg *msg)
+{
+	if (msg == NULL) {
+		return;
+	}
+
+	uint8_t status = -1;
+	uint32_t target = msg->data[0];
+	uint32_t offset =
+		(msg->data[1] | (msg->data[2] << 8) | (msg->data[3] << 16) | (msg->data[4] << 24));
+	uint32_t length =
+		(msg->data[5] | (msg->data[6] << 8) | (msg->data[7] << 16) | (msg->data[8] << 24));
+
+	if (msg->data_len != 9) {
+		msg->completion_code = CC_INVALID_LENGTH;
+		return;
+	}
+	if (target == BIOS_UPDATE) {
+		int pos = pal_get_bios_flash_position();
+		if (pos == -1) {
+			msg->completion_code = CC_INVALID_PARAM;
+			return;
+		}
+
+		// Switch GPIO(BIOS SPI Selection Pin) to BIC
+		bool ret = pal_switch_bios_spi_mux(GPIO_HIGH);
+		if (!ret) {
+			msg->completion_code = CC_UNSPECIFIED_ERROR;
+			return;
+		}
+
+		status = get_fw_sha256(&msg->data[0], offset, length, pos);
+
+		// Switch GPIO(BIOS SPI Selection Pin) to PCH
+		ret = pal_switch_bios_spi_mux(GPIO_LOW);
+		if (!ret) {
+			msg->completion_code = CC_UNSPECIFIED_ERROR;
+			return;
+		}
+	} else {
+		msg->completion_code = CC_UNSPECIFIED_ERROR;
+		return;
+	}
+
+	msg->completion_code = status;
+	msg->data_len = SHA256_DIGEST_SIZE;
+
+	return;
+}
+#endif
 
 __weak void OEM_1S_I2C_DEV_SCAN(ipmi_msg *msg)
 {
@@ -1622,6 +1674,11 @@ void IPMI_OEM_1S_handler(ipmi_msg *msg)
 	case CMD_OEM_1S_CONTROL_SENSOR_POLLING:
 		OEM_1S_CONTROL_SENSOR_POLLING(msg);
 		break;
+#ifdef CONFIG_CRYPTO_ASPEED
+	case CMD_OEM_1S_GET_FW_SHA256:
+		OEM_1S_GET_FW_SHA256(msg);
+		break;
+#endif
 	case CMD_OEM_1S_I2C_DEV_SCAN: // debug command
 		OEM_1S_I2C_DEV_SCAN(msg);
 		break;

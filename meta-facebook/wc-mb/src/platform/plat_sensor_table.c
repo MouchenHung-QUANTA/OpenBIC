@@ -220,15 +220,15 @@ sensor_cfg plat_sensor_config[] = {
 	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &mp5990_init_args[0] },
 };
 
-uint8_t plat_get_config_size()
-{
-	return ARRAY_SIZE(plat_sensor_config);
-}
+const int SENSOR_CONFIG_SIZE = ARRAY_SIZE(plat_sensor_config);
 
 void load_sensor_config(void)
 {
 	memcpy(sensor_config, plat_sensor_config, sizeof(plat_sensor_config));
 	sensor_config_count = ARRAY_SIZE(plat_sensor_config);
+
+	// Fix config table in different system/config
+	pal_extend_sensor_config();
 }
 
 void check_vr_type(uint8_t index)
@@ -279,11 +279,12 @@ void check_vr_type(uint8_t index)
 	}
 }
 
-void pal_fix_sensor_config()
+void pal_extend_sensor_config()
 {
-	uint8_t sensor_count = ARRAY_SIZE(plat_sensor_config);
+	uint8_t sensor_count = 0;
 
 	/* Check the VR sensor type */
+	sensor_count = ARRAY_SIZE(plat_sensor_config);
 	for (uint8_t index = 0; index < sensor_count; index++) {
 		if (sensor_config[index].type == sensor_dev_isl69259) {
 			check_vr_type(index);

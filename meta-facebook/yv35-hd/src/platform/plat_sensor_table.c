@@ -7,6 +7,12 @@
 #include "plat_hook.h"
 #include "pmbus.h"
 #include "plat_i2c.h"
+#include "apml.h"
+
+sensor_poll_time_cfg diff_poll_time_sensor_table[] = {
+	// sensor_number, last_access_time
+	{ SENSOR_NUM_VOL_P3V_BAT, 0 },
+};
 
 sensor_cfg plat_sensor_config[] = {
 	/* number, type, port, address, offset, access check, arg0, arg1, cache, cache_status, 
@@ -29,6 +35,78 @@ sensor_cfg plat_sensor_config[] = {
 	  0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
 	  pre_nvme_read, &mux_conf_addr_0xe2[1], NULL, NULL, NULL },
 
+	/* CPU */
+	{ SENSOR_NUM_TEMP_CPU, sensor_dev_amd_tsi, I2C_BUS14, TSI_ADDR, NONE, post_access, 0, 0,
+	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
+	  NULL, NULL, NULL, NULL, NULL },
+	{ SENSOR_NUM_TEMP_DIMM_A, sensor_dev_apml_mailbox, I2C_BUS14, APML_ADDR,
+	  SBRMI_MAILBOX_GET_DIMM_TEMP, post_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
+	  &apml_mailbox_init_args[0] },
+	{ SENSOR_NUM_TEMP_DIMM_B, sensor_dev_apml_mailbox, I2C_BUS14, APML_ADDR,
+	  SBRMI_MAILBOX_GET_DIMM_TEMP, post_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
+	  &apml_mailbox_init_args[1] },
+	{ SENSOR_NUM_TEMP_DIMM_C, sensor_dev_apml_mailbox, I2C_BUS14, APML_ADDR,
+	  SBRMI_MAILBOX_GET_DIMM_TEMP, post_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
+	  &apml_mailbox_init_args[2] },
+	{ SENSOR_NUM_TEMP_DIMM_E, sensor_dev_apml_mailbox, I2C_BUS14, APML_ADDR,
+	  SBRMI_MAILBOX_GET_DIMM_TEMP, post_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
+	  &apml_mailbox_init_args[3] },
+	{ SENSOR_NUM_TEMP_DIMM_G, sensor_dev_apml_mailbox, I2C_BUS14, APML_ADDR,
+	  SBRMI_MAILBOX_GET_DIMM_TEMP, post_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
+	  &apml_mailbox_init_args[4] },
+	{ SENSOR_NUM_TEMP_DIMM_H, sensor_dev_apml_mailbox, I2C_BUS14, APML_ADDR,
+	  SBRMI_MAILBOX_GET_DIMM_TEMP, post_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
+	  &apml_mailbox_init_args[5] },
+	{ SENSOR_NUM_TEMP_DIMM_I, sensor_dev_apml_mailbox, I2C_BUS14, APML_ADDR,
+	  SBRMI_MAILBOX_GET_DIMM_TEMP, post_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
+	  &apml_mailbox_init_args[6] },
+	{ SENSOR_NUM_TEMP_DIMM_K, sensor_dev_apml_mailbox, I2C_BUS14, APML_ADDR,
+	  SBRMI_MAILBOX_GET_DIMM_TEMP, post_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
+	  &apml_mailbox_init_args[7] },
+	{ SENSOR_NUM_PWR_CPU, sensor_dev_apml_mailbox, I2C_BUS14, APML_ADDR, SBRMI_MAILBOX_PKGPWR,
+	  post_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
+	{ SENSOR_NUM_PWR_DIMM_A, sensor_dev_apml_mailbox, I2C_BUS14, APML_ADDR,
+	  SBRMI_MAILBOX_GET_DIMM_PWR, post_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
+	  &apml_mailbox_init_args[0] },
+	{ SENSOR_NUM_PWR_DIMM_B, sensor_dev_apml_mailbox, I2C_BUS14, APML_ADDR,
+	  SBRMI_MAILBOX_GET_DIMM_PWR, post_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
+	  &apml_mailbox_init_args[1] },
+	{ SENSOR_NUM_PWR_DIMM_C, sensor_dev_apml_mailbox, I2C_BUS14, APML_ADDR,
+	  SBRMI_MAILBOX_GET_DIMM_PWR, post_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
+	  &apml_mailbox_init_args[2] },
+	{ SENSOR_NUM_PWR_DIMM_E, sensor_dev_apml_mailbox, I2C_BUS14, APML_ADDR,
+	  SBRMI_MAILBOX_GET_DIMM_PWR, post_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
+	  &apml_mailbox_init_args[3] },
+	{ SENSOR_NUM_PWR_DIMM_G, sensor_dev_apml_mailbox, I2C_BUS14, APML_ADDR,
+	  SBRMI_MAILBOX_GET_DIMM_PWR, post_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
+	  &apml_mailbox_init_args[4] },
+	{ SENSOR_NUM_PWR_DIMM_H, sensor_dev_apml_mailbox, I2C_BUS14, APML_ADDR,
+	  SBRMI_MAILBOX_GET_DIMM_PWR, post_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
+	  &apml_mailbox_init_args[5] },
+	{ SENSOR_NUM_PWR_DIMM_I, sensor_dev_apml_mailbox, I2C_BUS14, APML_ADDR,
+	  SBRMI_MAILBOX_GET_DIMM_PWR, post_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
+	  &apml_mailbox_init_args[6] },
+	{ SENSOR_NUM_PWR_DIMM_K, sensor_dev_apml_mailbox, I2C_BUS14, APML_ADDR,
+	  SBRMI_MAILBOX_GET_DIMM_PWR, post_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
+	  &apml_mailbox_init_args[7] },
+
 	/* adc voltage */
 	{ SENSOR_NUM_VOL_P12V_STBY, sensor_dev_ast_adc, ADC_PORT0, NONE, NONE, stby_access, 66, 10,
 	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
@@ -43,7 +121,7 @@ sensor_cfg plat_sensor_config[] = {
 	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
 	  NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
 	{ SENSOR_NUM_VOL_P3V_BAT, sensor_dev_ast_adc, ADC_PORT4, NONE, NONE, stby_access, 3, 1,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
+	  SAMPLE_COUNT_DEFAULT, POLL_TIME_BAT3V, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
 	  pre_vol_bat3v_read, NULL, post_vol_bat3v_read, NULL, &ast_adc_init_args[0] },
 	{ SENSOR_NUM_VOL_PVDD33_S5, sensor_dev_ast_adc, ADC_PORT5, NONE, NONE, dc_access, 2, 1,
 	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
@@ -169,13 +247,28 @@ sensor_cfg plat_sensor_config[] = {
 
 };
 
-uint8_t plat_get_config_size()
+bool pal_is_time_to_poll(uint8_t sensor_num, int poll_time)
 {
-	return ARRAY_SIZE(plat_sensor_config);
+	int i = 0;
+	int table_size = sizeof(diff_poll_time_sensor_table) / sizeof(sensor_poll_time_cfg);
+
+	for (i = 0; i < table_size; i++) {
+		if (sensor_num == diff_poll_time_sensor_table[i].sensor_num) {
+			int64_t current_access_time = k_uptime_get();
+			int64_t last_access_time = diff_poll_time_sensor_table[i].last_access_time;
+			int64_t diff_time = (current_access_time - last_access_time) / 1000;
+			if ((last_access_time != 0) && (diff_time < poll_time)) {
+				return false;
+			} else {
+				diff_poll_time_sensor_table[i].last_access_time =
+					current_access_time;
+				return true;
+			}
+		}
+	}
+
+	printf("[%s] can't find sensor 0x%x last access time\n", __func__, sensor_num);
+	return true;
 }
 
-void load_sensor_config(void)
-{
-	memcpy(sensor_config, plat_sensor_config, sizeof(plat_sensor_config));
-	sensor_config_count = ARRAY_SIZE(plat_sensor_config);
-}
+const int SENSOR_CONFIG_SIZE = ARRAY_SIZE(plat_sensor_config);

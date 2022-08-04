@@ -24,6 +24,9 @@
 
 #define SENSOR_READ_RETRY_MAX 3
 
+extern sensor_cfg plat_sensor_config[];
+extern const int SENSOR_CONFIG_SIZE;
+
 struct k_thread sensor_poll;
 K_KERNEL_STACK_MEMBER(sensor_poll_stack, SENSOR_POLL_STACK_SIZE);
 
@@ -65,6 +68,10 @@ SENSOR_DRIVE_INIT_DECLARE(xdpe12284c);
 SENSOR_DRIVE_INIT_DECLARE(raa229621);
 SENSOR_DRIVE_INIT_DECLARE(nct7718w);
 SENSOR_DRIVE_INIT_DECLARE(ltc4286);
+#ifdef ENABLE_APML
+SENSOR_DRIVE_INIT_DECLARE(amd_tsi);
+SENSOR_DRIVE_INIT_DECLARE(apml_mailbox);
+#endif
 
 struct sensor_drive_api {
 	enum SENSOR_DEV dev;
@@ -93,6 +100,10 @@ struct sensor_drive_api {
 	SENSOR_DRIVE_TYPE_INIT_MAP(raa229621),
 	SENSOR_DRIVE_TYPE_INIT_MAP(nct7718w),
 	SENSOR_DRIVE_TYPE_INIT_MAP(ltc4286),
+#ifdef ENABLE_APML
+	SENSOR_DRIVE_TYPE_INIT_MAP(amd_tsi),
+	SENSOR_DRIVE_TYPE_INIT_MAP(apml_mailbox),
+#endif
 };
 
 static void init_sensor_num(void)
@@ -256,7 +267,7 @@ uint8_t get_sensor_reading(uint8_t sensor_num, int *reading, uint8_t read_mode)
 			return cfg->cache_status;
 		default:
 			cfg->cache = SENSOR_FAIL;
-			printf("Failed to read sensor value from cache, sensor number: 0x%x\n, cache status: 0x%x",
+			printf("Failed to read sensor value from cache, sensor number: 0x%x, cache status: 0x%x\n",
 			       sensor_num, cfg->cache_status);
 			return cfg->cache_status;
 		}
@@ -544,4 +555,15 @@ bool sensor_init(void)
 bool check_is_sensor_ready()
 {
 	return is_sensor_ready_flag;
+}
+
+uint8_t plat_get_config_size()
+{
+	return SENSOR_CONFIG_SIZE;
+}
+
+__weak void load_sensor_config(void)
+{
+	memcpy(sensor_config, plat_sensor_config, sizeof(sensor_cfg) * SENSOR_CONFIG_SIZE);
+	sensor_config_count = SENSOR_CONFIG_SIZE;
 }
