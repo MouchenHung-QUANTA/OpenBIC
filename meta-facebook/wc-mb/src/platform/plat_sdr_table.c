@@ -8,11 +8,9 @@
 #include "plat_ipmb.h"
 #include "plat_sensor_table.h"
 
-#define VR_EN 1
-
 SDR_Full_sensor plat_sdr_table[] = {
 	{
-		/* TEMPARUTURE SENSOR */
+		/* ======================== TEMPARUTURE SENSOR ======================== */
 		// TMP75 on board temperature - inlet
 		0x00,
 		0x00, // record ID
@@ -805,7 +803,6 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SDR_STRING_TYPE_ASCII_8, // ID len, should be same as "size of struct"
 		"DIMMG Temp",
 	},
-#if VR_EN == 1
 	{
 		// PVCCIN VR temperature
 		0x00,
@@ -1111,8 +1108,8 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SDR_STRING_TYPE_ASCII_8, // ID len, should be same as "size of struct"
 		"FAON SPS Temp",
 	},
-#endif
-	/* VOLTAGE SENSOR */
+
+	/* ======================== VOLTAGE SENSOR ======================== */
 	{
 		// P12V STBY ADC voltage
 		0x00,
@@ -1723,7 +1720,6 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SDR_STRING_TYPE_ASCII_8, // ID len, should be same as "size of struct"
 		"HSC Input Vol",
 	},
-#if VR_EN == 1
 	{
 		// PVCCIN VR voltage
 		0x00,
@@ -2029,7 +2025,6 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SDR_STRING_TYPE_ASCII_8, // ID len, should be same as "size of struct"
 		"FAON VR Vol",
 	},
-#endif
 	{
 		// IOM INA230 voltage
 		0x00,
@@ -2092,7 +2087,7 @@ SDR_Full_sensor plat_sdr_table[] = {
 		"IOM INA vol",
 	},
 
-	/* CURRENT SENSOR */
+	/* ======================== CURRENT SENSOR ======================== */
 	{
 		// HSCOUT current
 		0x00,
@@ -2154,7 +2149,6 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SDR_STRING_TYPE_ASCII_8, // ID len, should be same as "size of struct"
 		"HSC Output Cur",
 	},
-#if VR_EN == 1
 	{
 		// PVCCIN VR current
 		0x00,
@@ -2521,7 +2515,6 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SDR_STRING_TYPE_ASCII_8, // ID len, should be same as "size of struct"
 		"FAON VR Cur",
 	},
-#endif
 	{
 		// IOM INA230 current
 		0x00,
@@ -2584,7 +2577,7 @@ SDR_Full_sensor plat_sdr_table[] = {
 		"IOM INA Cur",
 	},
 
-	/* POWER SENSOR */
+	/* ======================== POWER SENSOR ======================== */
 	{
 		// CPU power
 		0x00,
@@ -2951,7 +2944,6 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SDR_STRING_TYPE_ASCII_8, // ID len, should be same as "size of struct"
 		"DIMMG PMIC_Pout",
 	},
-#if VR_EN == 1
 	{
 		// PVCCIN power
 		0x00,
@@ -3257,7 +3249,6 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SDR_STRING_TYPE_ASCII_8, // ID len, should be same as "size of struct"
 		"FAON VR Pout",
 	},
-#endif
 	{
 		// IOM INA230 power
 		0x00,
