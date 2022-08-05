@@ -15,6 +15,7 @@
 #include "plat_ipmi.h"
 #include "plat_sensor_table.h"
 #include "plat_sys.h"
+#include "log_util.h"
 #ifdef ENABLE_FAN
 #include "plat_fan.h"
 #endif
@@ -88,7 +89,7 @@ __weak void OEM_1S_MSG_OUT(ipmi_msg *msg)
 		} else {
 			memset(bridge_msg, 0, sizeof(ipmi_msg));
 
-			if (DEBUG_IPMI) {
+			if (is_log_en(DEBUG_IPMI)) {
 				printf("bridge targetIf %x, len %d, netfn %x, cmd %x\n", target_IF,
 				       msg->data_len, msg->data[1] >> 2, msg->data[2]);
 			}
