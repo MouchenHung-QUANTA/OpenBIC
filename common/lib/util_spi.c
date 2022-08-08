@@ -15,8 +15,9 @@
 #include "libutil.h"
 #include "ipmi.h"
 #include <crypto/hash.h>
+#include "log_util.h"
 
-static char *flash_device[6] = { "fmc_cs0",  "fmc_cs1",	 "spi1_cs0",
+static char *flash_device[6] = { "fmc_cs0",  "fmc_cs1",  "spi1_cs0",
 				 "spi1_cs1", "spi2_cs0", "spi2_cs1" };
 static bool isInitialized = false;
 static int do_erase_write_verify(const struct device *flash_device, uint32_t op_addr,
@@ -294,7 +295,7 @@ uint8_t fw_update(uint32_t offset, uint16_t msg_len, uint8_t *msg_buf, bool sect
 		return FWUPDATE_REPEATED_UPDATED;
 	}
 
-	if (FW_UPDATE_DEBUG) {
+	if (is_log_en(DEBUG_FW_UPDATE)) {
 		printf("spi bus%x update offset %x %x, msg_len %d, sector_end %d, msg_buf: %2x %2x %2x %2x\n",
 		       flash_position, offset, buf_offset, msg_len, sector_end, msg_buf[0],
 		       msg_buf[1], msg_buf[2], msg_buf[3]);
@@ -310,6 +311,7 @@ uint8_t fw_update(uint32_t offset, uint16_t msg_len, uint8_t *msg_buf, bool sect
 			uint8_t rc = 0;
 			rc = spi_nor_re_init(flash_dev);
 			if (rc != 0) {
+				printf("spi re-init failed!\n");
 				return rc;
 			}
 			isInitialized = true;
@@ -335,7 +337,7 @@ uint8_t fw_update(uint32_t offset, uint16_t msg_len, uint8_t *msg_buf, bool sect
 		k_msleep(10);
 		is_init = 0;
 
-		if (FW_UPDATE_DEBUG) {
+		if (is_log_en(DEBUG_FW_UPDATE)) {
 			printf("***update %x, offset %x, SECTOR_SZ_16K %x\n",
 			       (offset / SECTOR_SZ_16K) * SECTOR_SZ_16K, offset, SECTOR_SZ_16K);
 		}
