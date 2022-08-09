@@ -17,6 +17,14 @@
 #include "tmp431.h"
 #include "libutil.h"
 
+dimm_pmic_mapping_cfg dimm_pmic_map_table[] = {
+	// dimm_sensor_num, mapping_pmic_sensor_num
+	{ SENSOR_NUM_TEMP_DIMM_A, SENSOR_NUM_PWR_DIMMA_PMIC },
+	{ SENSOR_NUM_TEMP_DIMM_C, SENSOR_NUM_PWR_DIMMC_PMIC },
+	{ SENSOR_NUM_TEMP_DIMM_E, SENSOR_NUM_PWR_DIMME_PMIC },
+	{ SENSOR_NUM_TEMP_DIMM_G, SENSOR_NUM_PWR_DIMMG_PMIC },
+};
+
 sensor_cfg plat_sensor_config[] = {
 	/* number,                  type,       port,      address,      offset,
 	   access check arg0, arg1, sample_count, cache, cache_status, mux_ADDRess, mux_offset,
@@ -50,16 +58,20 @@ sensor_cfg plat_sensor_config[] = {
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
 	{ SENSOR_NUM_TEMP_DIMM_A, sensor_dev_intel_peci, NONE, CPU_PECI_ADDR,
 	  PECI_TEMP_CHANNEL0_DIMM0, post_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
+	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_intel_peci_dimm_read,
+	  &dimm_pre_proc_args[0], NULL, NULL, NULL },
 	{ SENSOR_NUM_TEMP_DIMM_C, sensor_dev_intel_peci, NONE, CPU_PECI_ADDR,
 	  PECI_TEMP_CHANNEL2_DIMM0, post_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
+	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_intel_peci_dimm_read,
+	  &dimm_pre_proc_args[1], NULL, NULL, NULL },
 	{ SENSOR_NUM_TEMP_DIMM_E, sensor_dev_intel_peci, NONE, CPU_PECI_ADDR,
 	  PECI_TEMP_CHANNEL4_DIMM0, post_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
+	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_intel_peci_dimm_read,
+	  &dimm_pre_proc_args[2], NULL, NULL, NULL },
 	{ SENSOR_NUM_TEMP_DIMM_G, sensor_dev_intel_peci, NONE, CPU_PECI_ADDR,
 	  PECI_TEMP_CHANNEL6_DIMM0, post_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
+	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_intel_peci_dimm_read,
+	  &dimm_pre_proc_args[3], NULL, NULL, NULL },
 	{ SENSOR_NUM_PWR_CPU, sensor_dev_intel_peci, NONE, CPU_PECI_ADDR, PECI_PWR_CPU, post_access,
 	  0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
@@ -269,6 +281,25 @@ void check_vr_type(uint8_t index)
 	} else {
 		printf("Unknown VR type, using default type ISL69259...\n");
 	}
+}
+
+bool disable_dimm_pmic_sensor(uint8_t sensor_num)
+{
+	uint8_t table_size = ARRAY_SIZE(dimm_pmic_map_table);
+
+	for (uint8_t index = 0; index < table_size; ++index) {
+		if (sensor_num == dimm_pmic_map_table[index].dimm_sensor_num) {
+			control_sensor_polling(dimm_pmic_map_table[index].dimm_sensor_num,
+					       DISABLE_SENSOR_POLLING, SENSOR_NOT_PRESENT);
+			control_sensor_polling(dimm_pmic_map_table[index].mapping_pmic_sensor_num,
+					       DISABLE_SENSOR_POLLING, SENSOR_NOT_PRESENT);
+			return true;
+		}
+	}
+
+	printf("[%s] input sensor 0x%x can't find in dimm pmic mapping table\n", __func__,
+	       sensor_num);
+	return false;
 }
 
 void pal_extend_sensor_config()
