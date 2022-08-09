@@ -183,8 +183,8 @@ void IPMI_handler(void *arug0, void *arug1, void *arug2)
 		k_msgq_get(&ipmi_msgq, &msg_cfg, K_FOREVER);
 
 		if (is_log_en(DEBUG_IPMI)) {
-			printf("IPMI_handler[%d]: netfn: %x\n", msg_cfg.buffer.data_len,
-			       msg_cfg.buffer.netfn);
+			printf("IPMI_handler[%d]: netfn: %x cmd %x\n", msg_cfg.buffer.data_len,
+			       msg_cfg.buffer.netfn, msg_cfg.buffer.cmd);
 			for (i = 0; i < msg_cfg.buffer.data_len; i++) {
 				printf(" 0x%2x", msg_cfg.buffer.data[i]);
 			}
