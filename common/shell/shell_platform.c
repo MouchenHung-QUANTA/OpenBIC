@@ -262,6 +262,17 @@ static int sensor_access(const struct shell *shell, int sensor_num, enum SENSOR_
 
 		char *check_access =
 			(sensor_access_check(sensor_config[sen_idx].num) == true) ? "O" : "X";
+
+		if (strcmp(check_access, "O") ||
+		    (sensor_config[sen_idx].cache_status != SENSOR_READ_SUCCESS) ||
+		    (sensor_config[sen_idx].cache_status != SENSOR_READ_ACUR_SUCCESS) ||
+		    (sensor_config[sen_idx].cache_status != SENSOR_READ_4BYTE_ACUR_SUCCESS)) {
+			shell_print(shell, "[0x%-2x] %-25s: %-10s | access[%s] | %-25s | na",
+				    sensor_config[sen_idx].num, sensor_name,
+				    sensor_type_name[sensor_config[sen_idx].type], check_access,
+				    sensor_status_name[sensor_config[sen_idx].cache_status]);
+			break;
+		}
 		shell_print(shell, "[0x%-2x] %-25s: %-10s | access[%s] | %-25s | %.2f",
 			    sensor_config[sen_idx].num, sensor_name,
 			    sensor_type_name[sensor_config[sen_idx].type], check_access,
