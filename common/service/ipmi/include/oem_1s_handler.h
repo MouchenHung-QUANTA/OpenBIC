@@ -3,6 +3,13 @@
 
 #include "ipmi.h"
 
+enum FIRMWARE_INFO {
+	BIC_PLAT_NAME = 1,
+	BIC_PLAT_BOARD_ID,
+	BIC_PROJ_NAME,
+	BIC_PROJ_STAGE,
+};
+
 enum FIRMWARE_COMPONENT {
 	COMPNT_CPLD = 1,
 	COMPNT_BIC,
@@ -50,6 +57,7 @@ typedef struct _ACCURACY_SENSOR_READING_RES {
 void OEM_1S_MSG_OUT(ipmi_msg *msg);
 void OEM_1S_GET_GPIO(ipmi_msg *msg);
 void OEM_1S_FW_UPDATE(ipmi_msg *msg);
+void OEM_1S_GET_BIC_FW_INFO(ipmi_msg *msg);
 void OEM_1S_GET_FW_VERSION(ipmi_msg *msg);
 void OEM_1S_SET_VR_MONITOR_STATUS(ipmi_msg *msg);
 void OEM_1S_GET_VR_MONITOR_STATUS(ipmi_msg *msg);

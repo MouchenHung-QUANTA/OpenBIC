@@ -287,6 +287,52 @@ __weak void OEM_1S_FW_UPDATE(ipmi_msg *msg)
 	return;
 }
 
+__weak void OEM_1S_GET_BIC_FW_INFO(ipmi_msg *msg)
+{
+	if (msg == NULL) {
+		return;
+	}
+
+	if (msg->data_len != 1) {
+		msg->completion_code = CC_INVALID_LENGTH;
+		return;
+	}
+
+	msg->data_len = 0;
+
+	uint8_t component;
+	component = msg->data[0];
+	switch (component)
+	{
+	case BIC_PLAT_NAME:
+		msg->data_len = strlen(PLATFORM_NAME);
+		memcpy(&msg->data[0], PLATFORM_NAME, msg->data_len);
+		break;
+
+	case BIC_PLAT_BOARD_ID:
+		msg->data_len = 1;
+		msg->data[0] = FIRMWARE_REVISION_1 & 0x0F;
+		break;
+
+	case BIC_PROJ_NAME:
+		msg->data_len = strlen(PROJECT_NAME);
+		memcpy(&msg->data[0], PROJECT_NAME, msg->data_len);
+		break;
+
+	case BIC_PROJ_STAGE:
+		msg->data_len = 1;
+		msg->data[0] = FIRMWARE_REVISION_1 & 0xF0;
+		break;
+
+	default:
+		msg->completion_code = CC_INVALID_DATA_FIELD;
+		return;
+	}
+
+	msg->completion_code = CC_SUCCESS;
+	return;
+}
+
 __weak void OEM_1S_GET_FW_VERSION(ipmi_msg *msg)
 {
 	if (msg == NULL) {
@@ -1693,6 +1739,9 @@ void IPMI_OEM_1S_handler(ipmi_msg *msg)
 		break;
 	case CMD_OEM_1S_FW_UPDATE:
 		OEM_1S_FW_UPDATE(msg);
+		break;
+	case CMD_OEM_1S_GET_BIC_FW_INFO:
+		OEM_1S_GET_BIC_FW_INFO(msg);
 		break;
 	case CMD_OEM_1S_GET_FW_VERSION:
 		OEM_1S_GET_FW_VERSION(msg);
