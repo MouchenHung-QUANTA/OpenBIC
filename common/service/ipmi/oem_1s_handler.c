@@ -855,17 +855,74 @@ __weak void OEM_1S_ACCURACY_SENSOR_READING(ipmi_msg *msg)
 	return;
 }
 
+/* For command Get Set GPIO NetFn:0x38 Cmd:0x41 */
+static uint8_t gpio_idx_exchange(ipmi_msg *msg)
+{
+	if (msg == NULL)
+		return 1;
+	if (msg->data_len < 2)
+		return 1;
+
+	int need_change = 1;
+	switch (msg->data[0]) {
+	case GET_GPIO_STATUS:
+	case GET_GPIO_DIRECTION_STATUS:
+		if (msg->data_len == 3) {
+			if (msg->data[2] == GLOBAL_GPIO_IDX_KEY) {
+				need_change = 0;
+			}
+			// Ignore last data byte if provided.
+			msg->data_len--;
+		}
+		break;
+	case SET_GPIO_OUTPUT_STATUS:
+	case SET_GPIO_DIRECTION_STATUS:
+		if (msg->data_len == 4) {
+			if (msg->data[3] == GLOBAL_GPIO_IDX_KEY) {
+				need_change = 0;
+			}
+			// Ignore last data byte if provided.
+			msg->data_len--;
+		}
+		break;
+	default:
+		break;
+	}
+
+	if (need_change)
+		msg->data[1] = gpio_ind_to_num_table[msg->data[1]];
+	return 0;
+}
+
 __weak void OEM_1S_GET_SET_GPIO(ipmi_msg *msg)
 {
 	if (msg == NULL) {
 		return;
 	}
 
-	uint8_t completion_code = CC_INVALID_LENGTH;
-	uint8_t gpio_num = gpio_ind_to_num_table[msg->data[1]];
+	// whether need to change gpio index type
+	if (gpio_idx_exchange(msg)) {
+		msg->data_len = 0;
+		msg->completion_code = CC_PARAM_OUT_OF_RANGE;
+		return;
+	}
 
+	uint8_t gpio_num = msg->data[1];
+	if (gpio_num >= TOTAL_GPIO_NUM) {
+		msg->data_len = 0;
+		msg->completion_code = CC_INVALID_LENGTH;
+		return;
+	}
+
+	if (gpio_cfg[gpio_num].is_init == DISABLE) {
+		msg->data_len = 0;
+		msg->completion_code = CC_INVALID_DATA_FIELD;
+		return;
+	}
+
+	uint8_t completion_code = CC_INVALID_LENGTH;
 	switch (msg->data[0]) {
-	case GET_GPIO_OUTPUT_STATUS:
+	case GET_GPIO_STATUS:
 		if (msg->data_len == 2) {
 			msg->data[0] = gpio_num;
 			msg->data[1] = gpio_get(gpio_num);
@@ -882,7 +939,11 @@ __weak void OEM_1S_GET_SET_GPIO(ipmi_msg *msg)
 		}
 		break;
 	case GET_GPIO_DIRECTION_STATUS:
-		completion_code = CC_NOT_SUPP_IN_CURR_STATE;
+		if (msg->data_len == 2) {
+			msg->data[0] = gpio_num;
+			msg->data[1] = gpio_get_direction(gpio_num);
+			completion_code = CC_SUCCESS;
+		}
 		break;
 	case SET_GPIO_DIRECTION_STATUS:
 		if (msg->data_len == 3) {
@@ -1124,6 +1185,42 @@ __weak void OEM_1S_RESET_BIC(ipmi_msg *msg)
 
 	msg->data_len = 0;
 	msg->completion_code = CC_SUCCESS;
+	return;
+}
+
+__weak void OEM_1S_GET_SET_M2(ipmi_msg *msg)
+{
+	if (msg == NULL) {
+		printf("%s failed due to parameter *msg is NULL\n", __func__);
+		return;
+	}
+
+	msg->data_len = 0;
+	msg->completion_code = CC_INVALID_CMD;
+	return;
+}
+
+__weak void OEM_1S_SET_SSD_LED(ipmi_msg *msg)
+{
+	if (msg == NULL) {
+		printf("%s failed due to parameter *msg is NULL\n", __func__);
+		return;
+	}
+
+	msg->data_len = 0;
+	msg->completion_code = CC_INVALID_CMD;
+	return;
+}
+
+__weak void OEM_1S_GET_SSD_STATUS(ipmi_msg *msg)
+{
+	if (msg == NULL) {
+		printf("%s failed due to parameter *msg is NULL\n", __func__);
+		return;
+	}
+
+	msg->data_len = 0;
+	msg->completion_code = CC_INVALID_CMD;
 	return;
 }
 
@@ -1780,6 +1877,15 @@ void IPMI_OEM_1S_handler(ipmi_msg *msg)
 		break;
 	case CMD_OEM_1S_RESET_BIC:
 		OEM_1S_RESET_BIC(msg);
+		break;
+	case CMD_OEM_1S_GET_SET_M2:
+		OEM_1S_GET_SET_M2(msg);
+		break;
+	case CMD_OEM_1S_SET_SSD_LED:
+		OEM_1S_SET_SSD_LED(msg);
+		break;
+	case CMD_OEM_1S_GET_SSD_STATUS:
+		OEM_1S_GET_SSD_STATUS(msg);
 		break;
 	case CMD_OEM_1S_12V_CYCLE_SLOT:
 		OEM_1S_12V_CYCLE_SLOT(msg);

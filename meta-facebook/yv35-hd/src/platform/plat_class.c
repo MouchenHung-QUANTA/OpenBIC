@@ -275,42 +275,9 @@ void init_platform_config()
 					break;
 				}
 			}
-			if ((cnt == ARRAY_SIZE(_1ou_card_mapping_table))) {
+			if (cnt == ARRAY_SIZE(_1ou_card_mapping_table)) {
 				printf("Unknown the 1OU card type, the voltage of ADC channel-6 is %fV\n",
 				       voltage);
-			} else if (_1ou_status.card_type == TYPE_1OU_RAINBOW_FALLS) {
-				if (hsc_module == HSC_MODULE_ADM1278) {
-					gpio_set(HSC_OCP_GPIO1_R, GPIO_HIGH);
-				} else if (hsc_module == HSC_MODULE_LTC4282) {
-					uint8_t ilim_adjust_data = 0;
-
-					tx_len = 1;
-					rx_len = 1;
-					memset(data, 0, I2C_DATA_SIZE);
-					data[0] = LTC4282_ILIM_ADJUST_OFFSET;
-					i2c_msg = construct_i2c_message(I2C_BUS5, LTC4282_ADDR,
-									tx_len, data, rx_len);
-					if (!i2c_master_read(&i2c_msg, retry)) {
-						ilim_adjust_data = i2c_msg.data[0];
-					} else {
-						printf("Failed to read ILIM_ADJUST from LTC4282\n");
-					}
-					/* Set ILIM to 15.625mV by writing 0b001 to bits[7:0] */
-					tx_len = 2;
-					rx_len = 0;
-					memset(data, 0, I2C_DATA_SIZE);
-					data[0] = LTC4282_ILIM_ADJUST_OFFSET;
-					data[1] = (ilim_adjust_data & 0x1f) | 0x20;
-					i2c_msg = construct_i2c_message(I2C_BUS5, LTC4282_ADDR,
-									tx_len, data, rx_len);
-					if (i2c_master_write(&i2c_msg, retry)) {
-						printf("Failed to set ILIM_ADJUST to LTC4282\n");
-					}
-				} else {
-					printf("Unsupported HSC module %d\n", hsc_module);
-				}
-			} else {
-				printf("Unsupported 1ou card type %d\n", _1ou_status.card_type);
 			}
 		}
 	}

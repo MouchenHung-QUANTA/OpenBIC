@@ -1,9 +1,12 @@
 #include <stdio.h>
 #include "hal_gpio.h"
 #include "plat_class.h"
+#include "expansion_board.h"
 
 static uint8_t e1s_hsc_config = 0;
 static uint8_t e1s_adc_config = 0;
+
+#define VERNAL_FALLS_BOARD_TYPE 0x07
 
 void init_e1s_config()
 {

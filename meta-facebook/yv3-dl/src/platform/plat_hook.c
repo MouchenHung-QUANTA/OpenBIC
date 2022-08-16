@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "ipmi.h"
 #include "sensor.h"
 #include "plat_i2c.h"
@@ -7,13 +8,16 @@
 #include "plat_hook.h"
 #include "plat_sensor_table.h"
 #include "i2c-mux-tca9548.h"
+#include "pmbus.h"
+#include "libipmi.h"
+#include "plat_sys.h"
 
 /**************************************************************************************************
  * INIT ARGS
 **************************************************************************************************/
 adc_asd_init_arg adc_asd_init_args[] = { [0] = { .is_init = false } };
 
-ltc4282_init_arg ltc4282_init_args[] = { [0] = { .is_init = true, .r_sense = 0.25 } };
+ltc4282_init_arg ltc4282_init_args[] = { [0] = { .is_init = false, .r_sense_mohm = 0.25 } };
 
 /**************************************************************************************************
  *  PRE-HOOK/POST-HOOK ARGS
@@ -140,14 +144,23 @@ bool pre_vr_read(uint8_t sensor_num, void *args)
 	uint8_t retry = 5;
 	I2C_MSG msg;
 
+	if (k_mutex_lock(&vr_page_mutex, K_MSEC(VR_PAGE_MUTEX_TIMEOUT_MS))) {
+		printf("[%s] Failed to lock vr page\n", __func__);
+		return false;
+	}
+
 	/* set page */
 	msg.bus = sensor_config[sensor_config_index_map[sensor_num]].port;
 	msg.target_addr = sensor_config[sensor_config_index_map[sensor_num]].target_addr;
 	msg.tx_len = 2;
 	msg.data[0] = 0x00;
 	msg.data[1] = vr_page_sel->vr_page;
+
 	if (i2c_master_write(&msg, retry)) {
 		printf("%s, set page fail\n", __func__);
+		if (k_mutex_unlock(&vr_page_mutex)) {
+			printf("[%s] Failed to unlock vr page\n", __func__);
+		}
 		return false;
 	}
 	return true;
@@ -164,22 +177,38 @@ bool pre_vr_read(uint8_t sensor_num, void *args)
  */
 bool post_xdpe12284c_read(uint8_t sensor_num, void *args, int *reading)
 {
+	bool ret = true;
+
 	if (reading == NULL) {
-		return false;
+		ret = false;
+		goto error_exit;
 	}
 	ARG_UNUSED(args);
 
 	sensor_val *sval = (sensor_val *)reading;
 	float val = 0;
 
-	if (sensor_num == SENSOR_NUM_VOL_P3V3_STBY_VR) {
+	switch (sensor_num) {
+	case SENSOR_NUM_VOL_P3V3_STBY_VR:
 		val = (float)sval->integer + (sval->fraction / 1000.0);
 		val *= 2;
 		sval->integer = (int)val & 0xFFFF;
 		sval->fraction = (val - sval->integer) * 1000;
+		break;
+	case SENSOR_NUM_VOL_PVCCIO_VR:
+		// Check VCCIO UV fault
+		check_Infineon_VR_VCCIO_UV_fault(sensor_num);
+		break;
+	default:
+		break;
 	}
 
-	return true;
+error_exit:
+	if (k_mutex_unlock(&vr_page_mutex)) {
+		printf("[%s] Failed to unlock vr page\n", __func__);
+	}
+
+	return ret;
 }
 
 /* isl69254 post read function
@@ -193,6 +222,10 @@ bool post_xdpe12284c_read(uint8_t sensor_num, void *args, int *reading)
  */
 bool post_isl69254_read(uint8_t sensor_num, void *args, int *reading)
 {
+	if (k_mutex_unlock(&vr_page_mutex)) {
+		printf("[%s] Failed to unlock vr page\n", __func__);
+	}
+
 	if (reading == NULL) {
 		return false;
 	}
@@ -201,11 +234,19 @@ bool post_isl69254_read(uint8_t sensor_num, void *args, int *reading)
 	sensor_val *sval = (sensor_val *)reading;
 	float val = 0;
 
-	if (sensor_num == SENSOR_NUM_VOL_P3V3_STBY_VR) {
+	switch (sensor_num) {
+	case SENSOR_NUM_VOL_P3V3_STBY_VR:
 		val = (float)sval->integer + (sval->fraction / 1000.0);
 		val = (val * 996 / 499);
 		sval->integer = (int)val & 0xFFFF;
 		sval->fraction = (val - sval->integer) * 1000;
+		break;
+	case SENSOR_NUM_VOL_PVCCIO_VR:
+		// Check VCCIO UV fault
+		check_Renesas_VR_VCCIO_UV_fault(sensor_num);
+		break;
+	default:
+		break;
 	}
 
 	return true;

@@ -23,6 +23,12 @@
 #define XDPE19283B_PVDDIO_ADDR 0x66
 #define XDPE19283B_PVDD11_S3_ADDR 0x68
 
+#define MP2856GUT_PVDDCR_CPU0_ADDR 0x4F
+#define MP2856GUT_PVDDCR_SOC_ADDR 0x4F
+#define MP2856GUT_PVDDCR_CPU1_ADDR 0x4E
+#define MP2856GUT_PVDDIO_ADDR 0x4E
+#define MP2856GUT_PVDD11_S3_ADDR 0x4B
+
 #define ADM1278_ADDR (0x80 >> 1)
 #define LTC4282_ADDR (0x82 >> 1)
 #define TEMP_HSC_ADDR (0x98 >> 1)
@@ -93,6 +99,12 @@
 #define SENSOR_NUM_PWR_DIMM_K 0x3A
 
 #define POLL_TIME_BAT3V 3600 // second
+
+#define SENSOR_NUM_SYSTEM_STATUS 0x10
+#define SENSOR_NUM_POWER_ERROR 0x56
+#define SENSOR_NUM_VR_OCP 0x71
+#define SENSOR_NUM_VR_ALERT 0x72
+#define SENSOR_NUM_HDT_PRESENT 0xBD
 
 uint8_t plat_get_config_size();
 void load_sensor_config(void);

@@ -7,7 +7,7 @@ project(yv35-bb)
 
 set(common_path ../../common)
 FILE(GLOB app_sources src/ipmi/*.c src/platform/*.c src/lib/*.c )
-FILE(GLOB common_sources ${common_path}/service/*.c ${common_path}/service/*/*.c ${common_path}/hal/*.c ${common_path}/dev/*.c ${common_path}/shell/*.c ${common_path}/log/*.c)
+FILE(GLOB common_sources ${common_path}/service/*.c ${common_path}/service/*/*.c ${common_path}/hal/*.c ${common_path}/dev/*.c ${common_path}/shell/*.c ${common_path}/shell/commands/*.c)
 
 target_sources(app PRIVATE ${app_sources})
 target_sources(app PRIVATE ${common_sources})
@@ -22,8 +22,28 @@ target_sources(app PRIVATE ${common_path}/lib/util_sys.c)
 target_sources(app PRIVATE ${common_path}/lib/util_worker.c)
 
 target_include_directories(app PRIVATE ${ZEPHYR_BASE}/include/portability)
-target_include_directories(app PRIVATE ${common_path} ${common_path}/service/ipmi/include ${common_path}/service/host ${common_path}/service/sensor ${common_path}/service/usb ${common_path}/service/ipmb ${common_path}/service/mctp ${common_path}/service/pldm ${common_path}/hal ${common_path}/dev/include ${common_path}/lib ${common_path}/shell ${common_path}/log)
-target_include_directories(app PRIVATE src/ipmi/include src/platform src/lib)
+
+# Common Includes
+target_include_directories(app PRIVATE ${common_path})
+target_include_directories(app PRIVATE ${common_path}/dev/include)
+target_include_directories(app PRIVATE ${common_path}/hal)
+target_include_directories(app PRIVATE ${common_path}/lib)
+target_include_directories(app PRIVATE ${common_path}/logging)
+target_include_directories(app PRIVATE ${common_path}/service/host)
+target_include_directories(app PRIVATE ${common_path}/service/ipmb)
+target_include_directories(app PRIVATE ${common_path}/service/ipmi/include)
+target_include_directories(app PRIVATE ${common_path}/service/logging)
+target_include_directories(app PRIVATE ${common_path}/service/mctp)
+target_include_directories(app PRIVATE ${common_path}/service/pldm)
+target_include_directories(app PRIVATE ${common_path}/service/sensor)
+target_include_directories(app PRIVATE ${common_path}/service/usb)
+target_include_directories(app PRIVATE ${common_path}/shell/commands)
+target_include_directories(app PRIVATE ${common_path}/shell)
+
+# Platform Specific Includes
+Target_include_directories(app PRIVATE src/platform)
+target_include_directories(app PRIVATE src/ipmi/include) 
+target_include_directories(app PRIVATE src/lib)
 
 # Fail build if there are any warnings 
 target_compile_options(app PRIVATE -Werror)
