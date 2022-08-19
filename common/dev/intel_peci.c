@@ -29,8 +29,8 @@ static bool get_power_sku_unit(uint8_t addr)
 
 	uint8_t command = PECI_RD_PKG_CFG0_CMD;
 	uint8_t readlen = 0x05;
-	int ret = 0;
 
+	int ret = 0;
 	uint8_t *readbuf = (uint8_t *)malloc(readlen * sizeof(uint8_t));
 	if (!readbuf) {
 		printf("[%s] fail to allocate readbuf memory\n", __func__);
@@ -282,7 +282,8 @@ static bool read_cpu_power(uint8_t sensor_num, uint8_t addr, int *reading)
 	else
 		pwr_scale = (float)(1 << (unit_info.energy_unit - unit_info.time_unit));
 
-	*reading = ((float)diff_energy / (float)diff_time) * pwr_scale; // power / unit time
+	*reading = ((float)diff_energy / (float)diff_time) * pwr_scale;
+
 	SAFE_FREE(readbuf);
 	return true;
 

@@ -1,7 +1,6 @@
 #ifndef FLASH_SHELL_H
 #define FLASH_SHELL_H
 
-#include "shell_platform.h"
 #include <stdlib.h>
 #include <shell/shell.h>
 #include <drivers/spi_nor.h>

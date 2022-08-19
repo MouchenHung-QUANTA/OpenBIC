@@ -2,7 +2,6 @@
 #define LOG_SHELL_H
 
 #include "log_util.h"
-#include "shell_platform.h"
 #include <stdlib.h>
 #include <shell/shell.h>
 

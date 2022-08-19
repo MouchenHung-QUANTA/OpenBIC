@@ -3,8 +3,6 @@
 
 #include "hal_gpio.h"
 
-#define GET_BIT_VAL(val, n) ((val & BIT(n)) >> (n))
-
 // gpio_cfg(chip, number, is_init, direction, status, int_type, int_callback)
 // dedicate gpio A0~A7, B0~B7, C0~C7, D0~D7, E0~E7, total 40 gpios
 // Default name: Reserve_GPIOH0
@@ -49,7 +47,7 @@
 	gpio_name_to_num(BIC_READY) \
 	gpio_name_to_num(FM_SOL_UART_CH_SEL_R) \
 	gpio_name_to_num(HSC_MUX_SWITCH_R) \
-	gpio_name_to_num(FM_FORCE_ADR_N_R)
+	gpio_name_to_num(RST_PLTRST_BMC_N)
 
 #define name_gpioE \
 	gpio_name_to_num(PWRGD_CPU_LVC3_R) \
@@ -156,9 +154,9 @@
 	gpio_name_to_num(Reserve_GPIOO0) \
 	gpio_name_to_num(Reserve_GPIOO1) \
 	gpio_name_to_num(Reserve_GPIOO2) \
-	gpio_name_to_num(RST_PLTRST_BMC_N) \
+	gpio_name_to_num(Reserve_GPIOO3) \
 	gpio_name_to_num(Reserve_GPIOO4) \
-	gpio_name_to_num(JTAG_BMC_NTRST_R_N) \
+	gpio_name_to_num(Reserve_GPIOO5) \
 	gpio_name_to_num(Reserve_GPIOO6) \
 	gpio_name_to_num(Reserve_GPIOO7)
 
@@ -238,7 +236,16 @@ enum _GPIO_NUMS_ {
 extern enum _GPIO_NUMS_ GPIO_NUMS;
 #undef gpio_name_to_num
 
+//align ti bic for bmc get gpio inform
+#define PVCCIO_CPU 0xFF
+#define BMC_HEARTBEAT_LED_R 0xFF
+#define FM_FORCE_ADR_N_R 0xFF
+#define JTAG_BMC_NTRST_R_N 0xff
+
 extern const char *const gpio_name[];
+//  GPIO Table SET/GET GPIO Configuration align to Ti BIC
+extern uint8_t gpio_align_t[];
+extern int gpio_align_table_length;
 
 void enable_PRDY_interrupt();
 void disable_PRDY_interrupt();

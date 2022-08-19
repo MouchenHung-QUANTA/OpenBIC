@@ -55,6 +55,8 @@ typedef struct _ACCURACY_SENSOR_READING_RES {
 	uint8_t status;
 } ACCURACY_SENSOR_READING_RES;
 
+uint8_t gpio_idx_exchange(ipmi_msg *msg);
+
 void OEM_1S_MSG_OUT(ipmi_msg *msg);
 void OEM_1S_GET_GPIO(ipmi_msg *msg);
 void OEM_1S_FW_UPDATE(ipmi_msg *msg);
@@ -80,8 +82,12 @@ void OEM_1S_GET_CARD_TYPE(ipmi_msg *msg);
 void OEM_1S_CLEAR_CMOS(ipmi_msg *msg);
 void OEM_1S_NOTIFY_PMIC_ERROR(ipmi_msg *msg);
 
-#ifdef CONFIG_IPMI_KCS_ASPEED
+#ifdef CONFIG_SNOOP_ASPEED
 void OEM_1S_GET_POST_CODE(ipmi_msg *msg);
+#endif
+
+#ifdef CONFIG_PCC_ASPEED
+void OEM_1S_GET_4BYTE_POST_CODE(ipmi_msg *msg);
 #endif
 
 #ifdef CONFIG_PECI
