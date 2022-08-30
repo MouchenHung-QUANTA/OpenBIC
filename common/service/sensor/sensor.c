@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <logging/log.h>
 #include "power_status.h"
 #include "sdr.h"
 #include "hal_i2c.h"
@@ -15,6 +15,8 @@
 #include "plat_def.h"
 #include "libutil.h"
 #include "log_util.h"
+
+LOG_MODULE_REGISTER(sensor);
 
 #define SENSOR_DRIVE_INIT_DECLARE(name) uint8_t name##_init(uint8_t sensor_num)
 

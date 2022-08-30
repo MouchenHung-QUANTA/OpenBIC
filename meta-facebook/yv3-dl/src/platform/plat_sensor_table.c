@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <logging/log.h>
 #include "plat_sensor_table.h"
 #include "sensor.h"
 #include "ast_adc.h"
@@ -15,6 +16,8 @@
 #include "tmp431.h"
 #include "libutil.h"
 #include "util_sys.h"
+
+LOG_MODULE_DECLARE(sensor);
 
 struct k_mutex vr_page_mutex;
 
@@ -45,7 +48,7 @@ sensor_cfg plat_sensor_config[] = {
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[0],
 	  post_xdpe12284c_read, NULL, NULL },
 	{ SENSOR_NUM_VOL_P3V3_STBY_VR, sensor_dev_xdpe12284c, I2C_BUS8, VCCIO_P3V3_STBY_ADDR,
-	  VR_VOL_CMD, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  VR_VOL_CMD, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[1],
 	  post_xdpe12284c_read, NULL, NULL },
 	{ SENSOR_NUM_V_DIMM_ABC_VR, sensor_dev_xdpe12284c, I2C_BUS8, VDDQ_ABC_ADDR, VR_VOL_CMD,
@@ -67,7 +70,7 @@ sensor_cfg plat_sensor_config[] = {
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[0],
 	  post_xdpe12284c_read, NULL, NULL },
 	{ SENSOR_NUM_CUR_P3V3_STBY_VR, sensor_dev_xdpe12284c, I2C_BUS8, VCCIO_P3V3_STBY_ADDR,
-	  VR_CUR_CMD, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  VR_CUR_CMD, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[1],
 	  post_xdpe12284c_read, NULL, NULL },
 	{ SENSOR_NUM_CURR_DIMM_ABC_VR, sensor_dev_xdpe12284c, I2C_BUS8, VDDQ_ABC_ADDR, VR_CUR_CMD,
@@ -89,7 +92,7 @@ sensor_cfg plat_sensor_config[] = {
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[0],
 	  post_xdpe12284c_read, NULL, NULL },
 	{ SENSOR_NUM_TEP_P3V3_STBY_VR, sensor_dev_xdpe12284c, I2C_BUS8, VCCIO_P3V3_STBY_ADDR,
-	  VR_TEMP_CMD, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  VR_TEMP_CMD, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[1],
 	  post_xdpe12284c_read, NULL, NULL },
 	{ SENSOR_NUM_T_DIMM_ABC_VR, sensor_dev_xdpe12284c, I2C_BUS8, VDDQ_ABC_ADDR, VR_TEMP_CMD,
@@ -111,7 +114,7 @@ sensor_cfg plat_sensor_config[] = {
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[0],
 	  post_xdpe12284c_read, NULL, NULL },
 	{ SENSOR_NUM_PWR_P3V3_STBY_VR, sensor_dev_xdpe12284c, I2C_BUS8, VCCIO_P3V3_STBY_ADDR,
-	  VR_PWR_CMD, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  VR_PWR_CMD, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[1],
 	  post_xdpe12284c_read, NULL, NULL },
 	{ SENSOR_NUM_PWR_DIMM_ABC_VR, sensor_dev_xdpe12284c, I2C_BUS8, VDDQ_ABC_ADDR, VR_PWR_CMD,
@@ -208,7 +211,7 @@ sensor_cfg isl69254_sensor_config_table[] = {
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[0],
 	  post_isl69254_read, NULL, NULL },
 	{ SENSOR_NUM_VOL_P3V3_STBY_VR, sensor_dev_isl69254iraz_t, I2C_BUS8, VCCIO_P3V3_STBY_ADDR,
-	  VR_VOL_CMD, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  VR_VOL_CMD, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[1],
 	  post_isl69254_read, NULL, NULL },
 	{ SENSOR_NUM_V_DIMM_ABC_VR, sensor_dev_isl69254iraz_t, I2C_BUS8, VDDQ_ABC_ADDR, VR_VOL_CMD,
@@ -232,7 +235,7 @@ sensor_cfg isl69254_sensor_config_table[] = {
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[0],
 	  post_isl69254_read, NULL, NULL },
 	{ SENSOR_NUM_CUR_P3V3_STBY_VR, sensor_dev_isl69254iraz_t, I2C_BUS8, VCCIO_P3V3_STBY_ADDR,
-	  VR_CUR_CMD, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  VR_CUR_CMD, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[1],
 	  post_isl69254_read, NULL, NULL },
 	{ SENSOR_NUM_CURR_DIMM_ABC_VR, sensor_dev_isl69254iraz_t, I2C_BUS8, VDDQ_ABC_ADDR,
@@ -258,7 +261,7 @@ sensor_cfg isl69254_sensor_config_table[] = {
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[0],
 	  post_isl69254_read, NULL, NULL },
 	{ SENSOR_NUM_TEP_P3V3_STBY_VR, sensor_dev_isl69254iraz_t, I2C_BUS8, VCCIO_P3V3_STBY_ADDR,
-	  VR_TEMP_CMD, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  VR_TEMP_CMD, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[1],
 	  post_isl69254_read, NULL, NULL },
 	{ SENSOR_NUM_T_DIMM_ABC_VR, sensor_dev_isl69254iraz_t, I2C_BUS8, VDDQ_ABC_ADDR, VR_TEMP_CMD,
@@ -282,7 +285,7 @@ sensor_cfg isl69254_sensor_config_table[] = {
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[0],
 	  post_isl69254_read, NULL, NULL },
 	{ SENSOR_NUM_PWR_P3V3_STBY_VR, sensor_dev_isl69254iraz_t, I2C_BUS8, VCCIO_P3V3_STBY_ADDR,
-	  VR_PWR_CMD, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  VR_PWR_CMD, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[1],
 	  post_isl69254_read, NULL, NULL },
 	{ SENSOR_NUM_PWR_DIMM_ABC_VR, sensor_dev_isl69254iraz_t, I2C_BUS8, VDDQ_ABC_ADDR,
@@ -365,4 +368,10 @@ void pal_extend_sensor_config()
 	}
 
 	return;
+}
+
+uint8_t get_hsc_pwr_reading(int *reading)
+{
+	CHECK_NULL_ARG_WITH_RETURN(reading, SENSOR_UNSPECIFIED_ERROR);
+	return get_sensor_reading(SENSOR_NUM_HSC_PIN, reading, GET_FROM_CACHE);
 }

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <logging/log.h>
 
 #include "sensor.h"
 #include "ast_adc.h"
@@ -16,6 +17,8 @@
 #include "pmbus.h"
 #include "tmp431.h"
 #include "libutil.h"
+
+LOG_MODULE_REGISTER(plat_sensor_table);
 
 sensor_poll_time_cfg diff_poll_time_sensor_table[] = {
 	// sensor_number, last_access_time
@@ -332,7 +335,7 @@ bool pal_is_time_to_poll(uint8_t sensor_num, int poll_time)
 		}
 	}
 
-	printf("[%s] can't find sensor 0x%x last access time\n", __func__, sensor_num);
+	LOG_WRN("[%s] can't find sensor 0x%x last access time", __func__, sensor_num);
 	return true;
 }
 
