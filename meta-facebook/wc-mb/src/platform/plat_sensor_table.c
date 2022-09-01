@@ -268,12 +268,13 @@ void check_vr_type(uint8_t index)
 	msg = construct_i2c_message(bus, target_addr, tx_len, &data, rx_len);
 
 	if (i2c_master_read(&msg, retry)) {
-		printf("Failed to read VR register(0x%x), using default type ISL69259...\n", data);
+		LOG_ERR("sensor #%-2xh vr type: failed to read VR register(0x%x), using default type ISL69259...",
+			sensor_config[index].num, data);
 		return;
 	}
 
 	if ((msg.data[0] == 0x02) && (msg.data[2] == 0x8A)) {
-		printf("VR type: XDPE15284\n");
+		LOG_INF("sensor #%-2xh vr type: XDPE15284", sensor_config[index].num);
 		sensor_config[index].type = sensor_dev_xdpe15284;
 		if (sensor_config[index].target_addr == VR_PU14_SRC0_ADDR)
 			sensor_config[index].target_addr = VR_PU14_SRC1_ADDR;
@@ -282,12 +283,14 @@ void check_vr_type(uint8_t index)
 		else if (sensor_config[index].target_addr == VR_PU35_SRC0_ADDR)
 			sensor_config[index].target_addr = VR_PU35_SRC1_ADDR;
 		else
-			printf("Invalid default VR address, using default VR address...\n");
+			LOG_ERR("sensor #%-2xh vr type: invalid address, using default VR address...",
+				sensor_config[index].num);
 	} else if ((msg.data[0] == 0x04) && (msg.data[1] == 0x00) && (msg.data[2] == 0x81) &&
 		   (msg.data[3] == 0xD2) && (msg.data[4] == 0x49)) {
-		printf("VR type: ISL69259\n");
+		LOG_INF("sensor #%-2xh vr type: ISL69259", sensor_config[index].num);
 	} else {
-		printf("Unknown VR type, using default type ISL69259...\n");
+		LOG_WRN("sensor #%-2xh vr type: non-support type, using default type ISL69259...",
+			sensor_config[index].num);
 	}
 }
 
@@ -310,8 +313,8 @@ bool disable_dimm_pmic_sensor(uint8_t sensor_num)
 		}
 	}
 
-	printf("[%s] input sensor 0x%x can't find in dimm pmic mapping table\n", __func__,
-	       sensor_num);
+	LOG_WRN("[%s] input sensor #%-2xh can't find in dimm pmic mapping table", __func__,
+		sensor_num);
 	return false;
 }
 
@@ -335,7 +338,7 @@ bool pal_is_time_to_poll(uint8_t sensor_num, int poll_time)
 		}
 	}
 
-	LOG_WRN("[%s] can't find sensor 0x%x last access time", __func__, sensor_num);
+	LOG_WRN("[%s] can't find sensor #%-2xh last access time", __func__, sensor_num);
 	return true;
 }
 
@@ -352,7 +355,7 @@ void pal_extend_sensor_config()
 	}
 
 	if (sensor_config_count != sdr_count) {
-		printf("[%s] extend sensor SDR and config table not match, sdr size: 0x%x, sensor config size: 0x%x\n",
-		       __func__, sdr_count, sensor_config_count);
+		LOG_WRN("[%s] extend sensor SDR and config table not match, sdr size: 0x%x, sensor config size: 0x%x",
+			__func__, sdr_count, sensor_config_count);
 	}
 }
