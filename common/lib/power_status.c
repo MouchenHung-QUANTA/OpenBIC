@@ -18,7 +18,7 @@ static bool vr_monitor_status = true;
 void set_DC_status(uint8_t gpio_num)
 {
 	is_DC_on = (gpio_get(gpio_num) == 1) ? true : false;
-	LOG_INF("gpio number(%d) status(%d)", gpio_num, is_DC_on);
+	LOG_WRN("DC_STATUS: %s", (is_DC_on) ? "on" : "off");
 }
 
 bool get_DC_status()
@@ -49,7 +49,7 @@ bool get_DC_off_delayed_status()
 void set_post_status(uint8_t gpio_num)
 {
 	is_post_complete = (gpio_get(gpio_num) == 1) ? false : true;
-	LOG_INF("gpio number(%d) status(%d)", gpio_num, is_post_complete);
+	LOG_WRN("POST_COMPLETE: %s", (is_post_complete) ? "yes" : "no");
 }
 
 bool get_post_status()
@@ -60,6 +60,7 @@ bool get_post_status()
 void set_CPU_power_status(uint8_t gpio_num)
 {
 	is_CPU_power_good = gpio_get(gpio_num);
+	LOG_WRN("CPU_PWR_GOOD: %s", (is_CPU_power_good) ? "yes" : "no");
 }
 
 bool CPU_power_good()

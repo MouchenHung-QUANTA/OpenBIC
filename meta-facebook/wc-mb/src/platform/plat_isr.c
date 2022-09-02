@@ -19,18 +19,18 @@ static void isr_dbg_print(uint8_t gpio_num)
 {
 	switch (gpio_cfg[gpio_num].int_type) {
 	case GPIO_INT_EDGE_FALLING:
-		LOG_DBG("gpio[%-3d] isr type[falling] trigger 1 -> 0", gpio_num);
+		LOG_INF("gpio[%-3d] isr type[fall] trigger 1 -> 0", gpio_num);
 		break;
 
 	case GPIO_INT_EDGE_RISING:
-		LOG_DBG("gpio[%-3d] isr type[rising] trigger 0 -> 1", gpio_num);
+		LOG_INF("gpio[%-3d] isr type[rise] trigger 0 -> 1", gpio_num);
 		break;
 
 	case GPIO_INT_EDGE_BOTH:
 		if (gpio_get(gpio_num))
-			LOG_DBG("gpio[%-3d] isr type[both] trigger 0 -> 1", gpio_num);
+			LOG_INF("gpio[%-3d] isr type[both] trigger 0 -> 1", gpio_num);
 		else
-			LOG_DBG("gpio[%-3d] isr type[both] trigger 1 -> 0", gpio_num);
+			LOG_INF("gpio[%-3d] isr type[both] trigger 1 -> 0", gpio_num);
 		break;
 
 	default:
