@@ -1,9 +1,12 @@
 #include "power_status.h"
 
 #include <stdio.h>
+#include <logging/log.h>
 
 #include "hal_gpio.h"
 #include "snoop.h"
+
+LOG_MODULE_REGISTER(power_status);
 
 static bool is_DC_on = false;
 static bool is_DC_on_delayed = false;
@@ -15,7 +18,7 @@ static bool vr_monitor_status = true;
 void set_DC_status(uint8_t gpio_num)
 {
 	is_DC_on = (gpio_get(gpio_num) == 1) ? true : false;
-	printf("[%s] gpio number(%d) status(%d)\n", __func__, gpio_num, is_DC_on);
+	LOG_INF("gpio number(%d) status(%d)", gpio_num, is_DC_on);
 }
 
 bool get_DC_status()
@@ -46,7 +49,7 @@ bool get_DC_off_delayed_status()
 void set_post_status(uint8_t gpio_num)
 {
 	is_post_complete = (gpio_get(gpio_num) == 1) ? false : true;
-	printf("[%s] gpio number(%d) status(%d)\n", __func__, gpio_num, is_post_complete);
+	LOG_INF("gpio number(%d) status(%d)", gpio_num, is_post_complete);
 }
 
 bool get_post_status()
