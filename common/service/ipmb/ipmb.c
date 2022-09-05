@@ -11,15 +11,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <zephyr.h>
+#include <logging/log.h>
 #include "plat_ipmb.h"
 #include "log_util.h"
+
+LOG_MODULE_REGISTER(ipmb);
 
 /*
  * If MAX_IPMB_IDX which define by plat_ipmb.h is not equal to zero 
  * then compile ipmb.c to avoid creating redundant memory space.
  */
 #if MAX_IPMB_IDX
-static bool is_ipmb_ready;
 
 static struct k_mutex mutex_id[MAX_IPMB_IDX]; // mutex for sequence linked list insert/find
 static struct k_mutex mutex_send_req, mutex_send_res, mutex_read;
@@ -77,6 +79,8 @@ void channel_index_mapping(void)
 
 uint8_t calculate_checksum(uint8_t *buffer, uint8_t range)
 {
+	CHECK_NULL_ARG_WITH_RETURN(buffer, 0);
+
 	uint8_t checksum = 0;
 	uint8_t i;
 
@@ -92,9 +96,7 @@ uint8_t calculate_checksum(uint8_t *buffer, uint8_t range)
 
 ipmb_error validate_checksum(uint8_t *buffer, uint8_t buffer_len)
 {
-	if (buffer == NULL) {
-		return IPMB_ERROR_UNKNOWN;
-	}
+	CHECK_NULL_ARG_WITH_RETURN(buffer, IPMB_ERROR_UNKNOWN);
 
 	uint8_t header_checksum = buffer[2];
 	uint8_t msg_checksum = buffer[buffer_len - 1];
@@ -145,6 +147,9 @@ uint8_t get_free_seq(uint8_t index)
  * sequence for bridge command */
 void insert_req_ipmi_msg(ipmi_msg_cfg *pnode, ipmi_msg *msg, uint8_t index)
 {
+	CHECK_NULL_ARG(pnode);
+	CHECK_NULL_ARG(msg);
+
 	ipmi_msg_cfg *ptr_start = pnode;
 	int ret;
 
@@ -200,6 +205,9 @@ void insert_req_ipmi_msg(ipmi_msg_cfg *pnode, ipmi_msg *msg, uint8_t index)
 /* Find if any IPMB request record match receiving response */
 bool find_req_ipmi_msg(ipmi_msg_cfg *pnode, ipmi_msg *msg, uint8_t index)
 {
+	CHECK_NULL_ARG_WITH_RETURN(pnode, false);
+	CHECK_NULL_ARG_WITH_RETURN(msg, false);
+
 	ipmi_msg_cfg *ptr_start = pnode;
 	int ret;
 
@@ -264,9 +272,7 @@ bool find_req_ipmi_msg(ipmi_msg_cfg *pnode, ipmi_msg *msg, uint8_t index)
 
 void IPMB_TXTask(void *pvParameters, void *arvg0, void *arvg1)
 {
-	if (pvParameters == NULL) {
-		return;
-	}
+	CHECK_NULL_ARG(pvParameters);
 
 	struct ipmi_msg_cfg *current_msg_tx;
 	IPMB_config ipmb_cfg;
@@ -496,9 +502,7 @@ void IPMB_TXTask(void *pvParameters, void *arvg0, void *arvg1)
 
 void IPMB_RXTask(void *pvParameters, void *arvg0, void *arvg1)
 {
-	if (pvParameters == NULL) {
-		return;
-	}
+	CHECK_NULL_ARG(pvParameters);
 
 	struct ipmi_msg_cfg *current_msg_rx;
 	struct IPMB_config ipmb_cfg;
@@ -806,10 +810,14 @@ void IPMB_RXTask(void *pvParameters, void *arvg0, void *arvg1)
 
 ipmb_error ipmb_send_request(ipmi_msg *req, uint8_t index)
 {
+	CHECK_NULL_ARG_WITH_RETURN(req, IPMB_ERROR_UNKNOWN);
+	CHECK_NULL_ARG_WITH_RETURN(ipmb_txqueue[index].buffer_start, IPMB_ERROR_UNKNOWN);
+	CHECK_NULL_ARG_WITH_RETURN(mutex_send_req.wait_q.waitq.head, IPMB_ERROR_UNKNOWN);
+
 	int ret;
 	ret = k_mutex_lock(&mutex_send_req, K_MSEC(1000));
 	if (ret) {
-		printf("[%s] Failed to lock the mutex\n", __func__);
+		LOG_ERR("[%s] Failed to lock the mutex", __func__);
 		return IPMB_ERROR_MUTEX_LOCK;
 	}
 
@@ -843,7 +851,7 @@ ipmb_error ipmb_send_request(ipmi_msg *req, uint8_t index)
 	}
 
 	/* Blocks here until is able put message in tx queue */
-	if (k_msgq_put(&ipmb_txqueue[index], &req_cfg, K_FOREVER) != osOK) {
+	if (k_msgq_put(&ipmb_txqueue[index], &req_cfg, K_MSEC(1000)) != osOK) {
 		k_mutex_unlock(&mutex_send_req);
 		return IPMB_ERROR_FAILURE;
 	}
@@ -853,10 +861,14 @@ ipmb_error ipmb_send_request(ipmi_msg *req, uint8_t index)
 
 ipmb_error ipmb_send_response(ipmi_msg *resp, uint8_t index)
 {
+	CHECK_NULL_ARG_WITH_RETURN(resp, IPMB_ERROR_UNKNOWN);
+	CHECK_NULL_ARG_WITH_RETURN(ipmb_txqueue[index].buffer_start, IPMB_ERROR_UNKNOWN);
+	CHECK_NULL_ARG_WITH_RETURN(mutex_send_res.wait_q.waitq.head, IPMB_ERROR_UNKNOWN);
+
 	int ret;
 	ret = k_mutex_lock(&mutex_send_res, K_MSEC(1000));
 	if (ret) {
-		printf("[%s] Failed to lock the mutex\n", __func__);
+		LOG_ERR("[%s] Failed to lock the mutex", __func__);
 		return IPMB_ERROR_MUTEX_LOCK;
 	}
 
@@ -903,15 +915,14 @@ ipmb_error ipmb_send_response(ipmi_msg *resp, uint8_t index)
 
 ipmb_error ipmb_read(ipmi_msg *msg, uint8_t index)
 {
-	if (!is_ipmb_ready) {
-		printf("[%s] ipmb threads are not ready yet!\n", __func__);
-		return IPMB_ERROR_FAILURE;
-	}
+	CHECK_NULL_ARG_WITH_RETURN(msg, IPMB_ERROR_UNKNOWN);
+	CHECK_NULL_ARG_WITH_RETURN(ipmb_rxqueue[index].buffer_start, IPMB_ERROR_UNKNOWN);
+	CHECK_NULL_ARG_WITH_RETURN(mutex_read.wait_q.waitq.head, IPMB_ERROR_UNKNOWN);
 
 	// Set mutex timeout 10ms more than messageQueue timeout, prevent mutex
 	// timeout before messageQueue
 	if (k_mutex_lock(&mutex_read, K_MSEC(IPMB_SEQ_TIMEOUT_MS + 10))) {
-		printf("[%s] Failed to lock mutex in time\n", __func__);
+		LOG_ERR("[%s] Failed to lock mutex in time", __func__);
 		return IPMB_ERROR_MUTEX_LOCK;
 	}
 
@@ -920,13 +931,13 @@ ipmb_error ipmb_read(ipmi_msg *msg, uint8_t index)
 
 	ipmb_error ret = IPMB_ERROR_SUCCESS;
 	if (ipmb_send_request(msg, index) != IPMB_ERROR_SUCCESS) {
-		printf("[%s] Failed to send IPMB request message", __func__);
+		LOG_ERR("[%s] Failed to send IPMB request message", __func__);
 		ret = IPMB_ERROR_FAILURE;
 		goto exit;
 	}
 
 	if (k_msgq_get(&ipmb_rxqueue[index], (ipmi_msg *)msg, K_MSEC(IPMB_SEQ_TIMEOUT_MS))) {
-		printf("[%s] Failed to get IPMB message from RX queue", __func__);
+		LOG_ERR("[%s] Failed to get IPMB message from RX queue", __func__);
 		ret = IPMB_ERROR_GET_MESSAGE_QUEUE;
 		goto exit;
 	}
@@ -939,6 +950,8 @@ exit:
 // Send message to IPMI message queue
 ipmb_error ipmb_notify_client(ipmi_msg_cfg *msg_cfg)
 {
+	CHECK_NULL_ARG_WITH_RETURN(msg_cfg, IPMB_ERROR_UNKNOWN);
+
 	/* Sends only the ipmi msg, not the control struct */
 	if (!IS_RESPONSE(msg_cfg->buffer)) {
 		while (k_msgq_put(&ipmi_msgq, msg_cfg, K_NO_WAIT) != 0) {
@@ -952,6 +965,9 @@ ipmb_error ipmb_notify_client(ipmi_msg_cfg *msg_cfg)
 
 ipmb_error ipmb_encode(uint8_t *buffer, ipmi_msg *msg)
 {
+	CHECK_NULL_ARG_WITH_RETURN(buffer, IPMB_ERROR_UNKNOWN);
+	CHECK_NULL_ARG_WITH_RETURN(msg, IPMB_ERROR_UNKNOWN);
+
 	uint8_t i = 0;
 
 	/* Use this variable to address the buffer dynamically */
@@ -975,6 +991,9 @@ ipmb_error ipmb_encode(uint8_t *buffer, ipmi_msg *msg)
 
 ipmb_error ipmb_decode(ipmi_msg *msg, uint8_t *buffer, uint8_t len)
 {
+	CHECK_NULL_ARG_WITH_RETURN(buffer, IPMB_ERROR_UNKNOWN);
+	CHECK_NULL_ARG_WITH_RETURN(msg, IPMB_ERROR_UNKNOWN);
+
 	/* Use this variable to address the buffer dynamically */
 	uint8_t i = 0;
 
@@ -1207,7 +1226,5 @@ void ipmb_init(void)
 			K_THREAD_STACK_SIZEOF(IPMB_SeqTimeout_stack), IPMB_SeqTimeout_handler, NULL,
 			NULL, NULL, CONFIG_MAIN_THREAD_PRIORITY, 0, K_NO_WAIT);
 	k_thread_name_set(&IPMB_SeqTimeout, "IPMB_SeqTimeout");
-
-	is_ipmb_ready = true;
 }
 #endif
