@@ -811,8 +811,8 @@ void IPMB_RXTask(void *pvParameters, void *arvg0, void *arvg1)
 ipmb_error ipmb_send_request(ipmi_msg *req, uint8_t index)
 {
 	CHECK_NULL_ARG_WITH_RETURN(req, IPMB_ERROR_UNKNOWN);
-	CHECK_NULL_ARG_WITH_RETURN(ipmb_txqueue[index].buffer_start, IPMB_ERROR_UNKNOWN);
-	CHECK_NULL_ARG_WITH_RETURN(mutex_send_req.wait_q.waitq.head, IPMB_ERROR_UNKNOWN);
+	CHECK_MSGQ_INIT_WITH_RETURN(&ipmb_txqueue[index], IPMB_ERROR_UNKNOWN);
+	CHECK_MUTEX_INIT_WITH_RETURN(&mutex_send_req, IPMB_ERROR_UNKNOWN);
 
 	int ret;
 	ret = k_mutex_lock(&mutex_send_req, K_MSEC(1000));
@@ -862,8 +862,8 @@ ipmb_error ipmb_send_request(ipmi_msg *req, uint8_t index)
 ipmb_error ipmb_send_response(ipmi_msg *resp, uint8_t index)
 {
 	CHECK_NULL_ARG_WITH_RETURN(resp, IPMB_ERROR_UNKNOWN);
-	CHECK_NULL_ARG_WITH_RETURN(ipmb_txqueue[index].buffer_start, IPMB_ERROR_UNKNOWN);
-	CHECK_NULL_ARG_WITH_RETURN(mutex_send_res.wait_q.waitq.head, IPMB_ERROR_UNKNOWN);
+	CHECK_MSGQ_INIT_WITH_RETURN(&ipmb_txqueue[index], IPMB_ERROR_UNKNOWN);
+	CHECK_MUTEX_INIT_WITH_RETURN(&mutex_send_res, IPMB_ERROR_UNKNOWN);
 
 	int ret;
 	ret = k_mutex_lock(&mutex_send_res, K_MSEC(1000));
@@ -916,8 +916,8 @@ ipmb_error ipmb_send_response(ipmi_msg *resp, uint8_t index)
 ipmb_error ipmb_read(ipmi_msg *msg, uint8_t index)
 {
 	CHECK_NULL_ARG_WITH_RETURN(msg, IPMB_ERROR_UNKNOWN);
-	CHECK_NULL_ARG_WITH_RETURN(ipmb_rxqueue[index].buffer_start, IPMB_ERROR_UNKNOWN);
-	CHECK_NULL_ARG_WITH_RETURN(mutex_read.wait_q.waitq.head, IPMB_ERROR_UNKNOWN);
+	CHECK_MSGQ_INIT_WITH_RETURN(&ipmb_rxqueue[index], IPMB_ERROR_UNKNOWN);
+	CHECK_MUTEX_INIT_WITH_RETURN(&mutex_read, IPMB_ERROR_UNKNOWN);
 
 	// Set mutex timeout 10ms more than messageQueue timeout, prevent mutex
 	// timeout before messageQueue
