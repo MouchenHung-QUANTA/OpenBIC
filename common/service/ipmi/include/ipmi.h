@@ -18,6 +18,7 @@
 extern uint8_t IPMB_inf_index_map[];
 extern uint8_t isPwOn;
 extern struct k_msgq ipmi_msgq;
+extern struct k_msgq self_ipmi_msgq;
 
 struct ipmi_request {
 	uint8_t netfn;
