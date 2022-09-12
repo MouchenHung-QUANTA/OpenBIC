@@ -54,7 +54,10 @@ void cmd_ipmi_list(const struct shell *shell, size_t argc, char **argv)
 	}
 
 	uint8_t dummy_msg[10] = { 0 };
-	uint8_t last_netfn = 0xFF;
+	dummy_msg[0] = (IANA_ID & 0xFF);
+	dummy_msg[1] = (IANA_ID >> 8) & 0xFF;
+	dummy_msg[2] = (IANA_ID >> 16) & 0xFF;
+
 	uint8_t tmp_cmd_saver[255];
 	uint8_t tmp_cmd_num = 0;
 
@@ -72,30 +75,35 @@ void cmd_ipmi_list(const struct shell *shell, size_t argc, char **argv)
 		for (int cmd_idx = 0; cmd_idx < 0xFF; cmd_idx++) {
 			msg.buffer.netfn = netfn_idx;
 			msg.buffer.cmd = cmd_idx;
+			msg.buffer.completion_code = CC_INVALID_CMD;
 			msg.buffer.data_len = ARRAY_SIZE(dummy_msg);
 			memcpy(msg.buffer.data, dummy_msg, ARRAY_SIZE(dummy_msg));
-			//shell_print(shell, "scaning netfn[%x] [%x]", netfn_idx, cmd_idx);
+
 			if (k_msgq_put(&ipmi_msgq, &msg, K_NO_WAIT)) {
 				shell_error(shell, "Failed to send req netfn:0x%x cmd:0x%x...",
 					    netfn_idx, cmd_idx);
 				continue;
 			}
 			if (k_msgq_get(&self_ipmi_msgq, &msg, K_MSEC(1000))) {
+				/* msg won't come back if using bridge command */
+				if (cmd_idx == CMD_OEM_1S_MSG_IN || cmd_idx == CMD_OEM_1S_MSG_OUT) {
+					tmp_cmd_saver[tmp_cmd_num] = cmd_idx;
+					tmp_cmd_num++;
+					continue;
+				}
 				shell_error(shell, "Failed to get resp netfn:0x%x cmd:0x%x...",
 					    netfn_idx, cmd_idx);
 				continue;
 			}
 			if (msg.buffer.completion_code != CC_INVALID_CMD) {
-				if (netfn_idx != last_netfn) {
-					shell_print(shell, "* netfn %xh:", netfn_idx);
-					last_netfn = netfn_idx;
-				}
 				tmp_cmd_saver[tmp_cmd_num] = cmd_idx;
 				tmp_cmd_num++;
 			}
 		}
-		if (tmp_cmd_num)
+		if (tmp_cmd_num) {
+			shell_print(shell, "* netfn %xh:", netfn_idx);
 			shell_hexdump(shell, tmp_cmd_saver, tmp_cmd_num);
+		}
 	}
 	shell_print(
 		shell,
