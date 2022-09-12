@@ -20,6 +20,7 @@ typedef struct _dimm_pre_proc_arg {
 extern adc_asd_init_arg adc_asd_init_args[];
 extern adm1278_init_arg adm1278_init_args[];
 extern mp5990_init_arg mp5990_init_args[];
+extern ltc4286_init_arg ltc4286_init_args[]; //TBD: HSC 2nd source
 extern ina230_init_arg ina230_init_args[];
 extern pmic_init_arg pmic_init_args[];
 
@@ -43,5 +44,6 @@ bool post_vol_bat3v_read(uint8_t sensor_num, void *args, int *reading);
 bool post_cpu_margin_read(uint8_t sensor_num, void *args, int *reading);
 bool post_adm1278_power_read(uint8_t sensor_num, void *args, int *reading);
 bool post_adm1278_current_read(uint8_t sensor_num, void *args, int *reading);
+bool post_ltc4286_read(uint8_t sensor_num, void *args, int *reading); //TBD: HSC 2nd source
 
 #endif

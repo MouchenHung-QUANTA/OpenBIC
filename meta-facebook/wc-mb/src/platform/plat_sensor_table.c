@@ -232,6 +232,42 @@ sensor_cfg plat_sensor_config[] = {
 	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &mp5990_init_args[1] },
 };
 
+// TBD: HSC 2nd source
+sensor_cfg ltc4286_sensor_config_table[] = {
+	/* number,                  type,       port,      address,      offset,
+	   access check arg0, arg1, sample_count, cache, cache_status, mux_address, mux_offset,
+	   pre_sensor_read_fn, pre_sensor_read_args, post_sensor_read_fn, post_sensor_read_fn  */
+	{ SENSOR_NUM_TEMP_HSC, sensor_dev_ltc4286, I2C_BUS5, ADI_LTC4286_ADDR,
+	  PMBUS_READ_TEMPERATURE_1, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
+	  &ltc4286_init_args[0] },
+	{ SENSOR_NUM_VOL_HSCIN, sensor_dev_ltc4286, I2C_BUS5, ADI_LTC4286_ADDR, PMBUS_READ_VIN,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &ltc4286_init_args[0] },
+	{ SENSOR_NUM_CUR_HSCOUT, sensor_dev_ltc4286, I2C_BUS5, ADI_LTC4286_ADDR, PMBUS_READ_IOUT,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, post_ltc4286_read, NULL, &ltc4286_init_args[0] },
+	{ SENSOR_NUM_PWR_HSCIN, sensor_dev_ltc4286, I2C_BUS5, ADI_LTC4286_ADDR, PMBUS_READ_PIN,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, post_ltc4286_read, NULL, &ltc4286_init_args[0] },
+};
+
+// TBD: TMP 2nd source
+sensor_cfg lm75ad_sensor_config_table[] = {
+	/* number,                  type,       port,      address,      offset,
+	   access check arg0, arg1, sample_count, cache, cache_status, mux_address, mux_offset,
+	   pre_sensor_read_fn, pre_sensor_read_args, post_sensor_read_fn, post_sensor_read_fn  */
+	{ SENSOR_NUM_TEMP_TMP75_IN, sensor_dev_lm75ad, I2C_BUS2, TMP75_IN_ADDR, TMP75_TEMP_OFFSET,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
+	{ SENSOR_NUM_TEMP_TMP75_OUT, sensor_dev_lm75ad, I2C_BUS2, TMP75_OUT_ADDR, TMP75_TEMP_OFFSET,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
+	{ SENSOR_NUM_TEMP_TMP75_IOM, sensor_dev_lm75ad, I2C_BUS8, TMP75_IOM_ADDR, TMP75_TEMP_OFFSET,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
+};
+
 const int SENSOR_CONFIG_SIZE = ARRAY_SIZE(plat_sensor_config);
 
 void load_sensor_config(void)

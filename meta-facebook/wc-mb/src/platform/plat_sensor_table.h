@@ -15,6 +15,7 @@
 #define SSD0_ADDR (0xD4 >> 1)
 #define SSD0_OFFSET 0x00
 #define MPS_MP5990_ADDR (0x40 >> 1)
+#define ADI_LTC4286_ADDR (0xFF) // TBD: HSC 2nd source
 #define PCH_ADDR (0x2C >> 1)
 #define ME_SENSOR_NUM_TEMP_PCH 0x08
 #define VR_PU14_SRC0_ADDR (0xC0 >> 1)
