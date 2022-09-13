@@ -252,22 +252,6 @@ sensor_cfg ltc4286_sensor_config_table[] = {
 	  SENSOR_INIT_STATUS, NULL, NULL, post_ltc4286_read, NULL, &ltc4286_init_args[0] },
 };
 
-// TBD: TMP 2nd source
-sensor_cfg lm75ad_sensor_config_table[] = {
-	/* number,                  type,       port,      address,      offset,
-	   access check arg0, arg1, sample_count, cache, cache_status, mux_address, mux_offset,
-	   pre_sensor_read_fn, pre_sensor_read_args, post_sensor_read_fn, post_sensor_read_fn  */
-	{ SENSOR_NUM_TEMP_TMP75_IN, sensor_dev_lm75ad, I2C_BUS2, TMP75_IN_ADDR, TMP75_TEMP_OFFSET,
-	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
-	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
-	{ SENSOR_NUM_TEMP_TMP75_OUT, sensor_dev_lm75ad, I2C_BUS2, TMP75_OUT_ADDR, TMP75_TEMP_OFFSET,
-	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
-	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
-	{ SENSOR_NUM_TEMP_TMP75_IOM, sensor_dev_lm75ad, I2C_BUS8, TMP75_IOM_ADDR, TMP75_TEMP_OFFSET,
-	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
-	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
-};
-
 const int SENSOR_CONFIG_SIZE = ARRAY_SIZE(plat_sensor_config);
 
 void load_sensor_config(void)
