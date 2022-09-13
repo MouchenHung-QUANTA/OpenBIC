@@ -31,6 +31,7 @@
 #include "apml.h"
 #endif
 #include "pcc.h"
+#include "hal_wdt.h"
 
 #define BIOS_UPDATE_MAX_OFFSET 0x4000000
 #define BIC_UPDATE_MAX_OFFSET 0x50000
@@ -232,20 +233,9 @@ __weak void OEM_1S_FW_UPDATE(ipmi_msg *msg)
 	} else if ((target == CPLD_UPDATE) || (target == (CPLD_UPDATE | IS_SECTOR_END_MASK))) {
 		status = cpld_altera_max10_fw_update(offset, length, &msg->data[7]);
 
-	} else if (target == CXL_UPDATE) {
-		int pos = pal_get_cxl_flash_position();
-		if (pos == -1) {
-			msg->completion_code = CC_INVALID_PARAM;
-			return;
-		}
-
-		bool ret = pal_switch_cxl_spi_mux();
-		if (ret == false) {
-			msg->completion_code = CC_UNSPECIFIED_ERROR;
-			return;
-		}
-
-		status = fw_update_cxl(pos);
+	} else if (target == CXL_UPDATE || (target == (CXL_UPDATE | IS_SECTOR_END_MASK))) {
+		status =
+			fw_update_cxl(offset, length, &msg->data[7], (target & IS_SECTOR_END_MASK));
 
 	} else {
 		msg->completion_code = CC_INVALID_DATA_FIELD;
@@ -273,6 +263,9 @@ __weak void OEM_1S_FW_UPDATE(ipmi_msg *msg)
 	case FWUPDATE_ERROR_OFFSET:
 		msg->completion_code = CC_PARAM_OUT_OF_RANGE;
 		break;
+	case FWUPDATE_NOT_SUPPORT:
+		msg->completion_code = CC_INVALID_PARAM;
+		break;
 	default:
 		msg->completion_code = CC_UNSPECIFIED_ERROR;
 		break;
@@ -286,9 +279,7 @@ __weak void OEM_1S_FW_UPDATE(ipmi_msg *msg)
 
 __weak void OEM_1S_GET_BIC_FW_INFO(ipmi_msg *msg)
 {
-	if (msg == NULL) {
-		return;
-	}
+	CHECK_NULL_ARG(msg);
 
 	if (msg->data_len != 1) {
 		msg->completion_code = CC_INVALID_LENGTH;
@@ -299,8 +290,7 @@ __weak void OEM_1S_GET_BIC_FW_INFO(ipmi_msg *msg)
 
 	uint8_t component;
 	component = msg->data[0];
-	switch (component)
-	{
+	switch (component) {
 	case BIC_PLAT_NAME:
 		msg->data_len = strlen(PLATFORM_NAME);
 		memcpy(&msg->data[0], PLATFORM_NAME, msg->data_len);
@@ -308,7 +298,7 @@ __weak void OEM_1S_GET_BIC_FW_INFO(ipmi_msg *msg)
 
 	case BIC_PLAT_BOARD_ID:
 		msg->data_len = 1;
-		msg->data[0] = FIRMWARE_REVISION_1 & 0x0F;
+		msg->data[0] = BOARD_ID;
 		break;
 
 	case BIC_PROJ_NAME:
@@ -318,7 +308,7 @@ __weak void OEM_1S_GET_BIC_FW_INFO(ipmi_msg *msg)
 
 	case BIC_PROJ_STAGE:
 		msg->data_len = 1;
-		msg->data[0] = FIRMWARE_REVISION_1 & 0xF0;
+		msg->data[0] = PROJECT_STAGE;
 		break;
 
 	default:
@@ -546,6 +536,26 @@ __weak void OEM_1S_RESET_BMC(ipmi_msg *msg)
 	}
 
 	msg->data_len = 0;
+	return;
+}
+
+__weak void OEM_1S_SET_WDT_FEED(ipmi_msg *msg)
+{
+	CHECK_NULL_ARG(msg);
+
+	if (msg->data_len != 1) {
+		msg->completion_code = CC_INVALID_LENGTH;
+		return;
+	}
+
+	if ((msg->data[0] != 0) && (msg->data[0] != 1)) {
+		msg->completion_code = CC_INVALID_DATA_FIELD;
+		return;
+	}
+
+	set_wdt_continue_feed(msg->data[0]);
+	msg->data_len = 0;
+	msg->completion_code = CC_SUCCESS;
 	return;
 }
 
@@ -1786,6 +1796,7 @@ void IPMI_OEM_1S_handler(ipmi_msg *msg)
 		OEM_1S_FW_UPDATE(msg);
 		break;
 	case CMD_OEM_1S_GET_BIC_FW_INFO:
+		LOG_DBG("Received 1S Get BIC fw info command");
 		OEM_1S_GET_BIC_FW_INFO(msg);
 		break;
 	case CMD_OEM_1S_GET_FW_VERSION:
@@ -1795,6 +1806,10 @@ void IPMI_OEM_1S_handler(ipmi_msg *msg)
 	case CMD_OEM_1S_RESET_BMC:
 		LOG_DBG("Received 1S BMC Reset command");
 		OEM_1S_RESET_BMC(msg);
+		break;
+	case CMD_OEM_1S_SET_WDT_FEED:
+		LOG_DBG("Received 1S Set WatchDogTimer Feed command");
+		OEM_1S_SET_WDT_FEED(msg);
 		break;
 	case CMD_OEM_1S_SENSOR_POLL_EN: // debug command
 		LOG_DBG("Received 1S Sensor Poll Enable (Debug) command");

@@ -131,8 +131,8 @@ void monitor_pmic_error_handler()
 
 int get_dimm_info(uint8_t dimm_id, uint8_t *bus, uint8_t *addr)
 {
-	CHECK_NULL_ARG_WITH_RETURN(bus, 1)
-	CHECK_NULL_ARG_WITH_RETURN(addr, 1)
+	CHECK_NULL_ARG_WITH_RETURN(bus, 1);
+	CHECK_NULL_ARG_WITH_RETURN(addr, 1);
 
 	if (dimm_id >= MAX_COUNT_DIMM) {
 		LOG_ERR("%s: wrong dimm index 0x%x", __func__, dimm_id);

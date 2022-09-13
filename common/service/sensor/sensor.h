@@ -45,6 +45,8 @@ enum NCT7718W_OFFSET {
 	NCT7718W_LOCAL_TEMP_OFFSET = 0x00,
 	NCT7718W_REMOTE_TEMP_MSB_OFFSET = 0x01,
 	NCT7718W_REMOTE_TEMP_LSB_OFFSET = 0x10,
+	NCT7718W_CHIP_ID_OFFSET = 0xFD,
+	NCT7718W_VENDOR_ID_OFFSET = 0xFE,
 };
 
 enum INA230_OFFSET {
@@ -375,6 +377,7 @@ typedef struct _ina230_init_arg {
 
 typedef struct _apml_mailbox_init_arg_ {
 	uint32_t data;
+	uint8_t retry;
 } apml_mailbox_init_arg;
 
 extern bool enable_sensor_poll_thread;
@@ -402,5 +405,6 @@ bool pal_is_time_to_poll(uint8_t sensor_num, int poll_time);
 uint8_t plat_get_config_size();
 void load_sensor_config(void);
 void control_sensor_polling(uint8_t sensor_num, uint8_t optional, uint8_t cache_status);
+bool check_reading_pointer_null_is_allowed(uint8_t sensor_num);
 
 #endif

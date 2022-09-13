@@ -97,6 +97,16 @@ __weak bool pal_request_msg_to_BIC_from_KCS(uint8_t netfn, uint8_t cmd)
 	return false;
 }
 
+__weak bool pal_immediate_respond_from_KCS(uint8_t netfn, uint8_t cmd)
+{
+	if ((netfn == NETFN_STORAGE_REQ && cmd == CMD_STORAGE_ADD_SEL) ||
+	    ((netfn == NETFN_SENSOR_REQ) && (cmd == CMD_SENSOR_PLATFORM_EVENT))) {
+		return true;
+	}
+
+	return false;
+}
+
 __weak bool pal_request_msg_to_BIC_from_ME(uint8_t netfn, uint8_t cmd)
 {
 	if ((netfn == NETFN_OEM_REQ) && (cmd == CMD_OEM_NM_SENSOR_READ)) {
@@ -301,7 +311,6 @@ void IPMI_handler(void *arug0, void *arug1, void *arug2)
 				/* the message should be passed to source by pldm format */
 				send_msg_by_pldm(&msg_cfg);
 				break;
-
 			case SELF:
 				/* for bic self test */
 				if (k_msgq_put(&self_ipmi_msgq, &msg_cfg, K_NO_WAIT)) {
@@ -309,7 +318,6 @@ void IPMI_handler(void *arug0, void *arug1, void *arug2)
 					LOG_ERR("Failed to put msg into self ipmi msgq");
 				}
 				break;
-
 			default: {
 #if MAX_IPMB_IDX
 				ipmb_error status;

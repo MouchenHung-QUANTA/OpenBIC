@@ -55,6 +55,8 @@ static inline void pack_ipmi_resp(struct ipmi_response *resp, ipmi_msg *ipmi_res
 
 // If command is from KCS, we need to check whether BIC support this command.
 bool pal_request_msg_to_BIC_from_KCS(uint8_t netfn, uint8_t cmd);
+// If command is from KCS, we need to check whether BIC BIC responds immediately.
+bool pal_immediate_respond_from_KCS(uint8_t netfn, uint8_t cmd);
 // If command is from ME, we need to check whether BIC support this command.
 bool pal_request_msg_to_BIC_from_ME(uint8_t netfn, uint8_t cmd);
 // For the command that BIC only bridges it, BIC doesn't return the command directly
@@ -144,6 +146,7 @@ enum {
 
 // Sensor Command Codes (0x04)
 enum {
+	CMD_SENSOR_PLATFORM_EVENT = 0x02,
 	CMD_SENSOR_GET_SENSOR_READING = 0x2D,
 };
 
@@ -192,6 +195,7 @@ enum {
 	CMD_OEM_1S_SET_VR_MONITOR_STATUS = 0x14,
 	CMD_OEM_1S_GET_VR_MONITOR_STATUS = 0x15,
 	CMD_OEM_1S_RESET_BMC = 0x16,
+	CMD_OEM_1S_SET_WDT_FEED = 0x1F,
 	CMD_OEM_1S_SET_JTAG_TAP_STA = 0x21,
 	CMD_OEM_1S_JTAG_DATA_SHIFT = 0x22,
 	CMD_OEM_1S_ACCURACY_SENSOR_READING = 0x23,

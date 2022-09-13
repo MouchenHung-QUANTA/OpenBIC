@@ -332,6 +332,7 @@ void check_vr_type(uint8_t index)
 
 uint8_t get_hsc_pwr_reading(int *reading)
 {
+	CHECK_NULL_ARG_WITH_RETURN(reading, SENSOR_UNSPECIFIED_ERROR);
 	return get_sensor_reading(SENSOR_NUM_PWR_HSCIN, reading, GET_FROM_CACHE);
 }
 
