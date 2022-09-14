@@ -196,7 +196,7 @@ safe_free:
 	return ret;
 }
 
-static bool read_cpu_power(uint8_t sensor_num, uint8_t addr, int *reading)
+static bool read_cpu_power(uint8_t addr, int *reading)
 {
 	if (reading == NULL) {
 		return false;
@@ -334,14 +334,14 @@ static bool get_cpu_margin(uint8_t addr, int *reading)
 	return true;
 }
 
-static bool get_cpu_pwr(uint8_t sensor_num, uint8_t addr, int *reading)
+static bool get_cpu_pwr(uint8_t addr, int *reading)
 {
 	if (!reading) {
 		return false;
 	}
 
 	int pwr = 0;
-	if (read_cpu_power(sensor_num, addr, &pwr) == false) {
+	if (read_cpu_power(addr, &pwr) == false) {
 		return false;
 	}
 
@@ -502,7 +502,7 @@ uint8_t intel_peci_read(uint8_t sensor_num, int *reading)
 		ret_val = get_cpu_temp(cfg->target_addr, reading);
 		break;
 	case PECI_PWR_CPU:
-		ret_val = get_cpu_pwr(sensor_num, cfg->target_addr, reading);
+		ret_val = get_cpu_pwr(cfg->target_addr, reading);
 		break;
 	default:
 		break;
