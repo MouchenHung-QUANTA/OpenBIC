@@ -15,7 +15,6 @@
 #include "plat_i2c.h"
 #include "power_status.h"
 #include "pmbus.h"
-#include "tmp431.h"
 #include "libutil.h"
 
 LOG_MODULE_REGISTER(plat_sensor_table);
@@ -314,29 +313,22 @@ void check_vr_type(uint8_t index)
 	}
 }
 
-uint8_t get_hsc_pwr_reading(int *reading)
+void pal_extend_sensor_config()
 {
-	CHECK_NULL_ARG_WITH_RETURN(reading, SENSOR_UNSPECIFIED_ERROR);
-	return get_sensor_reading(SENSOR_NUM_PWR_HSCIN, reading, GET_FROM_CACHE);
-}
+	uint8_t sensor_count = 0;
 
-bool disable_dimm_pmic_sensor(uint8_t sensor_num)
-{
-	uint8_t table_size = ARRAY_SIZE(dimm_pmic_map_table);
-
-	for (uint8_t index = 0; index < table_size; ++index) {
-		if (sensor_num == dimm_pmic_map_table[index].dimm_sensor_num) {
-			control_sensor_polling(dimm_pmic_map_table[index].dimm_sensor_num,
-					       DISABLE_SENSOR_POLLING, SENSOR_NOT_PRESENT);
-			control_sensor_polling(dimm_pmic_map_table[index].mapping_pmic_sensor_num,
-					       DISABLE_SENSOR_POLLING, SENSOR_NOT_PRESENT);
-			return true;
+	/* Check the VR sensor type */
+	sensor_count = ARRAY_SIZE(plat_sensor_config);
+	for (uint8_t index = 0; index < sensor_count; index++) {
+		if (sensor_config[index].type == sensor_dev_isl69259) {
+			check_vr_type(index);
 		}
 	}
 
-	LOG_WRN("[%s] input sensor #%-2xh can't find in dimm pmic mapping table", __func__,
-		sensor_num);
-	return false;
+	if (sensor_config_count != sdr_count) {
+		LOG_WRN("[%s] extend sensor SDR and config table not match, sdr size: 0x%x, sensor config size: 0x%x",
+			__func__, sdr_count, sensor_config_count);
+	}
 }
 
 bool pal_is_time_to_poll(uint8_t sensor_num, int poll_time)
@@ -363,20 +355,27 @@ bool pal_is_time_to_poll(uint8_t sensor_num, int poll_time)
 	return true;
 }
 
-void pal_extend_sensor_config()
+uint8_t get_hsc_pwr_reading(int *reading)
 {
-	uint8_t sensor_count = 0;
+	CHECK_NULL_ARG_WITH_RETURN(reading, SENSOR_UNSPECIFIED_ERROR);
+	return get_sensor_reading(SENSOR_NUM_PWR_HSCIN, reading, GET_FROM_CACHE);
+}
 
-	/* Check the VR sensor type */
-	sensor_count = ARRAY_SIZE(plat_sensor_config);
-	for (uint8_t index = 0; index < sensor_count; index++) {
-		if (sensor_config[index].type == sensor_dev_isl69259) {
-			check_vr_type(index);
+bool disable_dimm_pmic_sensor(uint8_t sensor_num)
+{
+	uint8_t table_size = ARRAY_SIZE(dimm_pmic_map_table);
+
+	for (uint8_t index = 0; index < table_size; ++index) {
+		if (sensor_num == dimm_pmic_map_table[index].dimm_sensor_num) {
+			control_sensor_polling(dimm_pmic_map_table[index].dimm_sensor_num,
+					       DISABLE_SENSOR_POLLING, SENSOR_NOT_PRESENT);
+			control_sensor_polling(dimm_pmic_map_table[index].mapping_pmic_sensor_num,
+					       DISABLE_SENSOR_POLLING, SENSOR_NOT_PRESENT);
+			return true;
 		}
 	}
 
-	if (sensor_config_count != sdr_count) {
-		LOG_WRN("[%s] extend sensor SDR and config table not match, sdr size: 0x%x, sensor config size: 0x%x",
-			__func__, sdr_count, sensor_config_count);
-	}
+	LOG_WRN("[%s] input sensor #%-2xh can't find in dimm pmic mapping table", __func__,
+		sensor_num);
+	return false;
 }
