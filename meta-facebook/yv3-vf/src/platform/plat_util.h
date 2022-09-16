@@ -1,9 +1,28 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 /* platform Event */
 #define SENSOR_NUM_SYS_STA 0x46
 
 #define IPMI_EVENT_OFFSET_SYS_M2PRESENT 0x80
 #define IPMI_EVENT_OFFSET_SYS_INA231_PWR_ALERT 0x81
 #define IPMI_EVENT_OFFSET_SYS_HSC_PWR_ALERT 0x82
+#define IPMI_EVENT_OFFSET_SYS_IRQ_P12V_E1S_FLT 0x83
+#define IPMI_EVENT_OFFSET_SYS_IRQ_P3V3_E1S_FLT 0x84
+#define IPMI_EVENT_OFFSET_SYS_IRQ_P12V_EDGE_FLT 0x85
 
 #define E1S_BOARD_TYPE 0x07
 

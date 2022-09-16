@@ -14,32 +14,20 @@
  * limitations under the License.
  */
 
-#include "fru.h"
-#include "plat_fru.h"
-#include <string.h>
+#ifndef I2C_MUX_PCA984X_H
+#define I2C_MUX_PCA984X_H
 
-const EEPROM_CFG plat_fru_config[] = {
-	{
-		NV_ATMEL_24C128,
-		MB_FRU_ID,
-		MB_FRU_BUS,
-		MB_FRU_ADDR,
-		FRU_DEV_ACCESS_BYTE,
-		FRU_START,
-		FRU_SIZE,
-	},
-	{
-		NV_ATMEL_24C128,
-		RISER_FRU_ID,
-		RISER_FRU_BUS,
-		RISER_FRU_ADDR,
-		FRU_DEV_ACCESS_BYTE,
-		FRU_START,
-		FRU_SIZE,
-	},
+#define PCA9846_MUTEX_LOCK_MS 1000
+#define PCA9846_DEFAULT_CHANNEL 0
+
+enum PCA9846_CHANNEL {
+	PCA9846_CHANNEL_0 = BIT(0),
+	PCA9846_CHANNEL_1 = BIT(1),
+	PCA9846_CHANNEL_2 = BIT(2),
+	PCA9846_CHANNEL_3 = BIT(3),
 };
 
-void pal_load_fru_config(void)
-{
-	memcpy(&fru_config, &plat_fru_config, sizeof(plat_fru_config));
-}
+bool set_pca9846_channel_and_transfer(uint8_t bus, uint8_t mux_addr, uint8_t mux_channel,
+				      uint8_t tran_type, I2C_MSG *msg);
+
+#endif

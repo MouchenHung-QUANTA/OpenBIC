@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <stdio.h>
 
 #include "util_worker.h"
@@ -75,6 +91,7 @@ void pal_set_sys_status()
 	set_DC_status(FM_POWER_EN);
 	set_DC_on_delayed_status();
 
+	check_irq_fault();
 	// BIC up 1 sec handler
 	k_work_schedule(&up_1sec_handler, K_SECONDS(1));
 	// BIC up 5 sec handler
