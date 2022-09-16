@@ -351,7 +351,7 @@ void check_vr_type(uint8_t index)
 						sensor_config[index].num);
 			}
 			sensor_config[index].type = vr_type;
-			set_source_idx(SRC_SECOND);
+			set_source_class(SRC_SECOND);
 		}
 	}
 
