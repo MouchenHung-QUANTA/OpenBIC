@@ -52,13 +52,18 @@ int i2c_master_read(I2C_MSG *msg, uint8_t retry)
 		msg->rx_len, msg->tx_len);
 	LOG_HEXDUMP_DBG(msg->data, msg->tx_len, "txbuf");
 
+	if (check_i2c_bus_valid(msg->bus) < 0) {
+		LOG_ERR("%s: i2c bus %d is invalid", __func__, msg->bus);
+		return -1;
+	}
+
 	if (msg->rx_len == 0) {
-		LOG_ERR("%s: i2c_master_read with rx_len = 0", __func__);
+		LOG_ERR("%s: rx_len = 0", __func__);
 		return EMSGSIZE;
 	}
 
-	if (check_i2c_bus_valid(msg->bus) < 0) {
-		LOG_ERR("%s: i2c bus %d is invalid", __func__, msg->bus);
+	if (msg->tx_len > I2C_BUFF_SIZE) {
+		LOG_ERR("%s: tx_len %d is over limit %d", __func__, msg->tx_len, I2C_BUFF_SIZE);
 		return -1;
 	}
 
@@ -70,15 +75,22 @@ int i2c_master_read(I2C_MSG *msg, uint8_t retry)
 		return ENOLCK;
 	}
 
-	int ret = 0;
-	uint8_t *txbuf = (uint8_t *)malloc(I2C_BUFF_SIZE * sizeof(uint8_t));
-	uint8_t *rxbuf = (uint8_t *)malloc(I2C_BUFF_SIZE * sizeof(uint8_t));
-	CHECK_NULL_ARG_WITH_RETURN(txbuf, -1);
-	CHECK_NULL_ARG_WITH_RETURN(rxbuf, -1);
+	int ret = -1;
+	uint8_t *txbuf = NULL, *rxbuf = NULL;
+	txbuf = (uint8_t *)malloc(I2C_BUFF_SIZE * sizeof(uint8_t));
+	if (!txbuf) {
+		LOG_ERR("%s: Failed to malloc txbuf", __func__);
+		goto exit;
+	}
+	rxbuf = (uint8_t *)malloc(I2C_BUFF_SIZE * sizeof(uint8_t));
+	if (!rxbuf) {
+		LOG_ERR("%s: Failed to malloc rxbuf", __func__);
+		goto exit;
+	}
 	memcpy(txbuf, &msg->data[0], msg->tx_len);
 
 	uint8_t i;
-	for (i = 0; i < retry; i++) {
+	for (i = 0; i <= retry; i++) {
 		ret = i2c_write_read(dev_i2c[msg->bus], msg->target_addr, txbuf, msg->tx_len, rxbuf,
 				     msg->rx_len);
 		if (ret == 0) { // i2c write read success
@@ -88,10 +100,11 @@ int i2c_master_read(I2C_MSG *msg, uint8_t retry)
 		}
 	}
 
-	if (i == retry)
+	if (i > retry)
 		LOG_ERR("%s: I2C %d master read retry reach max with ret %d", __func__, msg->bus,
 			ret);
 
+exit:
 	SAFE_FREE(txbuf);
 	SAFE_FREE(rxbuf);
 
@@ -111,7 +124,12 @@ int i2c_master_write(I2C_MSG *msg, uint8_t retry)
 	LOG_HEXDUMP_DBG(msg->data, msg->tx_len, "txbuf");
 
 	if (check_i2c_bus_valid(msg->bus) < 0) {
-		LOG_ERR("i2c bus %d is invalid", msg->bus);
+		LOG_ERR("%s: i2c bus %d is invalid", __func__, msg->bus);
+		return -1;
+	}
+
+	if (msg->tx_len > I2C_BUFF_SIZE) {
+		LOG_ERR("%s: tx_len %d is over limit %d", __func__, msg->tx_len, I2C_BUFF_SIZE);
 		return -1;
 	}
 
@@ -123,22 +141,27 @@ int i2c_master_write(I2C_MSG *msg, uint8_t retry)
 		return ENOLCK;
 	}
 
-	int ret = 0;
-	uint8_t *txbuf = (uint8_t *)malloc(I2C_BUFF_SIZE * sizeof(uint8_t));
-	CHECK_NULL_ARG_WITH_RETURN(txbuf, -1);
+	int ret = -1;
+	uint8_t *txbuf = NULL;
+	txbuf = (uint8_t *)malloc(I2C_BUFF_SIZE * sizeof(uint8_t));
+	if (!txbuf) {
+		LOG_ERR("%s: Failed to malloc txbuf", __func__);
+		goto exit;
+	}
 	memcpy(txbuf, &msg->data[0], msg->tx_len);
 
 	uint8_t i;
-	for (i = 0; i < retry; i++) {
+	for (i = 0; i <= retry; i++) {
 		ret = i2c_write(dev_i2c[msg->bus], txbuf, msg->tx_len, msg->target_addr);
 		if (ret == 0) // i2c write success
 			break;
 	}
 
-	if (i == retry)
+	if (i > retry)
 		LOG_ERR("%s: I2C %d master write retry reach max with ret %d", __func__, msg->bus,
 			ret);
 
+exit:
 	SAFE_FREE(txbuf);
 
 	status = k_mutex_unlock(&i2c_mutex[msg->bus]);
