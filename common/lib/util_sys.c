@@ -50,7 +50,7 @@ bool is_ac_lost()
 }
 
 /* bic warm reset work */
-#define bic_warm_reset_delay 200
+#define bic_warm_reset_delay 2000
 
 void bic_warm_reset()
 {
@@ -94,6 +94,21 @@ __weak void pal_cold_reset_prepare()
 __weak int pal_submit_bmc_cold_reset()
 {
 	return -1;
+}
+
+__weak int pal_host_power_control(power_ctl_t ctl_type)
+{
+	return -1;
+}
+
+__weak bool pal_is_bmc_present()
+{
+	return false;
+}
+
+__weak bool pal_is_bmc_ready()
+{
+	return false;
 }
 
 __weak int pal_submit_12v_cycle_slot()

@@ -280,7 +280,7 @@ void ISR_FM_THROTTLE()
 	common_addsel_msg_t sel_msg;
 	if (gpio_get(PWRGD_CPU_LVC3) == GPIO_HIGH) {
 		if (gpio_get(FM_THROTTLE_R_N) == GPIO_HIGH) {
-			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSART;
+			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
 		} else {
 			sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
 		}
@@ -303,13 +303,12 @@ void ISR_HSC_THROTTLE()
 	common_addsel_msg_t sel_msg;
 	static bool is_hsc_throttle_assert = false; // Flag for filt out fake alert
 	if (gpio_get(RST_RSMRST_BMC_N) == GPIO_HIGH) {
-		if ((gpio_get(PWRGD_SYS_PWROK) == GPIO_LOW) &&
-		    (get_DC_off_delayed_status() == false)) {
+		if (gpio_get(PWRGD_SYS_PWROK) == GPIO_LOW) {
 			return;
 		} else {
 			if ((gpio_get(IRQ_SML1_PMBUS_BMC_ALERT_N) == GPIO_HIGH) &&
 			    (is_hsc_throttle_assert == true)) {
-				sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSART;
+				sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
 				is_hsc_throttle_assert = false;
 			} else if ((gpio_get(IRQ_SML1_PMBUS_BMC_ALERT_N) == GPIO_LOW) &&
 				   (is_hsc_throttle_assert == false)) {
@@ -371,7 +370,7 @@ void ISR_SYS_THROTTLE()
 	common_addsel_msg_t sel_msg;
 	if ((gpio_get(RST_PLTRST_PLD_N) == GPIO_HIGH) && (gpio_get(PWRGD_SYS_PWROK) == GPIO_HIGH)) {
 		if (gpio_get(FM_CPU_BIC_PROCHOT_LVT3_N) == GPIO_HIGH) {
-			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSART;
+			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
 		} else {
 			sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
 		}
@@ -400,7 +399,7 @@ void ISR_PCH_THMALTRIP()
 			is_pch_assert = true;
 		}
 	} else if (gpio_get(FM_PCHHOT_N) && (is_pch_assert == true)) {
-		sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSART;
+		sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
 		is_pch_assert = false;
 	} else {
 		return;
@@ -418,7 +417,24 @@ void ISR_PCH_THMALTRIP()
 
 void ISR_HSC_OC()
 {
-	// TODO
+	common_addsel_msg_t sel_msg;
+	if (gpio_get(RST_RSMRST_BMC_N) == GPIO_HIGH) {
+		if (gpio_get(P12V_HS_D_OC_R_N) == GPIO_HIGH) {
+			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
+		} else {
+			sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
+		}
+
+		sel_msg.InF_target = BMC_IPMB;
+		sel_msg.sensor_type = IPMI_OEM_SENSOR_TYPE_SYS_STA;
+		sel_msg.sensor_number = SENSOR_NUM_SYSTEM_STATUS;
+		sel_msg.event_data1 = IPMI_OEM_EVENT_OFFSET_SYS_OCALERT; // for mp5990
+		sel_msg.event_data2 = 0xFF;
+		sel_msg.event_data3 = 0xFF;
+		if (!common_add_sel_evt_record(&sel_msg)) {
+			LOG_ERR("HSC OC addsel fail");
+		}
+	}
 }
 
 void ISR_CPU_MEMHOT()
@@ -428,7 +444,7 @@ void ISR_CPU_MEMHOT()
 	common_addsel_msg_t sel_msg;
 	if ((gpio_get(RST_PLTRST_PLD_N) == GPIO_HIGH) && (gpio_get(PWRGD_SYS_PWROK) == GPIO_HIGH)) {
 		if (gpio_get(H_CPU0_MEMHOT_OUT_LVC3_N) == GPIO_HIGH) {
-			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSART;
+			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
 		} else {
 			sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
 		}
@@ -451,7 +467,7 @@ void ISR_CPUVR_HOT()
 	common_addsel_msg_t sel_msg;
 	if ((gpio_get(RST_PLTRST_PLD_N) == GPIO_HIGH) && (gpio_get(PWRGD_SYS_PWROK) == GPIO_HIGH)) {
 		if (gpio_get(IRQ_CPU0_VRHOT_N) == GPIO_HIGH) {
-			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSART;
+			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
 		} else {
 			sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
 		}
@@ -501,6 +517,62 @@ void ISR_RMCA()
 		sel_msg.event_data3 = 0xFF;
 		if (!common_add_sel_evt_record(&sel_msg)) {
 			LOG_ERR("RMCA addsel fail");
+		}
+	}
+}
+
+static bool is_smi_assert = false;
+static void SMI_handler(struct k_work *work)
+{
+	if (gpio_get(IRQ_SMI_ACTIVE_BIC_N) == GPIO_LOW) {
+		common_addsel_msg_t sel_msg;
+		memset(&sel_msg, 0, sizeof(common_addsel_msg_t));
+
+		sel_msg.InF_target = BMC_IPMB;
+		sel_msg.sensor_type = IPMI_OEM_SENSOR_TYPE_SYS_STA;
+		sel_msg.sensor_number = SENSOR_NUM_SYS_STA;
+		sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
+		sel_msg.event_data1 = IPMI_OEM_EVENT_OFFSET_SYS_SMI90s;
+		sel_msg.event_data2 = 0xFF;
+		sel_msg.event_data3 = 0xFF;
+		if (!common_add_sel_evt_record(&sel_msg)) {
+			printf("SMI addsel fail\n");
+		}
+
+		gpio_interrupt_conf(IRQ_SMI_ACTIVE_BIC_N, GPIO_INT_EDGE_RISING);
+		is_smi_assert = true;
+	}
+}
+
+K_WORK_DELAYABLE_DEFINE(SMI_work, SMI_handler);
+#define SMI_START_DELAY_SECOND 90
+void ISR_SMI()
+{
+	isr_dbg_print(IRQ_SMI_ACTIVE_BIC_N);
+
+	if (gpio_get(RST_PLTRST_BIC_N) == GPIO_HIGH) {
+		if (gpio_get(IRQ_SMI_ACTIVE_BIC_N) == GPIO_LOW) {
+			/* start thread SMI_handler after 90 seconds */
+			k_work_schedule(&SMI_work, K_SECONDS(SMI_START_DELAY_SECOND));
+		} else {
+			if (is_smi_assert == true) {
+				common_addsel_msg_t sel_msg;
+				memset(&sel_msg, 0, sizeof(common_addsel_msg_t));
+
+				sel_msg.InF_target = BMC_IPMB;
+				sel_msg.sensor_type = IPMI_OEM_SENSOR_TYPE_SYS_STA;
+				sel_msg.sensor_number = SENSOR_NUM_SYS_STA;
+				sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
+				sel_msg.event_data1 = IPMI_OEM_EVENT_OFFSET_SYS_SMI90s;
+				sel_msg.event_data2 = 0xFF;
+				sel_msg.event_data3 = 0xFF;
+				if (!common_add_sel_evt_record(&sel_msg)) {
+					printf("SMI addsel fail\n");
+				}
+
+				gpio_interrupt_conf(IRQ_SMI_ACTIVE_BIC_N, GPIO_INT_EDGE_FALLING);
+				is_smi_assert = false;
+			}
 		}
 	}
 }

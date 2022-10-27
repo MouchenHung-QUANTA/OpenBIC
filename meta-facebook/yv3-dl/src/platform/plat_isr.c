@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#include <sys/util.h>
+#include <logging/log.h>
 #include "plat_isr.h"
 
 #include "libipmi.h"
@@ -27,6 +28,16 @@
 #include "oem_1s_handler.h"
 #include "hal_gpio.h"
 #include "util_sys.h"
+#include "plat_class.h"
+#include "plat_i2c.h"
+
+LOG_MODULE_REGISTER(plat_isr);
+
+enum GET_SET_M2_OPTION {
+	DEVICE_SET_POWER_OFF = 0x00,
+	DEVICE_SET_POWER_ON = 0x01,
+	DEVICE_GET_POWER_STATUS = 0x03,
+};
 
 void send_gpio_interrupt(uint8_t gpio_num)
 {
@@ -253,7 +264,7 @@ void ISR_HSC_THROTTLE()
 		} else {
 			if ((gpio_get(IRQ_SML1_PMBUS_ALERT_N) == GPIO_HIGH) &&
 			    (is_hsc_throttle_assert == true)) {
-				sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSART;
+				sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
 				is_hsc_throttle_assert = false;
 			} else if ((gpio_get(IRQ_SML1_PMBUS_ALERT_N) == GPIO_LOW) &&
 				   (is_hsc_throttle_assert == false)) {
@@ -281,7 +292,7 @@ void ISR_SYS_THROTTLE()
 	common_addsel_msg_t sel_msg;
 	if (gpio_get(RST_RSMRST_BMC_N) == GPIO_HIGH) {
 		if (gpio_get(FAST_PROCHOT_N) == GPIO_HIGH) {
-			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSART;
+			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
 		} else {
 			sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
 		}
@@ -325,7 +336,7 @@ void ISR_PCH_THMALTRIP()
 			is_pch_assert = true;
 		}
 	} else if (gpio_get(FM_PCH_BMC_THERMTRIP_N) && (is_pch_assert == true)) {
-		sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSART;
+		sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
 		is_pch_assert = false;
 	} else {
 		printf("Ignoring PCH thermal trip interrupt.\n");
@@ -350,7 +361,7 @@ void ISR_HSC_OC()
 		if (gpio_get(FM_HSC_TIMER) == GPIO_HIGH) {
 			sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
 		} else {
-			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSART;
+			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
 		}
 
 		sel_msg.InF_target = BMC_IPMB;
@@ -387,7 +398,7 @@ void ISR_CPUVR_HOT()
 	common_addsel_msg_t sel_msg;
 	if ((gpio_get(RST_PLTRST_BMC_N) == GPIO_HIGH) && (gpio_get(PWRGD_SYS_PWROK) == GPIO_HIGH)) {
 		if (gpio_get(IRQ_PVCCIN_CPU_VRHOT_LVC3_N) == GPIO_HIGH) {
-			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSART;
+			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
 		} else {
 			sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
 		}
@@ -409,7 +420,7 @@ void ISR_PVCCIO_VR_HOT()
 	common_addsel_msg_t sel_msg;
 	if ((gpio_get(RST_PLTRST_BMC_N) == GPIO_HIGH) && (gpio_get(PWRGD_SYS_PWROK) == GPIO_HIGH)) {
 		if (gpio_get(IRQ_PVCCIO_CPU_VRHOT_LVC3_N) == GPIO_HIGH) {
-			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSART;
+			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
 		} else {
 			sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
 		}
@@ -431,7 +442,7 @@ void ISR_DIMM_ABC_VR_HOT()
 	common_addsel_msg_t sel_msg;
 	if ((gpio_get(RST_PLTRST_BMC_N) == GPIO_HIGH) && (gpio_get(PWRGD_SYS_PWROK) == GPIO_HIGH)) {
 		if (gpio_get(IRQ_PVDDQ_ABC_VRHOT_LVT3_N) == GPIO_HIGH) {
-			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSART;
+			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
 		} else {
 			sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
 		}
@@ -453,7 +464,7 @@ void ISR_DIMM_DEF_VR_HOT()
 	common_addsel_msg_t sel_msg;
 	if ((gpio_get(RST_PLTRST_BMC_N) == GPIO_HIGH) && (gpio_get(PWRGD_SYS_PWROK) == GPIO_HIGH)) {
 		if (gpio_get(IRQ_PVDDQ_DEF_VRHOT_LVT3_N) == GPIO_HIGH) {
-			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSART;
+			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
 		} else {
 			sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
 		}
@@ -491,7 +502,7 @@ void ISR_FIVR()
 	common_addsel_msg_t sel_msg;
 	if ((gpio_get(RST_PLTRST_BMC_N) == GPIO_HIGH) && (gpio_get(PWRGD_SYS_PWROK) == GPIO_HIGH)) {
 		if (gpio_get(FM_CPU_FIVR_FAULT_LVT3_N) == GPIO_HIGH) {
-			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSART;
+			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
 		} else {
 			sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
 		}
@@ -513,7 +524,7 @@ void ISR_UV_DETECT()
 	common_addsel_msg_t sel_msg;
 	if (gpio_get(RST_RSMRST_BMC_N) == GPIO_HIGH) {
 		if (gpio_get(IRQ_UV_DETECT_N) == GPIO_HIGH) {
-			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSART;
+			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
 		} else {
 			sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
 		}
@@ -569,7 +580,7 @@ void ISR_SMI()
 				sel_msg.InF_target = BMC_IPMB;
 				sel_msg.sensor_type = IPMI_OEM_SENSOR_TYPE_SYS_STA;
 				sel_msg.sensor_number = SENSOR_NUM_SYS_STA;
-				sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSART;
+				sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
 				sel_msg.event_data1 = IPMI_OEM_EVENT_OFFSET_SYS_SMI90s;
 				sel_msg.event_data2 = 0xFF;
 				sel_msg.event_data3 = 0xFF;
@@ -582,4 +593,97 @@ void ISR_SMI()
 			}
 		}
 	}
+}
+
+static int get_set_1ou_m2_power(ipmi_msg *msg, uint8_t device_id, uint8_t option)
+{
+	CHECK_NULL_ARG_WITH_RETURN(msg, -1);
+	if (device_id >= MAX_1OU_M2_COUNT)
+		return -1;
+
+	uint8_t _1ou_m2_mapping_table[MAX_1OU_M2_COUNT] = { 4, 3, 2, 1 };
+	uint32_t iana = IANA_ID;
+	ipmb_error status;
+	const uint8_t MAX_RETRY = 3;
+
+	for (uint8_t i = 0; i < MAX_RETRY; i++) {
+		memset(msg, 0, sizeof(ipmi_msg));
+		msg->InF_source = SELF;
+		msg->InF_target = EXP1_IPMB;
+		msg->netfn = NETFN_OEM_1S_REQ;
+		msg->cmd = CMD_OEM_1S_GET_SET_M2;
+		msg->data_len = 5;
+		memcpy(&msg->data[0], (uint8_t *)&iana, 3);
+		msg->data[3] = _1ou_m2_mapping_table[device_id];
+		msg->data[4] = option;
+
+		status = ipmb_read(msg, IPMB_inf_index_map[msg->InF_target]);
+		if (status == IPMB_ERROR_SUCCESS)
+			return 0;
+	}
+
+	return -1;
+}
+
+void ISR_CPU_VPP_INT()
+{
+	if (gpio_get(PWRGD_CPU_LVC3_R) != POWER_ON)
+		return;
+
+	// Check BIOS is ready to handle VPP (post complete)
+	if (gpio_get(FM_BIOS_POST_CMPLT_BMC_N) != LOW_ACTIVE)
+		return;
+
+	static uint8_t last_vpp_pwr_status; // default all devices are on (bit1~4 = 0)
+	uint8_t _1ou_m2_name_mapping_table[MAX_1OU_M2_COUNT] = { 0x3A, 0x3B, 0x3C, 0x3D };
+
+	// Read VPP power status from SB CPLD
+	I2C_MSG i2c_msg = { 0 };
+	i2c_msg.bus = I2C_BUS2;
+	i2c_msg.target_addr = CPLD_ADDR;
+	i2c_msg.data[0] = CPLD_1OU_VPP_POWER_STATUS;
+	i2c_msg.tx_len = 1;
+	i2c_msg.rx_len = 1;
+
+	const uint8_t MAX_RETRY = 3;
+	if (i2c_master_read(&i2c_msg, MAX_RETRY)) {
+		LOG_ERR("Failed to read CPU VPP status, bus0x%x addr0x%x offset0x%x", i2c_msg.bus,
+			i2c_msg.target_addr, i2c_msg.data[0]);
+		return;
+	}
+
+	const uint8_t power_status = i2c_msg.data[0];
+
+	for (int device_id = 0; device_id < MAX_1OU_M2_COUNT; device_id++) {
+		// Shift to skip bit 0
+		// 1ou VPP power status is start on bit 1
+		const uint8_t vpp_pwr_status_bit = FIELD_GET(BIT(device_id + 1), power_status);
+		if (vpp_pwr_status_bit == FIELD_GET(BIT(device_id + 1), last_vpp_pwr_status))
+			continue;
+
+		uint8_t set_power_status =
+			(!vpp_pwr_status_bit) ? DEVICE_SET_POWER_ON : DEVICE_SET_POWER_OFF;
+
+		// control power status through 1ou BIC
+		ipmi_msg msg = { 0 };
+		int ret = get_set_1ou_m2_power(&msg, device_id, set_power_status);
+		if (ret < 0)
+			continue;
+
+		if (gpio_get(FM_SLPS3_R_N) == LOW_ACTIVE)
+			continue;
+
+		common_addsel_msg_t sel_msg = { 0 };
+		sel_msg.InF_target = BMC_IPMB;
+		sel_msg.sensor_type = IPMI_OEM_SENSOR_TYPE_SYS_STA;
+		sel_msg.event_type = IPMI_OEM_EVENT_TYPE_NOTIFY;
+		sel_msg.sensor_number = SENSOR_NUM_SYS_STA;
+		sel_msg.event_data1 = IPMI_OEM_EVENT_OFFSET_VPP_EVENT;
+		sel_msg.event_data2 = IPMI_OEM_EVENT_OFFSET_1OU;
+		sel_msg.event_data3 = _1ou_m2_name_mapping_table[device_id];
+		if (!common_add_sel_evt_record(&sel_msg))
+			LOG_ERR("addsel fail");
+	}
+
+	last_vpp_pwr_status = power_status;
 }

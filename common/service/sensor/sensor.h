@@ -25,6 +25,8 @@
 #include "sdr.h"
 #include "libutil.h"
 
+#define sensor_name_to_num(x) #x,
+
 #define SENSOR_POLL_STACK_SIZE 2048
 #define NONE 0
 
@@ -112,6 +114,8 @@ enum SENSOR_DEV {
 	sensor_dev_xdpe19283b = 0x1A,
 	sensor_dev_g788p81u = 0x1B,
 	sensor_dev_mp2856gut = 0x1C,
+	sensor_dev_ddr5_power = 0x1D,
+	sensor_dev_ddr5_temp = 0x1E,
 	sensor_dev_max
 };
 
@@ -395,11 +399,24 @@ typedef struct _apml_mailbox_init_arg_ {
 	uint8_t retry;
 } apml_mailbox_init_arg;
 
+typedef struct _ddr5_init_power_arg_ {
+	uint8_t HID_code;
+	uint8_t port_number;
+} ddr5_init_power_arg;
+
+typedef struct _ddr5_init_temp_arg_ {
+	uint8_t HID_code;
+	uint8_t port_number;
+	float ts0_temp;
+	float ts1_temp;
+} ddr5_init_temp_arg;
+
 extern bool enable_sensor_poll_thread;
 extern sensor_cfg *sensor_config;
 // Mapping sensor number to sensor config index
 extern uint8_t sensor_config_index_map[SENSOR_NUM_MAX];
 extern uint8_t sensor_config_count;
+extern const char *const sensor_type_name[];
 
 void clear_unaccessible_sensor_cache(uint8_t sensor_num);
 uint8_t get_sensor_reading(uint8_t sensor_num, int *reading, uint8_t read_mode);
@@ -409,6 +426,7 @@ bool dc_access(uint8_t sensor_num);
 bool post_access(uint8_t sensor_num);
 bool me_access(uint8_t sensor_num);
 bool vr_access(uint8_t sensor_num);
+bool vr_stby_access(uint8_t sensor_num);
 bool sensor_init(void);
 void disable_sensor_poll();
 void enable_sensor_poll();

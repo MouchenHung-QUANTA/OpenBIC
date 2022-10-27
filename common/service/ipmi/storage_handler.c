@@ -255,10 +255,14 @@ __weak void STORAGE_ADD_SEL(ipmi_msg *msg)
 
 	add_sel_msg = (ipmi_msg *)malloc(sizeof(ipmi_msg));
 	if (add_sel_msg == NULL) {
-		LOG_DBG("Malloc fail");
+		LOG_ERR("Storge add sel msg malloc fail");
 		msg->completion_code = CC_UNSPECIFIED_ERROR;
 		return;
 	}
+
+	LOG_DBG("Add sel to BMC with gen_id[%xh %xh] sensor[type %xh #%xh] event[type %xh] data[%xh %xh %xh]",
+		msg->data[7], msg->data[8], msg->data[10], msg->data[11], msg->data[12],
+		msg->data[13], msg->data[14], msg->data[15]);
 
 	memset(add_sel_msg, 0, sizeof(ipmi_msg));
 	add_sel_msg->InF_source = SELF;

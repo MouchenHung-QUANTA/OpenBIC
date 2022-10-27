@@ -77,6 +77,8 @@
 #define SENSOR_NUM_CUR_VRVDDQAB 0x71
 #define SENSOR_NUM_CUR_VRVDDQCD 0x72
 
+#define SENSOR_NUM_VR_ALERT 0x72
+
 #define SENSOR_NUM_PWR_STBY12V 0x73
 #define SENSOR_NUM_PWR_STBY3V3 0x74
 #define SENSOR_NUM_PWR_VR0V9A 0x75
@@ -87,5 +89,11 @@
 
 extern uint8_t plat_get_config_size();
 extern void load_sensor_config(void);
+
+enum { VR_INF = 0,
+       VR_RNS,
+       PWR_INA233,
+       PWR_SGY,
+};
 
 #endif

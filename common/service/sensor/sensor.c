@@ -64,6 +64,44 @@ const int negative_ten_power[16] = { 1,     1,		1,	 1,	1,       1,
 sensor_cfg *sensor_config;
 uint8_t sensor_config_count;
 
+// clang-format off
+const char *const sensor_type_name[] = {
+	sensor_name_to_num(tmp75)
+	sensor_name_to_num(adc)
+	sensor_name_to_num(peci)
+	sensor_name_to_num(isl69259)
+	sensor_name_to_num(hsc)
+	sensor_name_to_num(nvme)
+	sensor_name_to_num(pch)
+	sensor_name_to_num(mp5990)
+	sensor_name_to_num(isl28022)
+	sensor_name_to_num(pex89000)
+	sensor_name_to_num(tps53689)
+	sensor_name_to_num(xdpe15284)
+	sensor_name_to_num(ltc4282)
+	sensor_name_to_num(fan)
+	sensor_name_to_num(tmp431)
+	sensor_name_to_num(pmic)
+	sensor_name_to_num(ina233)
+	sensor_name_to_num(isl69254)
+	sensor_name_to_num(max16550a)
+	sensor_name_to_num(ina230)
+	sensor_name_to_num(xdpe12284c)
+	sensor_name_to_num(raa229621)
+	sensor_name_to_num(nct7718w)
+	sensor_name_to_num(ltc4286)
+#ifdef ENABLE_APML
+	sensor_name_to_num(amd_tsi)
+	sensor_name_to_num(apml_mailbox)
+#endif
+	sensor_name_to_num(xdpe19283b)
+	sensor_name_to_num(g788p81u)
+	sensor_name_to_num(mp2856gut)
+	sensor_name_to_num(ddr5_power)
+	sensor_name_to_num(ddr5_temp)
+};
+// clang-format on
+
 SENSOR_DRIVE_INIT_DECLARE(tmp75);
 SENSOR_DRIVE_INIT_DECLARE(ast_adc);
 SENSOR_DRIVE_INIT_DECLARE(isl69259);
@@ -94,6 +132,8 @@ SENSOR_DRIVE_INIT_DECLARE(apml_mailbox);
 SENSOR_DRIVE_INIT_DECLARE(xdpe19283b);
 SENSOR_DRIVE_INIT_DECLARE(g788p81u);
 SENSOR_DRIVE_INIT_DECLARE(mp2856gut);
+SENSOR_DRIVE_INIT_DECLARE(ddr5_power);
+SENSOR_DRIVE_INIT_DECLARE(ddr5_temp);
 
 struct sensor_drive_api {
 	enum SENSOR_DEV dev;
@@ -129,6 +169,8 @@ struct sensor_drive_api {
 	SENSOR_DRIVE_TYPE_INIT_MAP(xdpe19283b),
 	SENSOR_DRIVE_TYPE_INIT_MAP(g788p81u),
 	SENSOR_DRIVE_TYPE_INIT_MAP(mp2856gut),
+	SENSOR_DRIVE_TYPE_INIT_MAP(ddr5_power),
+	SENSOR_DRIVE_TYPE_INIT_MAP(ddr5_temp),
 };
 
 static void init_sensor_num(void)
@@ -452,6 +494,11 @@ bool vr_access(uint8_t sensor_num)
 	if (get_DC_on_delayed_status() == false) {
 		return false;
 	}
+	return get_vr_monitor_status();
+}
+
+bool vr_stby_access(uint8_t sensor_num)
+{
 	return get_vr_monitor_status();
 }
 

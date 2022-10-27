@@ -555,6 +555,54 @@ __weak void OEM_1S_RESET_BMC(ipmi_msg *msg)
 	return;
 }
 
+__weak void OEM_1S_READ_FW_IMAGE(ipmi_msg *msg)
+{
+	CHECK_NULL_ARG(msg);
+
+	if (msg->data_len != 6) {
+		msg->completion_code = CC_INVALID_LENGTH;
+		return;
+	}
+
+	if (get_DC_status()) {
+		msg->completion_code = CC_NOT_SUPP_IN_CURR_STATE;
+		return;
+	}
+
+	uint8_t target = msg->data[0];
+	uint32_t offset =
+		((msg->data[4] << 24) | (msg->data[3] << 16) | (msg->data[2] << 8) | msg->data[1]);
+	uint8_t length = msg->data[5];
+
+	if (target == BIOS_UPDATE) {
+		if (!pal_switch_bios_spi_mux(GPIO_HIGH)) {
+			msg->completion_code = CC_UNSPECIFIED_ERROR;
+			return;
+		}
+
+		int pos = pal_get_bios_flash_position();
+		if (pos == -1) {
+			msg->completion_code = CC_INVALID_PARAM;
+		} else {
+			if (read_fw_image(offset, length, msg->data, pos)) {
+				msg->completion_code = CC_UNSPECIFIED_ERROR;
+			} else {
+				msg->data_len = length;
+				msg->completion_code = CC_SUCCESS;
+			}
+		}
+
+		if (!pal_switch_bios_spi_mux(GPIO_LOW)) {
+			msg->completion_code = CC_UNSPECIFIED_ERROR;
+			return;
+		}
+	} else {
+		msg->completion_code = CC_INVALID_DATA_FIELD;
+		return;
+	}
+	return;
+}
+
 __weak void OEM_1S_SET_WDT_FEED(ipmi_msg *msg)
 {
 	CHECK_NULL_ARG(msg);
@@ -678,7 +726,7 @@ __weak void OEM_1S_PECI_ACCESS(ipmi_msg *msg)
 		}
 		writeBuf = (uint8_t *)malloc(sizeof(uint8_t) * writeLen);
 		if ((readBuf == NULL) || (writeBuf == NULL)) {
-			LOG_DBG("PECI access util buffer alloc fail");
+			LOG_ERR("PECI access util buffer alloc fail");
 			SAFE_FREE(writeBuf);
 			SAFE_FREE(readBuf);
 			msg->completion_code = CC_OUT_OF_SPACE;
@@ -1263,10 +1311,8 @@ __weak void OEM_1S_READ_BIC_REGISTER(ipmi_msg *msg)
 	* data 0~3: start of register address to read, LSB first
 	* data 4  : bytes to read
 	***********************************/
-	if (!msg) {
-		LOG_DBG("pal_OEM_1S_READ_BIC_REGISTER: parameter msg is NULL");
-		return;
-	}
+	CHECK_NULL_ARG(msg);
+
 	if (msg->data_len != 5) {
 		msg->completion_code = CC_INVALID_LENGTH;
 		return;
@@ -1290,10 +1336,8 @@ __weak void OEM_1S_WRITE_BIC_REGISTER(ipmi_msg *msg)
 	*
 	* NOTE: The register address must be a multiple of 4
 	***********************************/
-	if (!msg) {
-		LOG_DBG("pal_OEM_1S_WRITE_BIC_REGISTER: parameter msg is NULL");
-		return;
-	}
+	CHECK_NULL_ARG(msg);
+
 	if (msg->data[4] < 1 || msg->data[4] > 4 || (msg->data_len != 5 + msg->data[4])) {
 		msg->completion_code = CC_INVALID_LENGTH;
 		return;
@@ -1516,10 +1560,7 @@ __weak void OEM_1S_MULTI_ACCURACY_SENSOR_READING(ipmi_msg *msg)
 	Response -
 	data 0: Completion code
 	***********************************/
-	if (!msg) {
-		LOG_DBG("failed due to parameter *msg is NULL");
-		return;
-	}
+	CHECK_NULL_ARG(msg);
 
 	if (!msg->data_len) {
 		msg->completion_code = CC_INVALID_LENGTH;
@@ -1849,6 +1890,53 @@ __weak void OEM_1S_GET_SDR(ipmi_msg *msg)
 	return;
 }
 
+__weak void OEM_1S_BMC_IPMB_ACCESS(ipmi_msg *msg)
+{
+	CHECK_NULL_ARG(msg);
+
+#if MAX_IPMB_IDX
+	if (msg->data_len < 2) {
+		msg->completion_code = CC_INVALID_LENGTH;
+		return;
+	}
+
+	if ((IPMB_inf_index_map[BMC_IPMB] == RESERVED) ||
+	    (IPMB_config_table[IPMB_inf_index_map[BMC_IPMB]].interface == RESERVED_IF) ||
+	    (IPMB_config_table[IPMB_inf_index_map[BMC_IPMB]].enable_status == DISABLE)) {
+		LOG_ERR("BMC IPMB interface not supported on this platform");
+		msg->completion_code = CC_NOT_SUPP_IN_CURR_STATE;
+		return;
+	}
+
+	ipmi_msg msgtobmc;
+	memset(&msgtobmc, 0, sizeof(ipmi_msg));
+
+	msgtobmc.InF_source = SELF;
+	msgtobmc.InF_target = BMC_IPMB;
+	msgtobmc.netfn = msg->data[0];
+	msgtobmc.cmd = msg->data[1];
+	msgtobmc.data_len = msg->data_len - 2;
+	memcpy(msgtobmc.data, &msg->data[2], msgtobmc.data_len);
+
+	ipmb_error status = ipmb_read(&msgtobmc, IPMB_inf_index_map[msgtobmc.InF_target]);
+	if (status != IPMB_ERROR_SUCCESS) {
+		msg->completion_code = CC_UNSPECIFIED_ERROR;
+		return;
+	}
+
+	msg->data_len = 1 + msgtobmc.data_len;
+	msg->data[0] = msgtobmc.completion_code;
+	memcpy(&msg->data[1], msgtobmc.data, msgtobmc.data_len);
+	msg->completion_code = CC_SUCCESS;
+
+#else
+	msg->completion_code = CC_UNSPECIFIED_ERROR;
+
+#endif
+
+	return;
+}
+
 void IPMI_OEM_1S_handler(ipmi_msg *msg)
 {
 	CHECK_NULL_ARG(msg);
@@ -1883,6 +1971,10 @@ void IPMI_OEM_1S_handler(ipmi_msg *msg)
 	case CMD_OEM_1S_RESET_BMC:
 		LOG_DBG("Received 1S BMC Reset command");
 		OEM_1S_RESET_BMC(msg);
+		break;
+	case CMD_OEM_1S_READ_FW_IMAGE:
+		LOG_DBG("Received 1S read fw image command");
+		OEM_1S_READ_FW_IMAGE(msg);
 		break;
 	case CMD_OEM_1S_SET_WDT_FEED:
 		LOG_DBG("Received 1S Set WatchDogTimer Feed command");
@@ -2059,6 +2151,10 @@ void IPMI_OEM_1S_handler(ipmi_msg *msg)
 	case CMD_OEM_1S_GET_SDR:
 		LOG_DBG("Received 1S Get SDR command");
 		OEM_1S_GET_SDR(msg);
+		break;
+	case CMD_OEM_1S_BMC_IPMB_ACCESS:
+		LOG_DBG("Received 1S BMC IPMB Access command");
+		OEM_1S_BMC_IPMB_ACCESS(msg);
 		break;
 	default:
 		LOG_ERR("Invalid OEM message, netfn(0x%x) cmd(0x%x)", msg->netfn, msg->cmd);

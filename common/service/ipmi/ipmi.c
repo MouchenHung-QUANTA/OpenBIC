@@ -170,7 +170,7 @@ bool common_add_sel_evt_record(common_addsel_msg_t *sel_msg)
 	uint8_t evt_msg_version = 0x04;
 	ipmi_msg *msg = (ipmi_msg *)malloc(sizeof(ipmi_msg));
 	if (msg == NULL) {
-		LOG_DBG("Malloc fail");
+		LOG_ERR("Add sel msg malloc fail");
 		return false;
 	}
 	memset(msg, 0, sizeof(ipmi_msg));
@@ -193,6 +193,10 @@ bool common_add_sel_evt_record(common_addsel_msg_t *sel_msg)
 	memcpy(&msg->data[10], &sel_msg->sensor_type,
 	       sizeof(common_addsel_msg_t) - sizeof(uint8_t));
 	record_id++;
+
+	LOG_DBG("BIC add sel to target(%xh) with gen_id[%xh %xh] sensor[type %xh #%xh] event[type %xh] data[%xh %xh %xh]",
+		msg->InF_target, msg->data[7], msg->data[8], msg->data[10], msg->data[11],
+		msg->data[12], msg->data[13], msg->data[14], msg->data[15]);
 
 	bool ipmb_flag = true;
 	status = ipmb_read(msg, IPMB_inf_index_map[msg->InF_target]);
@@ -311,7 +315,7 @@ void IPMI_handler(void *arug0, void *arug1, void *arug2)
 				k_msleep(10);
 				kcs_buff = malloc(KCS_BUFF_SIZE * sizeof(uint8_t));
 				if (kcs_buff == NULL) {
-					LOG_DBG("IPMI_handler: Fail to malloc for kcs_buff");
+					LOG_ERR("IPMI_handler: Fail to malloc for kcs_buff");
 					continue;
 				}
 			}

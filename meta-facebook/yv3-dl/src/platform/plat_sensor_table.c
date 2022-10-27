@@ -46,9 +46,6 @@ sensor_cfg plat_sensor_config[] = {
 	{ SENSOR_NUM_T_MB1, sensor_dev_tmp75, I2C_BUS5, TMP75_IN_ADDR, TMP75_TEMP_OFFSET,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
-	{ SENSOR_NUM_T_MB2, sensor_dev_tmp431, I2C_BUS5, TMP431_ADDR, TMP431_LOCAL_TEMPERATRUE,
-	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
-	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
 	{ SENSOR_NUM_T_FIO, sensor_dev_tmp75, I2C_BUS5, TMP75_FIO_ADDR, TMP75_TEMP_OFFSET,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
@@ -64,7 +61,7 @@ sensor_cfg plat_sensor_config[] = {
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[0],
 	  post_xdpe12284c_read, NULL, NULL },
 	{ SENSOR_NUM_VOL_P3V3_STBY_VR, sensor_dev_xdpe12284c, I2C_BUS8, VCCIO_P3V3_STBY_ADDR,
-	  VR_VOL_CMD, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  VR_VOL_CMD, vr_stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[1],
 	  post_xdpe12284c_read, NULL, NULL },
 	{ SENSOR_NUM_V_DIMM_ABC_VR, sensor_dev_xdpe12284c, I2C_BUS8, VDDQ_ABC_ADDR, VR_VOL_CMD,
@@ -86,7 +83,7 @@ sensor_cfg plat_sensor_config[] = {
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[0],
 	  post_xdpe12284c_read, NULL, NULL },
 	{ SENSOR_NUM_CUR_P3V3_STBY_VR, sensor_dev_xdpe12284c, I2C_BUS8, VCCIO_P3V3_STBY_ADDR,
-	  VR_CUR_CMD, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  VR_CUR_CMD, vr_stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[1],
 	  post_xdpe12284c_read, NULL, NULL },
 	{ SENSOR_NUM_CURR_DIMM_ABC_VR, sensor_dev_xdpe12284c, I2C_BUS8, VDDQ_ABC_ADDR, VR_CUR_CMD,
@@ -108,7 +105,7 @@ sensor_cfg plat_sensor_config[] = {
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[0],
 	  post_xdpe12284c_read, NULL, NULL },
 	{ SENSOR_NUM_TEP_P3V3_STBY_VR, sensor_dev_xdpe12284c, I2C_BUS8, VCCIO_P3V3_STBY_ADDR,
-	  VR_TEMP_CMD, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  VR_TEMP_CMD, vr_stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[1],
 	  post_xdpe12284c_read, NULL, NULL },
 	{ SENSOR_NUM_T_DIMM_ABC_VR, sensor_dev_xdpe12284c, I2C_BUS8, VDDQ_ABC_ADDR, VR_TEMP_CMD,
@@ -130,7 +127,7 @@ sensor_cfg plat_sensor_config[] = {
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[0],
 	  post_xdpe12284c_read, NULL, NULL },
 	{ SENSOR_NUM_PWR_P3V3_STBY_VR, sensor_dev_xdpe12284c, I2C_BUS8, VCCIO_P3V3_STBY_ADDR,
-	  VR_PWR_CMD, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  VR_PWR_CMD, vr_stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[1],
 	  post_xdpe12284c_read, NULL, NULL },
 	{ SENSOR_NUM_PWR_DIMM_ABC_VR, sensor_dev_xdpe12284c, I2C_BUS8, VDDQ_ABC_ADDR, VR_PWR_CMD,
@@ -200,8 +197,12 @@ sensor_cfg plat_sensor_config[] = {
 	{ SENSOR_NUM_NM_T_PCH, sensor_dev_pch, I2C_BUS6, PCH_ADDR, ME_SENSOR_NUM_TEMP_PCH,
 	  me_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
+};
 
-	// HSC
+sensor_cfg ltc4282_sensor_config_table[] = {
+	{ SENSOR_NUM_T_MB2, sensor_dev_tmp431, I2C_BUS5, TMP431_ADDR, TMP431_LOCAL_TEMPERATRUE,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
 	{ SENSOR_NUM_HSC_TEMP, sensor_dev_tmp431, I2C_BUS5, TMP431_ADDR, TMP431_REMOTE_TEMPERATRUE,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
@@ -217,7 +218,28 @@ sensor_cfg plat_sensor_config[] = {
 	{ SENSOR_NUM_HSC_COUT, sensor_dev_ltc4282, I2C_BUS5, LTC4282_ADDR, LTC4282_VSENSE_OFFSET,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &ltc4282_init_args[0] },
+};
 
+sensor_cfg mp5990_sensor_config_table[] = {
+	{ SENSOR_NUM_T_MB2, sensor_dev_tmp75, I2C_BUS5, TMP75_OUT_ADDR, TMP75_TEMP_OFFSET,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
+	{ SENSOR_NUM_HSC_TEMP, sensor_dev_mp5990, I2C_BUS5, MPS_MP5990_ADDR,
+	  PMBUS_READ_TEMPERATURE_1, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
+	  &mp5990_init_args[0] },
+	{ SENSOR_NUM_HSC_VIN, sensor_dev_mp5990, I2C_BUS5, MPS_MP5990_ADDR, PMBUS_READ_VIN,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &mp5990_init_args[0] },
+	{ SENSOR_NUM_HSC_PIN, sensor_dev_mp5990, I2C_BUS5, MPS_MP5990_ADDR, PMBUS_READ_PIN,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &mp5990_init_args[0] },
+	{ SENSOR_NUM_HSC_COUT, sensor_dev_mp5990, I2C_BUS5, MPS_MP5990_ADDR, PMBUS_READ_IOUT,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &mp5990_init_args[0] },
+	{ SENSOR_NUM_HSC_EIN, sensor_dev_mp5990, I2C_BUS5, MPS_MP5990_ADDR, PMBUS_READ_EIN,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &mp5990_init_args[0] },
 };
 
 sensor_cfg isl69254_sensor_config_table[] = {
@@ -227,7 +249,7 @@ sensor_cfg isl69254_sensor_config_table[] = {
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[0],
 	  post_isl69254_read, NULL, NULL },
 	{ SENSOR_NUM_VOL_P3V3_STBY_VR, sensor_dev_isl69254iraz_t, I2C_BUS8, VCCIO_P3V3_STBY_ADDR,
-	  VR_VOL_CMD, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  VR_VOL_CMD, vr_stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[1],
 	  post_isl69254_read, NULL, NULL },
 	{ SENSOR_NUM_V_DIMM_ABC_VR, sensor_dev_isl69254iraz_t, I2C_BUS8, VDDQ_ABC_ADDR, VR_VOL_CMD,
@@ -251,7 +273,7 @@ sensor_cfg isl69254_sensor_config_table[] = {
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[0],
 	  post_isl69254_read, NULL, NULL },
 	{ SENSOR_NUM_CUR_P3V3_STBY_VR, sensor_dev_isl69254iraz_t, I2C_BUS8, VCCIO_P3V3_STBY_ADDR,
-	  VR_CUR_CMD, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  VR_CUR_CMD, vr_stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[1],
 	  post_isl69254_read, NULL, NULL },
 	{ SENSOR_NUM_CURR_DIMM_ABC_VR, sensor_dev_isl69254iraz_t, I2C_BUS8, VDDQ_ABC_ADDR,
@@ -277,7 +299,7 @@ sensor_cfg isl69254_sensor_config_table[] = {
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[0],
 	  post_isl69254_read, NULL, NULL },
 	{ SENSOR_NUM_TEP_P3V3_STBY_VR, sensor_dev_isl69254iraz_t, I2C_BUS8, VCCIO_P3V3_STBY_ADDR,
-	  VR_TEMP_CMD, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  VR_TEMP_CMD, vr_stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[1],
 	  post_isl69254_read, NULL, NULL },
 	{ SENSOR_NUM_T_DIMM_ABC_VR, sensor_dev_isl69254iraz_t, I2C_BUS8, VDDQ_ABC_ADDR, VR_TEMP_CMD,
@@ -301,7 +323,7 @@ sensor_cfg isl69254_sensor_config_table[] = {
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[0],
 	  post_isl69254_read, NULL, NULL },
 	{ SENSOR_NUM_PWR_P3V3_STBY_VR, sensor_dev_isl69254iraz_t, I2C_BUS8, VCCIO_P3V3_STBY_ADDR,
-	  VR_PWR_CMD, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
+	  VR_PWR_CMD, vr_stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_page_select[1],
 	  post_isl69254_read, NULL, NULL },
 	{ SENSOR_NUM_PWR_DIMM_ABC_VR, sensor_dev_isl69254iraz_t, I2C_BUS8, VDDQ_ABC_ADDR,
@@ -337,6 +359,25 @@ void load_sensor_config(void)
 	pal_extend_sensor_config();
 }
 
+uint8_t pal_get_extend_sensor_config()
+{
+	uint8_t extend_sensor_config_size = 0;
+	uint8_t hsc_module = get_hsc_module();
+	switch (hsc_module) {
+	case HSC_MODULE_MP5990:
+		extend_sensor_config_size += ARRAY_SIZE(mp5990_sensor_config_table);
+		break;
+	case HSC_MODULE_LTC4282:
+		extend_sensor_config_size += ARRAY_SIZE(ltc4282_sensor_config_table);
+		break;
+	default:
+		LOG_ERR("unsupported HSC module, HSC module: 0x%x", hsc_module);
+		break;
+	}
+
+	return extend_sensor_config_size;
+}
+
 static int check_vr_type(void)
 {
 	uint8_t retry = 5;
@@ -366,9 +407,67 @@ static int check_vr_type(void)
 	return -1;
 }
 
+void check_outlet_temp_type(uint8_t index)
+{
+	if (index >= sensor_config_count) {
+		printf("Out of sensor_config_count\n");
+		return;
+	}
+
+	uint8_t retry = 5;
+	I2C_MSG msg;
+	uint8_t CID = 0;
+	uint8_t VID = 0;
+
+	/* Get Chip ID and Manufacturer ID
+	 * - Command code: 0xFD, 0xFE
+	 * TMP431: 0x31 0x55
+	 * NCT7718W: 0x50 0x50
+	 * G788P81U: 0x50 0x47
+	 */
+	memset(&msg, 0, sizeof(msg));
+	msg.bus = sensor_config[index].port;
+	msg.target_addr = sensor_config[index].target_addr;
+	msg.tx_len = 1;
+	msg.rx_len = 1;
+	msg.data[0] = NCT7718W_CHIP_ID_OFFSET;
+
+	if (i2c_master_read(&msg, retry)) {
+		printf("Failed to read Outlet_Temp chip ID: register(0x%x)\n",
+		       NCT7718W_CHIP_ID_OFFSET);
+		return;
+	}
+	CID = msg.data[0];
+
+	memset(&msg, 0, sizeof(msg));
+	msg.bus = sensor_config[index].port;
+	msg.target_addr = sensor_config[index].target_addr;
+	msg.tx_len = 1;
+	msg.rx_len = 1;
+	msg.data[0] = NCT7718W_VENDOR_ID_OFFSET;
+
+	if (i2c_master_read(&msg, retry)) {
+		printf("Failed to read Outlet_Temp vendor ID: register(0x%x)\n",
+		       NCT7718W_VENDOR_ID_OFFSET);
+		return;
+	}
+	VID = msg.data[0];
+
+	if ((CID == 0x31) && (VID == 0x55)) {
+		sensor_config[index].type = sensor_dev_tmp431;
+	} else if ((CID == 0x50) && (VID == 0x50)) {
+		sensor_config[index].type = sensor_dev_nct7718w;
+	} else if ((CID == 0x50) && (VID == 0x47)) {
+		sensor_config[index].type = sensor_dev_g788p81u;
+	} else {
+		printf("Unknown Outlet_Temp type\n");
+	}
+}
+
 void pal_extend_sensor_config()
 {
 	uint8_t sensor_count = 0;
+	uint8_t hsc_module = get_hsc_module();
 
 	switch (check_vr_type()) {
 	case VR_RNS:
@@ -380,6 +479,31 @@ void pal_extend_sensor_config()
 	case VR_INF:
 	default:
 		printf("Using default VR(INF) sensor table\n");
+		break;
+	}
+
+	/* Check outlet temperature sensor type */
+	for (uint8_t index = 0; index < sensor_config_count; index++) {
+		if (sensor_config[index].type == sensor_dev_tmp431) {
+			check_outlet_temp_type(index);
+		}
+	}
+
+	switch (hsc_module) {
+	case HSC_MODULE_MP5990:
+		sensor_count = ARRAY_SIZE(mp5990_sensor_config_table);
+		for (int index = 0; index < sensor_count; index++) {
+			add_sensor_config(mp5990_sensor_config_table[index]);
+		}
+		break;
+	case HSC_MODULE_LTC4282:
+		sensor_count = ARRAY_SIZE(ltc4282_sensor_config_table);
+		for (int index = 0; index < sensor_count; index++) {
+			add_sensor_config(ltc4282_sensor_config_table[index]);
+		}
+		break;
+	default:
+		LOG_ERR("unsupported HSC module, HSC module: 0x%x", hsc_module);
 		break;
 	}
 
