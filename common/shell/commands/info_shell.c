@@ -17,6 +17,7 @@
 #include "info_shell.h"
 #include "plat_version.h"
 #include "util_sys.h"
+#include "mctp_vend_pci.h"
 
 #ifndef CONFIG_BOARD
 #define CONFIG_BOARD "unknown"
@@ -46,5 +47,23 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 	shell_print(
 		shell,
 		"========================{SHELL COMMAND INFO}========================================");
+
+	mctp dummy;
+
+	mctp_vend_pci_msg msg;
+	memset(&msg, 0, sizeof(msg));
+	msg.ext_params.type = MCTP_MEDIUM_TYPE_SMBUS;
+	msg.ext_params.smbus_ext_params.addr = 0xff;
+
+	msg.hdr.cmd = SM_API_CMD_FW_REV;
+	struct _get_fw_rev_req req_data;
+	req_data.switch_id = 0x0000;
+	req_data.rserv = 0x0000;
+
+	msg.cmd_data = (uint8_t *)&req_data;
+	msg.cmd_data_len = sizeof(req_data);
+	if (mctp_vend_pci_send_msg(&dummy, &msg)) {
+		shell_print(shell, "error hapened!");
+	}
 	return 0;
 }
