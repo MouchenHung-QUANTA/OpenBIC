@@ -29,6 +29,7 @@ extern "C" {
 #define MCTP_VEND_PCI_INST_ID_MASK 0x3F
 #define MAX_MCTP_VEND_PCI_PAYLOAD_LEN 0x20
 #define PMG_MCPU_MSG_HEADER_VERSION (1)
+#define MCTP_BYTES_TO_DWORDS( Value )               ((Value) >> 2)
 
 // API Return Code Values
 typedef enum _PEXSM_STATUS_CODE {
@@ -246,7 +247,6 @@ struct _get_fw_rev_req {
 } __attribute__((packed));
 
 struct _get_fw_rev_resp {
-	uint8_t completion_code;
 	union {
 		/** Structured access to firmware version. */
 		struct {
@@ -275,6 +275,8 @@ typedef struct {
 	uint8_t cmd_code;
 	mctp_vend_pci_cmd_fn fn;
 } mctp_vend_pci_handler_t;
+
+uint8_t mctp_vend_pci_send_msg(void *mctp_p, mctp_vend_pci_msg *msg);
 
 #ifdef __cplusplus
 }

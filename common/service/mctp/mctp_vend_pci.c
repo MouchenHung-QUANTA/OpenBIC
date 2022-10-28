@@ -16,6 +16,7 @@
 
 #include "mctp.h"
 #include "mctp_vend_pci.h"
+#include "libutil.h"
 #include <logging/log.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -42,8 +43,8 @@ typedef struct _wait_msg {
 
 static uint8_t mctp_vend_pci_msg_timeout_check(sys_slist_t *list, struct k_mutex *mutex)
 {
-	if (!list || !mutex)
-		return MCTP_ERROR;
+	CHECK_NULL_ARG_WITH_RETURN(list, MCTP_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(mutex, MCTP_ERROR);
 
 	if (k_mutex_lock(mutex, K_MSEC(RESP_MSG_PROC_MUTEX_WAIT_TO_MS))) {
 		LOG_WRN("pldm mutex is locked over %d ms!!", RESP_MSG_PROC_MUTEX_WAIT_TO_MS);
@@ -95,22 +96,47 @@ uint8_t mctp_vend_pci_msg_packer(uint8_t *buff, uint16_t *len, mctp_vend_pci_pkt
 	return MCTP_SUCCESS;
 }
 
+static uint8_t find_rsp_len_by_cmd(SM_API_COMMANDS cmd, uint16_t req_len, uint16_t *rsp_len)
+{
+	CHECK_NULL_ARG_WITH_RETURN(rsp_len, MCTP_ERROR);
+
+	switch (cmd) {
+	case SM_API_CMD_FW_REV:
+		if (req_len != sizeof(struct _get_fw_rev_req))
+			goto error;
+		*rsp_len = sizeof(struct _get_fw_rev_resp);
+		break;
+
+	default:
+		LOG_ERR("mctp_vend_pci_send_msg: given unsupported request command");
+		return MCTP_ERROR;
+	}
+
+	return MCTP_SUCCESS;
+
+error:
+	LOG_ERR("mctp_vend_pci_send_msg: given with invalid request length");
+	return MCTP_ERROR;
+}
+
 uint8_t mctp_vend_pci_send_msg(void *mctp_p, mctp_vend_pci_msg *msg)
 {
-	if (!mctp_p || !msg || !msg->cmd_data)
-		return MCTP_ERROR;
+	CHECK_NULL_ARG_WITH_RETURN(mctp_p, MCTP_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(msg, MCTP_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(msg->cmd_data, MCTP_ERROR);
 
 	if (msg->hdr.cmd >= SM_API_CMD_MAX) {
 		LOG_ERR("Unsupported 7E SM command");
 		return MCTP_ERROR;
 	}
 
-	mctp *mctp_inst = (mctp *)mctp_p;
+	if (find_rsp_len_by_cmd(msg->hdr.cmd, msg->cmd_data_len, &msg->hdr.resp_len))
+		return MCTP_ERROR;
 
 	static uint8_t inst_id;
 	msg->hdr.msg_type = MCTP_MSG_TYPE_VEN_DEF_PCI & 0x7F;
 	msg->hdr.ic = 0;
-	msg->hdr.vendor_id_hi = (BRDCM_ID >> 2) & 0xFF;
+	msg->hdr.vendor_id_hi = (BRDCM_ID >> 8) & 0xFF;
 	msg->hdr.vendor_id_low = BRDCM_ID & 0xFF;
 	msg->hdr.payload_id = MCTP_PAYLOADID_SL_COMMAND;
 	msg->ext_params.tag_owner = 1;
@@ -121,7 +147,7 @@ uint8_t mctp_vend_pci_send_msg(void *mctp_p, mctp_vend_pci_msg *msg)
 	uint8_t buf[MAX_MCTP_VEND_PCI_PAYLOAD_LEN];
 	uint16_t total_pkt = 1;
 	total_pkt += (msg->cmd_data_len / MAX_MCTP_VEND_PCI_PAYLOAD_LEN);
-	if (msg->cmd_data_len % MAX_MCTP_VEND_PCI_PAYLOAD_LEN)
+	if (total_pkt != 1 && msg->cmd_data_len % MAX_MCTP_VEND_PCI_PAYLOAD_LEN)
 		total_pkt++;
 
 	uint8_t *payload_data_p = msg->cmd_data;
@@ -134,21 +160,25 @@ uint8_t mctp_vend_pci_send_msg(void *mctp_p, mctp_vend_pci_msg *msg)
 			/* First packet */
 			msg->hdr.payload_len = sizeof(pmg_mcpu_msg_hdr) + payload_msg_len;
 			msg->hdr.pkt_seq_cnt = cur_idx;
-			msg->hdr.app_msg_tag = (inst_id++) & MCTP_VEND_PCI_INST_ID_MASK;
+			msg->hdr.app_msg_tag = (++inst_id) & MCTP_VEND_PCI_INST_ID_MASK;
 
 			pmg_mcpu_msg_hdr payload_hdr;
+			payload_hdr.msg_len = MCTP_BYTES_TO_DWORDS(msg->cmd_data_len + sizeof(pmg_mcpu_msg_hdr));
 			payload_hdr.hdr_ver = PMG_MCPU_MSG_HEADER_VERSION;
 			payload_hdr.src_domain = 0;
-			payload_hdr.src_addr_type = PMG_MCPU_MSG_ADDRESS_TYPE_MCTP;
 			payload_hdr.src_id = 0; //Thist must be MCTP eid
+			payload_hdr.src_addr_type = PMG_MCPU_MSG_ADDRESS_TYPE_MCTP;
 			payload_hdr.src_type_specific = 0;
 
 			payload_hdr.msg_type = PMG_MCPU_MSG_TYPE_API;
 			payload_hdr.msg_flags = 0;
+			payload_hdr.msg_type_specific = msg->hdr.cmd;
+			payload_hdr.pkt_num = msg->hdr.pkt_seq_cnt;
+			payload_hdr.req_tag = msg->hdr.app_msg_tag;
 			payload_hdr.dest_domain = 0;
-			payload_hdr.dest_addr_type = PMG_MCPU_MSG_ADDRESS_TYPE_MCTP;
 			payload_hdr.dest_id = 0; //Thist must be MCTP eid
-			payload_hdr.dest_type_specific = msg->hdr.cmd;
+			payload_hdr.dest_addr_type = PMG_MCPU_MSG_ADDRESS_TYPE_PCIE;
+			payload_hdr.dest_type_specific = 0;
 
 			memcpy(buf, &msg->hdr, sizeof(mctp_vend_pci_req_first_hdr));
 			memcpy(buf + sizeof(mctp_vend_pci_req_first_hdr), &payload_hdr,
@@ -165,7 +195,7 @@ uint8_t mctp_vend_pci_send_msg(void *mctp_p, mctp_vend_pci_msg *msg)
 			supp_hdr.payload_id = msg->hdr.payload_id;
 			supp_hdr.rsv = 0x00;
 			supp_hdr.pkt_seq_cnt = cur_idx;
-			supp_hdr.app_msg_tag = (inst_id++) & MCTP_VEND_PCI_INST_ID_MASK;
+			supp_hdr.app_msg_tag = (++inst_id) & MCTP_VEND_PCI_INST_ID_MASK;
 			supp_hdr.cmd = msg->hdr.cmd;
 
 			memcpy(buf, &supp_hdr, sizeof(mctp_vend_pci_req_supp_hdr));
@@ -174,9 +204,11 @@ uint8_t mctp_vend_pci_send_msg(void *mctp_p, mctp_vend_pci_msg *msg)
 			len = sizeof(mctp_vend_pci_req_supp_hdr) + payload_msg_len;
 		}
 
-		LOG_HEXDUMP_DBG(buf, len, __func__);
-
+		LOG_HEXDUMP_WRN(buf, len, __func__);
+#if 0
 		/* Send out message */
+		mctp *mctp_inst = (mctp *)mctp_p;
+
 		uint8_t rc = mctp_send_msg(mctp_inst, buf, len, msg->ext_params);
 		if (rc == MCTP_ERROR) {
 			LOG_WRN("mctp_send_msg error!!");
@@ -198,6 +230,7 @@ uint8_t mctp_vend_pci_send_msg(void *mctp_p, mctp_vend_pci_msg *msg)
 		k_mutex_lock(&wait_recv_resp_mutex, K_FOREVER);
 		sys_slist_append(&wait_recv_resp_list, &p->node);
 		k_mutex_unlock(&wait_recv_resp_mutex);
+#endif
 
 		remain_payload_msg_len -= payload_msg_len;
 		if (cur_idx != (total_pkt - 1)) {
