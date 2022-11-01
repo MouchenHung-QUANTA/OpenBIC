@@ -62,8 +62,11 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 
 	msg.cmd_data = (uint8_t *)&req_data;
 	msg.cmd_data_len = sizeof(req_data);
-	if (mctp_vend_pci_send_msg(&dummy, &msg)) {
-		shell_print(shell, "error hapened!");
-	}
+
+	uint8_t rbuf[64];
+	uint16_t resp_len = mctp_vend_pci_read(&dummy, &msg, rbuf, sizeof(rbuf));
+	shell_print(shell, "Get fw version response with %d bytes:", resp_len);
+	shell_hexdump(shell, rbuf, resp_len);
+
 	return 0;
 }

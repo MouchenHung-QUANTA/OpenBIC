@@ -31,6 +31,9 @@ LOG_MODULE_DECLARE(mctp);
 #define RESP_MSG_PROC_MUTEX_WAIT_TO_MS 1000
 #define TO_CHK_INTERVAL_MS 1000
 
+#define VDM_PCI_READ_EVENT_SUCCESS BIT(0)
+#define VDM_PCI_READ_EVENT_TIMEOUT BIT(1)
+
 static K_MUTEX_DEFINE(wait_recv_resp_mutex);
 static sys_slist_t wait_recv_resp_list = SYS_SLIST_STATIC_INIT(&wait_recv_resp_list);
 
@@ -40,6 +43,41 @@ typedef struct _wait_msg {
 	int64_t exp_to_ms;
 	mctp_vend_pci_msg msg;
 } wait_msg;
+
+typedef struct _recv_resp_arg {
+	struct k_msgq *msgq;
+	uint8_t *rbuf;
+	uint16_t rbuf_len;
+	uint16_t return_len;
+} recv_resp_arg;
+
+static void mctp_vend_pci_resp_handler(void *args, uint8_t *rbuf, uint16_t rlen)
+{
+	if (!args || !rbuf || !rlen)
+		return;
+
+	recv_resp_arg *recv_arg = (recv_resp_arg *)args;
+	if (rlen > recv_arg->rbuf_len) {
+		LOG_WRN("[%s] response length(%d) is greater than buffer length(%d)!", __func__,
+			rlen, recv_arg->rbuf_len);
+		recv_arg->return_len = recv_arg->rbuf_len;
+	} else {
+		recv_arg->return_len = rlen;
+	}
+	memcpy(recv_arg->rbuf, rbuf, recv_arg->return_len);
+	uint8_t status = VDM_PCI_READ_EVENT_SUCCESS;
+	k_msgq_put(recv_arg->msgq, &status, K_NO_WAIT);
+}
+
+static void mctp_vend_pci_resp_timeout(void *args)
+{
+	if (!args)
+		return;
+
+	struct k_msgq *msgq = (struct k_msgq *)args;
+	uint8_t status = VDM_PCI_READ_EVENT_TIMEOUT;
+	k_msgq_put(msgq, &status, K_NO_WAIT);
+}
 
 static uint8_t mctp_vend_pci_msg_timeout_check(sys_slist_t *list, struct k_mutex *mutex)
 {
@@ -119,7 +157,43 @@ error:
 	return MCTP_ERROR;
 }
 
-uint8_t mctp_vend_pci_send_msg(void *mctp_p, mctp_vend_pci_msg *msg)
+uint8_t mctp_vend_pci_send_msg(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *buff, uint16_t buff_len)
+{
+	CHECK_NULL_ARG_WITH_RETURN(mctp_p, MCTP_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(msg, MCTP_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(buff, MCTP_ERROR);
+
+	if (!buff_len)
+		return MCTP_ERROR;
+
+	mctp *mctp_inst = (mctp *)mctp_p;
+
+	uint8_t rc = mctp_send_msg(mctp_inst, buff, buff_len, msg->ext_params);
+	if (rc == MCTP_ERROR) {
+		LOG_WRN("mctp_send_msg error!!");
+		return MCTP_ERROR;
+	}
+
+	wait_msg *p = (wait_msg *)malloc(sizeof(*p));
+	if (!p) {
+		LOG_WRN("wait_msg alloc failed!");
+		return MCTP_ERROR;
+	}
+
+	memset(p, 0, sizeof(*p));
+	p->mctp_inst = mctp_inst;
+	p->msg = *msg;
+	p->exp_to_ms =
+		k_uptime_get() + (msg->timeout_ms ? msg->timeout_ms : DEFAULT_WAIT_TO_MS);
+
+	k_mutex_lock(&wait_recv_resp_mutex, K_FOREVER);
+	sys_slist_append(&wait_recv_resp_list, &p->node);
+	k_mutex_unlock(&wait_recv_resp_mutex);
+
+	return MCTP_SUCCESS;
+}
+
+uint16_t mctp_vend_pci_read(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *rbuf, uint16_t rbuf_len)
 {
 	CHECK_NULL_ARG_WITH_RETURN(mctp_p, MCTP_ERROR);
 	CHECK_NULL_ARG_WITH_RETURN(msg, MCTP_ERROR);
@@ -127,11 +201,11 @@ uint8_t mctp_vend_pci_send_msg(void *mctp_p, mctp_vend_pci_msg *msg)
 
 	if (msg->hdr.cmd >= SM_API_CMD_MAX) {
 		LOG_ERR("Unsupported 7E SM command");
-		return MCTP_ERROR;
+		return 0;
 	}
 
 	if (find_rsp_len_by_cmd(msg->hdr.cmd, msg->cmd_data_len, &msg->hdr.resp_len))
-		return MCTP_ERROR;
+		return 0;
 
 	static uint8_t inst_id;
 	msg->hdr.msg_type = MCTP_MSG_TYPE_VEN_DEF_PCI & 0x7F;
@@ -140,6 +214,14 @@ uint8_t mctp_vend_pci_send_msg(void *mctp_p, mctp_vend_pci_msg *msg)
 	msg->hdr.vendor_id_low = BRDCM_ID & 0xFF;
 	msg->hdr.payload_id = MCTP_PAYLOADID_SL_COMMAND;
 	msg->ext_params.tag_owner = 1;
+
+	/* Set rsp relative function */
+	uint8_t event_msgq_buffer[1];
+	struct k_msgq event_msgq;
+
+	k_msgq_init(&event_msgq, event_msgq_buffer, sizeof(uint8_t), 1);
+
+	recv_resp_arg rcv_p;
 
 	uint16_t len = 0;
 	uint16_t payload_msg_len = 0;
@@ -204,32 +286,43 @@ uint8_t mctp_vend_pci_send_msg(void *mctp_p, mctp_vend_pci_msg *msg)
 			len = sizeof(mctp_vend_pci_req_supp_hdr) + payload_msg_len;
 		}
 
-		LOG_HEXDUMP_WRN(buf, len, __func__);
-#if 0
-		/* Send out message */
-		mctp *mctp_inst = (mctp *)mctp_p;
+		LOG_WRN("mctp_vdm_pci REQ tag[%d] pkt[%d/%d]", inst_id&MCTP_VEND_PCI_INST_ID_MASK, cur_idx+1, total_pkt);
+		LOG_HEXDUMP_WRN(buf, len, "Req data:");
+#if 1
+		rcv_p.msgq = &event_msgq;
+		rcv_p.rbuf_len = rbuf_len;
+		rcv_p.rbuf = rbuf;
+		rcv_p.return_len = 0;
+		msg->recv_resp_cb_fn = mctp_vend_pci_resp_handler;
+		msg->recv_resp_cb_args = &rcv_p;
+		msg->timeout_cb_fn = mctp_vend_pci_resp_timeout;
+		msg->timeout_ms = MCTP_VEND_PCI_MSG_TIMEOUT_MS;
 
-		uint8_t rc = mctp_send_msg(mctp_inst, buf, len, msg->ext_params);
-		if (rc == MCTP_ERROR) {
-			LOG_WRN("mctp_send_msg error!!");
-			return MCTP_ERROR;
+		int retry = 0;
+		for (retry = 0; retry < MCTP_VEND_PCI_MSG_RETRY; retry++) {
+			/* Send out message */
+			if (mctp_vend_pci_send_msg(mctp_p, msg, buf, len) != MCTP_SUCCESS) {
+				LOG_WRN("[%s] send msg failed!", __func__);
+				continue;
+			}
+
+			/* Wait for response */
+			uint8_t event;
+			if (k_msgq_get(&event_msgq, &event, K_MSEC(MCTP_VEND_PCI_MSG_TIMEOUT_MS + 1000))) {
+				LOG_WRN("[%s] Failed to get status from msgq!", __func__);
+				continue;
+			}
+			if (event == VDM_PCI_READ_EVENT_SUCCESS)
+				break;
 		}
 
-		wait_msg *p = (wait_msg *)malloc(sizeof(*p));
-		if (!p) {
-			LOG_WRN("wait_msg alloc failed!");
-			return MCTP_ERROR;
+		if (retry == MCTP_VEND_PCI_MSG_RETRY) {
+			LOG_ERR("MCTP VEND PCI send&receive retry over limit at packet #%d/%d\n", cur_idx+1, total_pkt);
+			return 0;
 		}
 
-		memset(p, 0, sizeof(*p));
-		p->mctp_inst = mctp_inst;
-		p->msg = *msg;
-		p->exp_to_ms =
-			k_uptime_get() + (msg->timeout_ms ? msg->timeout_ms : DEFAULT_WAIT_TO_MS);
-
-		k_mutex_lock(&wait_recv_resp_mutex, K_FOREVER);
-		sys_slist_append(&wait_recv_resp_list, &p->node);
-		k_mutex_unlock(&wait_recv_resp_mutex);
+		LOG_WRN("mctp_vdm_pci RSP seq[%d] pkt[%d/%d]:", inst_id&MCTP_VEND_PCI_INST_ID_MASK, cur_idx+1, total_pkt);
+		LOG_HEXDUMP_WRN(rbuf, rcv_p.return_len, "Rsp data:");
 #endif
 
 		remain_payload_msg_len -= payload_msg_len;
@@ -238,7 +331,7 @@ uint8_t mctp_vend_pci_send_msg(void *mctp_p, mctp_vend_pci_msg *msg)
 		}
 	}
 
-	return MCTP_SUCCESS;
+	return rcv_p.return_len;
 }
 
 K_THREAD_DEFINE(vend_pci_tid, 1024, mctp_vend_pci_msg_timeout_monitor, NULL, NULL, NULL, 7, 0, 0);

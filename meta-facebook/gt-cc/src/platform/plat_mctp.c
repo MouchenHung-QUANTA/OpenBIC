@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include "mctp.h"
 #include "mctp_ctrl.h"
+#include "mctp_vend_pci.h"
 #include "pldm.h"
 #include "ipmi.h"
 #include "sensor.h"
@@ -280,6 +281,30 @@ bool mctp_add_sel_to_ipmi(common_addsel_msg_t *sel_msg)
 	if ((resp->header.completion_code != MCTP_SUCCESS) ||
 	    (resp->header.ipmi_comp_code != CC_SUCCESS)) {
 		LOG_ERR("[%s] Check reponse completion code fail", __func__);
+		return false;
+	}
+
+	return true;
+}
+
+bool mctp_vd_pci_get_fw_version()
+{
+	mctp_vend_pci_msg msg;
+	memset(&msg, 0, sizeof(msg));
+	msg.ext_params.type = MCTP_MEDIUM_TYPE_SMBUS;
+	msg.ext_params.smbus_ext_params.addr = 0xff;
+
+	msg.hdr.cmd = SM_API_CMD_FW_REV;
+	struct _get_fw_rev_req req_data;
+	req_data.switch_id = 0x0000;
+	req_data.rserv = 0x0000;
+
+	msg.cmd_data = (uint8_t *)&req_data;
+	msg.cmd_data_len = sizeof(req_data);
+
+	uint16_t buffer[64];
+	if (mctp_vend_pci_read(find_mctp_by_smbus(0xFF), &msg, buffer, sizeof(buffer))) {
+		LOG_ERR("error hapened!");
 		return false;
 	}
 

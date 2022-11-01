@@ -28,6 +28,8 @@ extern "C" {
 #define BRDCM_ID 0x1000
 #define MCTP_VEND_PCI_INST_ID_MASK 0x3F
 #define MAX_MCTP_VEND_PCI_PAYLOAD_LEN 0x20
+#define MCTP_VEND_PCI_MSG_TIMEOUT_MS 5000
+#define MCTP_VEND_PCI_MSG_RETRY 3
 #define PMG_MCPU_MSG_HEADER_VERSION (1)
 #define MCTP_BYTES_TO_DWORDS( Value )               ((Value) >> 2)
 
@@ -276,7 +278,8 @@ typedef struct {
 	mctp_vend_pci_cmd_fn fn;
 } mctp_vend_pci_handler_t;
 
-uint8_t mctp_vend_pci_send_msg(void *mctp_p, mctp_vend_pci_msg *msg);
+uint16_t mctp_vend_pci_read(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *rbuf, uint16_t rbuf_len);
+uint8_t mctp_vend_pci_send_msg(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *buff, uint16_t buff_len);
 
 #ifdef __cplusplus
 }
