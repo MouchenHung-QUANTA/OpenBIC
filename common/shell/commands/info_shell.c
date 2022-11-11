@@ -18,6 +18,7 @@
 #include "plat_version.h"
 #include "util_sys.h"
 #include "mctp_vend_pci.h"
+#include "plat_mctp.h"
 
 #ifndef CONFIG_BOARD
 #define CONFIG_BOARD "unknown"
@@ -48,25 +49,91 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 		shell,
 		"========================{SHELL COMMAND INFO}========================================");
 
-	mctp dummy;
+	shell_print(shell, "-----------------------------------------------------");
+	struct _get_fw_rev_resp rsp;
+	for (int i = 0; i < 4; i++) {
+		if (mctp_vd_pci_get_fw_version(i, &rsp) == false) {
+			shell_error(shell, "PEX %d get fw revision failed!", i);
+			continue;
+		}
 
-	mctp_vend_pci_msg msg;
-	memset(&msg, 0, sizeof(msg));
-	msg.ext_params.type = MCTP_MEDIUM_TYPE_SMBUS;
-	msg.ext_params.smbus_ext_params.addr = 0xff;
+		shell_print(shell, "[ PEX %d get revision ]", i);
+		shell_print(shell, "* fw version: %d.%d.%d.%d", rsp.FwVer.Field.Major,
+			    rsp.FwVer.Field.Minor, rsp.FwVer.Field.Dev, rsp.FwVer.Field.Unit,
+			    rsp.FwVer.Field.Dev);
+		shell_print(shell, "* SM api version: %d.%d", rsp.SmApiVer.Field.Major,
+			    rsp.SmApiVer.Field.Minor);
+	}
 
-	msg.hdr.cmd = SM_API_CMD_FW_REV;
-	struct _get_fw_rev_req req_data;
-	req_data.switch_id = 0x0000;
-	req_data.rserv = 0x0000;
+	shell_print(shell, "-----------------------------------------------------");
+	struct _get_sw_attr_resp rsp1;
+	for (int i = 0; i < 4; i++) {
+		if (mctp_vd_pci_get_sw_attr(i, &rsp1) == false) {
+			shell_error(shell, "PEX %d get sw attributes failed!", i);
+			continue;
+		}
 
-	msg.cmd_data = (uint8_t *)&req_data;
-	msg.cmd_data_len = sizeof(req_data);
+		shell_print(shell, "[ PEX %d get attributes ]", i);
+		shell_print(shell, "* Switch id:          %.4xh", rsp1.SwAttr.SwProp.SwitchID);
+		shell_print(shell, "* Chip type:          %.4xh", rsp1.SwAttr.SwProp.ChipType);
+		shell_print(shell, "* Chip id:            %.4xh", rsp1.SwAttr.SwProp.ChipID);
+		shell_print(shell, "* Chip revision:      %xh", rsp1.SwAttr.SwProp.ChipRev);
+		shell_print(shell, "* Station mask:       %xh", rsp1.SwAttr.SwProp.StnMask);
+		shell_print(shell, "* Station count:      %d", rsp1.SwAttr.SwProp.StnCount);
+		shell_print(shell, "* Port per station:   %d", rsp1.SwAttr.SwProp.PortsPerStn);
+		shell_print(shell, "* iSSW/BSW port num:  %d", rsp1.SwAttr.SwProp.MgmtPortNum);
+		shell_print(shell, "* Flags:              %xh", rsp1.SwAttr.SwProp.Flags);
 
-	uint8_t rbuf[64];
-	uint16_t resp_len = mctp_vend_pci_read(&dummy, &msg, rbuf, sizeof(rbuf));
-	shell_print(shell, "Get fw version response with %d bytes:", resp_len);
-	shell_hexdump(shell, rbuf, resp_len);
+		for (int stn_idx = 0; stn_idx < PMG_MAX_STN; stn_idx++) {
+			shell_print(shell, "* Station%d:", stn_idx);
+			shell_print(shell, "  * flags               %xh:",
+				    rsp1.SwAttr.SwProp.Stn[stn_idx].Flags);
+			shell_print(shell, "  * Active port count:  %d",
+				    rsp1.SwAttr.SwProp.Stn[stn_idx].ActivePortCount);
+			shell_print(shell, "  * Config:             %.2xh",
+				    rsp1.SwAttr.SwProp.Stn[stn_idx].Config);
+		}
+	}
+
+	shell_print(shell, "-----------------------------------------------------");
+	struct _get_sw_temp_resp rsp2;
+	for (int i = 0; i < 4; i++) {
+		if (mctp_vd_pci_get_sw_temp(i, &rsp2) == false) {
+			shell_error(shell, "PEX %d get sw temp failed!", i);
+			continue;
+		}
+
+		shell_print(shell, "[ PEX %d get sw temperature ]", i);
+		shell_print(shell, "* status:  %xh", rsp2.Status);
+		shell_print(shell, "* val:     %.4xh", rsp2.TempInCelsius);
+	}
+
+	shell_print(shell, "-----------------------------------------------------");
+	struct _sm_sw_mfg_info_resp rsp3;
+	for (int i = 0; i < 4; i++) {
+		if (mctp_vd_pci_get_mfg_info(i, &rsp3) == false) {
+			shell_error(shell, "PEX %d get mfg info failed!", i);
+			continue;
+		}
+
+		shell_print(shell, "[ PEX %d get attributes ]", i);
+		shell_print(shell, "* Chip secure:         %xh", rsp3.SwMfgInfo.ChipSecure);
+		shell_print(shell, "* Chip secure ver num: %xh", rsp3.SwMfgInfo.ChipSecureVN);
+		shell_print(shell, "* Chip revision leval: %xh", rsp3.SwMfgInfo.ChipRev);
+		shell_print(shell, "* Chip id:             %.2xh", rsp3.SwMfgInfo.ChipID);
+		shell_print(shell, "* Chip type:           %.2xh", rsp3.SwMfgInfo.ChipType);
+		shell_print(shell, "* Lane numbers:        %.2xh", rsp3.SwMfgInfo.NumLanes);
+		shell_print(shell, "* Vendor id:");
+		shell_hexdump(shell, rsp3.SwMfgInfo.VendorID, HALI_MFG_CONFIG_VENDOR_ID_LEN);
+		shell_print(shell, "* Product id:");
+		shell_hexdump(shell, rsp3.SwMfgInfo.ProductID, HALI_MFG_CONFIG_PRODUCT_ID_LEN);
+		shell_print(shell, "* Product revsion level:");
+		shell_hexdump(shell, rsp3.SwMfgInfo.ProdRevLevel,
+			      HALI_MFG_CONFIG_PRODUCT_REV_LEVEL_LEN);
+		shell_print(shell, "* Vendor spec data:");
+		shell_hexdump(shell, rsp3.SwMfgInfo.VendSpecData,
+			      HALI_MFG_CONFIG_VENDOR_SPECIFIC_LEN);
+	}
 
 	return 0;
 }
