@@ -27,14 +27,38 @@ extern "C" {
 
 #define BRDCM_ID 0x1000
 #define MCTP_VEND_PCI_INST_ID_MASK 0x3F
-#define MAX_MCTP_VEND_PCI_PAYLOAD_LEN 0x20
+#define MAX_MCTP_VEND_PCI_PAYLOAD_LEN 0x60
 #define MCTP_VEND_PCI_MSG_TIMEOUT_MS 5000
 #define MCTP_VEND_PCI_MSG_RETRY 3
 #define PMG_MCPU_MSG_HEADER_VERSION (1)
-#define MCTP_BYTES_TO_DWORDS( Value )               ((Value) >> 2)
+
+#define PMG_MAX_PORT (128) // Max port number
+#define PMG_MAX_STN 8 // Max stations in chip
+
+/** Definitions copied from HAL header. Should remain in-sync if HAL is modified*/
+/** Vendor Id length. */
+#define HALI_MFG_CONFIG_VENDOR_ID_LEN (8)
+/** Product Id length. */
+#define HALI_MFG_CONFIG_PRODUCT_ID_LEN (16)
+/** Vendor specific length. */
+#define HALI_MFG_CONFIG_VENDOR_SPECIFIC_LEN (8)
+/** Product revision level length. */
+#define HALI_MFG_CONFIG_PRODUCT_REV_LEVEL_LEN (4)
+
+#define MCTP_BYTES_TO_DWORDS(Value) ((Value) >> 2)
+
+/** PMG_PORT_MASK_xx --> PMG_BITMASK conversions */
+#define PMG_BITMASK_T(Name, Bits) uint32_t(Name)[((Bits) + 31) / 32]
+#define PMG_PORT_MASK_T(Name) PMG_BITMASK_T((Name), PMG_MAX_PORT)
+
+struct _pex_dev_info {
+	uint8_t bus;
+	uint8_t addr; // i2c slave address (8 bit)
+	uint8_t ep;
+};
 
 // API Return Code Values
-typedef enum _PEXSM_STATUS_CODE {
+typedef enum _pexsm_status_code {
 	PEXSM_STATUS_SUCCESS = 0, /**< Success */
 	PEXSM_STATUS_FAILED, /**< Failed */
 	PEXSM_STATUS_UNSUPPORTED, /**< Unsupported */
@@ -79,7 +103,19 @@ typedef enum _PEXSM_STATUS_CODE {
                                                    firmware is using SM API version lesser than 5.0 */
 
 	PEXSM_STATUS_DEFAULT = 0xFFFF /**< Default initialized value */
-} PEXSM_STATUS_CODE;
+} pexsm_status_code;
+
+/* HALI_ADC_STATUS enumerates values returned by various ADC APIs. */
+typedef enum _hali_adc_status {
+	HALI_ADC_STATUS_SUCCESS, // API operation successful
+	HALI_ADC_STATUS_INIT_FAILED, // ADC initialization failed
+	HALI_ADC_STATUS_INVALID_CONFIG, // Configuration parameters validation failed
+	HALI_ADC_STATUS_DATA_NOT_READY, // No valid ADC reading available
+	HALI_ADC_STATUS_NULL_POINTER, // Null pointer specified
+	HALI_ADC_STATUS_INVALID_CHL, // Out of range channel input
+	HALI_ADC_STATUS_INVALID_BLK_NUM, // Out of range block number
+	HALI_ADC_STATUS_MUTEX_ERROR // Mutex error
+} hali_adc_status;
 
 enum mctp_vend_pci_completion_codes {
 	MCTP_7E_CC_SUCCESS,
@@ -161,7 +197,7 @@ typedef enum {
 	SUPP_PACKET,
 } mctp_vend_pci_pkt_t;
 
-/** MCTP VDM Message Request First Packet Header */
+/* MCTP VDM Message Request First Packet Header */
 typedef struct __attribute__((packed)) {
 	uint8_t msg_type : 7; /* 0x7E - Vendor defined message */
 	uint8_t ic : 1; /* Indicates if this packet includes PEC */
@@ -243,6 +279,60 @@ typedef struct {
 	void *timeout_cb_fn_args;
 } mctp_vend_pci_msg;
 
+/** Switch ID unique within fabric */
+typedef struct _pmg_switch_id {
+	union {
+		uint16_t ID; /**< Switch ID */
+		struct {
+			uint8_t Number; /**< Chip number within domain (0-based) */
+			uint8_t Domain; /**< Fabric domain number */
+		} DN;
+	} u;
+} __packed pmg_switch_id;
+
+/** Switch properties */
+typedef struct _pmg_switch_prop {
+	pmg_switch_id SwitchID; /**< Switch ID */
+	uint16_t ChipType; /**< Chip type from HW device ID */
+	uint16_t ChipID; /**< Chip ID */
+	uint8_t ChipRev; /**< Chip revision */
+	uint8_t StnMask; /**< Mask to denote which stations enabled in chip */
+	uint8_t StnCount; /**< Number of stations in chip */
+	uint8_t PortsPerStn; /**< Number of ports per station */
+	uint8_t MgmtPortNum; /**< Management(iSSW) / Upstream(BSW) port number */
+	uint8_t Flags; /**< Switch-specific flags */
+	struct {
+		uint8_t Flags; /**< Station-specific flags */
+		uint8_t ActivePortCount; /**< Number of active ports in station */
+		uint16_t Config; /**< Station port configuration */
+	} Stn[PMG_MAX_STN];
+} __packed pmg_switch_prop;
+
+typedef struct _sm_sw_mfg_info {
+	uint8_t ChipSecure : 1; /**< 1: Secure, 0: Non-Secure */
+	uint8_t ChipSecureVN : 7; /**< Chip Secure Version Number */
+	uint8_t ChipRev; /**< Chip Rev Level */
+	uint16_t ChipID; /**< Chip ID */
+	uint16_t ChipType; /**< Chip Type */
+	uint16_t NumLanes; /**< No. of lanes, 0xFFFF represents Unknown */
+	uint32_t Reserved; /**< Reserved */
+	uint8_t VendorID[HALI_MFG_CONFIG_VENDOR_ID_LEN]; /**< Vendor ID - String not NULL terminated */
+	uint8_t ProductID
+		[HALI_MFG_CONFIG_PRODUCT_ID_LEN]; /**< Product ID - String not NULL terminated */
+	uint8_t ProdRevLevel
+		[HALI_MFG_CONFIG_PRODUCT_REV_LEVEL_LEN]; /**< Product Revision Level - String not NULL terminated */
+	uint8_t VendSpecData
+		[HALI_MFG_CONFIG_VENDOR_SPECIFIC_LEN]; /**< Vendor Specific Data - String not NULL terminated */
+} __packed sm_sw_mfg_info;
+
+typedef struct _sm_switch_attr {
+	pmg_switch_prop SwProp; /**< Switch Properties */
+	PMG_PORT_MASK_T(ActivePortMask); /**< Mask of enabled ports */
+	PMG_PORT_MASK_T(HostPortMask); /**< Mask of ports set as host type */
+	PMG_PORT_MASK_T(FabricPortMask); /**< Mask of ports set as fabric type */
+	PMG_PORT_MASK_T(DsPortMask); /**< Mask of ports set as downstream type */
+} __packed sm_switch_attr;
+
 struct _get_fw_rev_req {
 	uint16_t switch_id;
 	uint16_t rserv;
@@ -250,7 +340,6 @@ struct _get_fw_rev_req {
 
 struct _get_fw_rev_resp {
 	union {
-		/** Structured access to firmware version. */
 		struct {
 			uint8_t Dev; /**< Development Version */
 			uint8_t Unit; /**< Unit Version */
@@ -261,7 +350,6 @@ struct _get_fw_rev_resp {
 	} FwVer;
 
 	union {
-		/** Structured access to API version used in firmware */
 		struct {
 			uint8_t Reserved[2]; /**< Reserved to DWORD Align */
 			uint8_t Minor; /**< Minor Version */
@@ -269,6 +357,38 @@ struct _get_fw_rev_resp {
 		} Field;
 		uint32_t Word;
 	} SmApiVer;
+} __attribute__((packed));
+
+struct _get_sw_attr_req {
+	uint16_t switch_id;
+	uint16_t rserv;
+} __attribute__((packed));
+
+struct _get_sw_attr_resp {
+	uint16_t Status; /**< Operation Status */
+	uint16_t Reserved; /**< Reserved */
+	sm_switch_attr SwAttr; /**< struct of type SM_SWITCH_ATTR */
+} __attribute__((packed));
+
+struct _sm_sw_mfg_info_req {
+	uint16_t switch_id;
+	uint16_t rserv;
+} __attribute__((packed));
+
+struct _sm_sw_mfg_info_resp {
+	uint16_t Status; /**< Operation Status */
+	uint16_t Reserved; /**< Reserved */
+	sm_sw_mfg_info SwMfgInfo; /**< struct of type SM_SW_MFG_INFO */
+} __attribute__((packed));
+
+struct _get_sw_temp_req {
+	uint16_t switch_id;
+	uint16_t rserv;
+} __attribute__((packed));
+
+struct _get_sw_temp_resp {
+	int32_t TempInCelsius; /**< Chip Temperature */
+	hali_adc_status Status; /**< Operation Status */
 } __attribute__((packed));
 
 typedef uint8_t (*mctp_vend_pci_cmd_fn)(void *, uint8_t *, uint16_t, uint8_t *, uint16_t *, void *);
@@ -279,7 +399,10 @@ typedef struct {
 } mctp_vend_pci_handler_t;
 
 uint16_t mctp_vend_pci_read(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *rbuf, uint16_t rbuf_len);
-uint8_t mctp_vend_pci_send_msg(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *buff, uint16_t buff_len);
+uint8_t mctp_vend_pci_send_msg(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *buff,
+			       uint16_t buff_len);
+uint8_t mctp_vdm_pci_cmd_handler(void *mctp_p, uint8_t *buf, uint32_t len,
+				 mctp_ext_params ext_params);
 
 #ifdef __cplusplus
 }

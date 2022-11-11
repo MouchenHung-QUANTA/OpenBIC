@@ -53,7 +53,10 @@ typedef struct _recv_resp_arg {
 
 static void mctp_vend_pci_resp_handler(void *args, uint8_t *rbuf, uint16_t rlen)
 {
-	if (!args || !rbuf || !rlen)
+	CHECK_NULL_ARG(args);
+	CHECK_NULL_ARG(rbuf);
+
+	if (!rlen)
 		return;
 
 	recv_resp_arg *recv_arg = (recv_resp_arg *)args;
@@ -71,8 +74,7 @@ static void mctp_vend_pci_resp_handler(void *args, uint8_t *rbuf, uint16_t rlen)
 
 static void mctp_vend_pci_resp_timeout(void *args)
 {
-	if (!args)
-		return;
+	CHECK_NULL_ARG(args);
 
 	struct k_msgq *msgq = (struct k_msgq *)args;
 	uint8_t status = VDM_PCI_READ_EVENT_TIMEOUT;
@@ -98,8 +100,8 @@ static uint8_t mctp_vend_pci_msg_timeout_check(sys_slist_t *list, struct k_mutex
 		wait_msg *p = (wait_msg *)node;
 
 		if ((p->exp_to_ms <= cur_uptime)) {
-			printk("mctp vendor pci msg timeout!!\n");
-			printk("cmd %x, app msg tag %x\n", p->msg.hdr.cmd, p->msg.hdr.app_msg_tag);
+			LOG_ERR("mctp vendor pci msg timeout, remove cmd %x tag %x", p->msg.hdr.cmd,
+				p->msg.hdr.app_msg_tag);
 			sys_slist_remove(list, pre_node, node);
 
 			if (p->msg.timeout_cb_fn)
@@ -145,6 +147,24 @@ static uint8_t find_rsp_len_by_cmd(SM_API_COMMANDS cmd, uint16_t req_len, uint16
 		*rsp_len = sizeof(struct _get_fw_rev_resp);
 		break;
 
+	case SM_API_CMD_GET_SW_ATTR:
+		if (req_len != sizeof(struct _get_sw_attr_req))
+			goto error;
+		*rsp_len = sizeof(struct _get_sw_attr_resp);
+		break;
+
+	case SM_API_CMD_GET_SW_MFG_INFO:
+		if (req_len != sizeof(struct _sm_sw_mfg_info_req))
+			goto error;
+		*rsp_len = sizeof(struct _sm_sw_mfg_info_resp);
+		break;
+
+	case SM_API_CMD_GET_SW_TEMP:
+		if (req_len != sizeof(struct _get_sw_temp_req))
+			goto error;
+		*rsp_len = sizeof(struct _get_sw_temp_resp);
+		break;
+
 	default:
 		LOG_ERR("mctp_vend_pci_send_msg: given unsupported request command");
 		return MCTP_ERROR;
@@ -157,7 +177,72 @@ error:
 	return MCTP_ERROR;
 }
 
-uint8_t mctp_vend_pci_send_msg(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *buff, uint16_t buff_len)
+static uint8_t mctp_vdm_pci_cmd_resp_process(mctp *mctp_inst, uint8_t *buf, uint32_t len,
+					     mctp_ext_params ext_params)
+{
+	CHECK_NULL_ARG_WITH_RETURN(mctp_inst, MCTP_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(buf, MCTP_ERROR);
+
+	if (!len)
+		return MCTP_ERROR;
+
+	if (k_mutex_lock(&wait_recv_resp_mutex, K_MSEC(RESP_MSG_PROC_MUTEX_WAIT_TO_MS))) {
+		LOG_WRN("mutex is locked over %d ms!", RESP_MSG_PROC_MUTEX_WAIT_TO_MS);
+		return MCTP_ERROR;
+	}
+
+	mctp_vend_pci_rsp_first_hdr *hdr = (mctp_vend_pci_rsp_first_hdr *)buf;
+	sys_snode_t *node;
+	sys_snode_t *s_node;
+	sys_snode_t *pre_node = NULL;
+	sys_snode_t *found_node = NULL;
+
+	SYS_SLIST_FOR_EACH_NODE_SAFE (&wait_recv_resp_list, node, s_node) {
+		wait_msg *p = (wait_msg *)node;
+		/* found the proper handler */
+		if ((p->msg.hdr.app_msg_tag == hdr->app_msg_tag) && (p->mctp_inst == mctp_inst)) {
+			found_node = node;
+			sys_slist_remove(&wait_recv_resp_list, pre_node, node);
+			break;
+		} else {
+			pre_node = node;
+		}
+	}
+	k_mutex_unlock(&wait_recv_resp_mutex);
+
+	if (found_node) {
+		/* invoke resp handler */
+		wait_msg *p = (wait_msg *)found_node;
+		if (p->msg.recv_resp_cb_fn)
+			p->msg.recv_resp_cb_fn(
+				p->msg.recv_resp_cb_args, buf + sizeof(p->msg.hdr),
+				len - sizeof(p->msg.hdr)); /* remove mctp ctrl header for handler */
+		free(p);
+	}
+
+	return MCTP_SUCCESS;
+}
+
+uint8_t mctp_vdm_pci_cmd_handler(void *mctp_p, uint8_t *buf, uint32_t len,
+				 mctp_ext_params ext_params)
+{
+	CHECK_NULL_ARG_WITH_RETURN(mctp_p, MCTP_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(buf, MCTP_ERROR);
+
+	if (!len)
+		return MCTP_ERROR;
+
+	mctp *mctp_inst = (mctp *)mctp_p;
+
+	/* Assume that only catch response-messages from pex */
+	if (1)
+		return mctp_vdm_pci_cmd_resp_process(mctp_inst, buf, len, ext_params);
+
+	return MCTP_SUCCESS;
+}
+
+uint8_t mctp_vend_pci_send_msg(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *buff,
+			       uint16_t buff_len)
 {
 	CHECK_NULL_ARG_WITH_RETURN(mctp_p, MCTP_ERROR);
 	CHECK_NULL_ARG_WITH_RETURN(msg, MCTP_ERROR);
@@ -183,8 +268,7 @@ uint8_t mctp_vend_pci_send_msg(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *bu
 	memset(p, 0, sizeof(*p));
 	p->mctp_inst = mctp_inst;
 	p->msg = *msg;
-	p->exp_to_ms =
-		k_uptime_get() + (msg->timeout_ms ? msg->timeout_ms : DEFAULT_WAIT_TO_MS);
+	p->exp_to_ms = k_uptime_get() + (msg->timeout_ms ? msg->timeout_ms : DEFAULT_WAIT_TO_MS);
 
 	k_mutex_lock(&wait_recv_resp_mutex, K_FOREVER);
 	sys_slist_append(&wait_recv_resp_list, &p->node);
@@ -245,14 +329,15 @@ uint16_t mctp_vend_pci_read(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *rbuf,
 			msg->hdr.app_msg_tag = (++inst_id) & MCTP_VEND_PCI_INST_ID_MASK;
 
 			pmg_mcpu_msg_hdr payload_hdr;
-			payload_hdr.msg_len = MCTP_BYTES_TO_DWORDS(msg->cmd_data_len + sizeof(pmg_mcpu_msg_hdr));
+			payload_hdr.msg_len =
+				MCTP_BYTES_TO_DWORDS(msg->cmd_data_len + sizeof(pmg_mcpu_msg_hdr));
 			payload_hdr.hdr_ver = PMG_MCPU_MSG_HEADER_VERSION;
 			payload_hdr.src_domain = 0;
 			payload_hdr.src_id = 0; //Thist must be MCTP eid
 			payload_hdr.src_addr_type = PMG_MCPU_MSG_ADDRESS_TYPE_MCTP;
 			payload_hdr.src_type_specific = 0;
 
-			payload_hdr.msg_type = PMG_MCPU_MSG_TYPE_API;
+			payload_hdr.msg_type = PMG_MCPU_MSG_TYPE_FABRIC_EVENT;
 			payload_hdr.msg_flags = 0;
 			payload_hdr.msg_type_specific = msg->hdr.cmd;
 			payload_hdr.pkt_num = msg->hdr.pkt_seq_cnt;
@@ -286,8 +371,9 @@ uint16_t mctp_vend_pci_read(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *rbuf,
 			len = sizeof(mctp_vend_pci_req_supp_hdr) + payload_msg_len;
 		}
 
-		LOG_WRN("mctp_vdm_pci REQ tag[%d] pkt[%d/%d]", inst_id&MCTP_VEND_PCI_INST_ID_MASK, cur_idx+1, total_pkt);
-		LOG_HEXDUMP_WRN(buf, len, "Req data:");
+		LOG_DBG("mctp_vdm_pci REQ tag[%d] pkt[%d/%d]", inst_id & MCTP_VEND_PCI_INST_ID_MASK,
+			cur_idx + 1, total_pkt);
+		LOG_HEXDUMP_DBG(buf, len, "Req data:");
 #if 1
 		rcv_p.msgq = &event_msgq;
 		rcv_p.rbuf_len = rbuf_len;
@@ -308,7 +394,8 @@ uint16_t mctp_vend_pci_read(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *rbuf,
 
 			/* Wait for response */
 			uint8_t event;
-			if (k_msgq_get(&event_msgq, &event, K_MSEC(MCTP_VEND_PCI_MSG_TIMEOUT_MS + 1000))) {
+			if (k_msgq_get(&event_msgq, &event,
+				       K_MSEC(MCTP_VEND_PCI_MSG_TIMEOUT_MS + 1000))) {
 				LOG_WRN("[%s] Failed to get status from msgq!", __func__);
 				continue;
 			}
@@ -317,12 +404,15 @@ uint16_t mctp_vend_pci_read(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *rbuf,
 		}
 
 		if (retry == MCTP_VEND_PCI_MSG_RETRY) {
-			LOG_ERR("MCTP VEND PCI send&receive retry over limit at packet #%d/%d\n", cur_idx+1, total_pkt);
+			LOG_ERR("MCTP VEND PCI send&receive retry over limit at packet #%d/%d\n",
+				cur_idx + 1, total_pkt);
 			return 0;
 		}
 
-		LOG_WRN("mctp_vdm_pci RSP seq[%d] pkt[%d/%d]:", inst_id&MCTP_VEND_PCI_INST_ID_MASK, cur_idx+1, total_pkt);
-		LOG_HEXDUMP_WRN(rbuf, rcv_p.return_len, "Rsp data:");
+		LOG_DBG("mctp_vdm_pci RSP seq[%d] pkt[%d/%d]:",
+			inst_id & MCTP_VEND_PCI_INST_ID_MASK, cur_idx + 1, total_pkt);
+		LOG_HEXDUMP_DBG(rbuf, rcv_p.return_len, "Rsp data:");
+
 #endif
 
 		remain_payload_msg_len -= payload_msg_len;

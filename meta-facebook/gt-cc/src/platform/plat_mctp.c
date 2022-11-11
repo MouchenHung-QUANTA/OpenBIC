@@ -45,6 +45,10 @@ LOG_MODULE_REGISTER(plat_mctp);
 #define I2C_ADDR_BIC 0x40
 #define I2C_ADDR_BMC 0x20
 #define I2C_ADDR_NIC 0x64
+#define I2C_ADDR_PEX_0 0xA0
+#define I2C_ADDR_PEX_1 0xA2
+#define I2C_ADDR_PEX_2 0xA4
+#define I2C_ADDR_PEX_3 0xA6
 
 /* i2c dev bus */
 #define I2C_BUS_BMC 0x06
@@ -56,6 +60,10 @@ LOG_MODULE_REGISTER(plat_mctp);
 #define I2C_BUS_NIC_5 0x0B
 #define I2C_BUS_NIC_6 0x0C
 #define I2C_BUS_NIC_7 0x0D
+#define I2C_BUS_PEX_0 0x09
+#define I2C_BUS_PEX_1 0x09
+#define I2C_BUS_PEX_2 0x09
+#define I2C_BUS_PEX_3 0x09
 /* mctp endpoint */
 #define MCTP_EID_BMC 0x08
 #define MCTP_EID_NIC_0 0x10
@@ -66,9 +74,20 @@ LOG_MODULE_REGISTER(plat_mctp);
 #define MCTP_EID_NIC_5 0x15
 #define MCTP_EID_NIC_6 0x16
 #define MCTP_EID_NIC_7 0x17
+#define MCTP_EID_PEX_0 0x18
+#define MCTP_EID_PEX_1 0x19
+#define MCTP_EID_PEX_2 0x1A
+#define MCTP_EID_PEX_3 0x1B
 
 K_TIMER_DEFINE(send_cmd_timer, send_cmd_to_dev, NULL);
 K_WORK_DEFINE(send_cmd_work, send_cmd_to_dev_handler);
+
+struct _pex_dev_info pex_dev_info[] = {
+	[0] = { .bus = I2C_BUS_PEX_0, .addr = I2C_ADDR_PEX_0, .ep = MCTP_EID_PEX_0 },
+	[1] = { .bus = I2C_BUS_PEX_1, .addr = I2C_ADDR_PEX_1, .ep = MCTP_EID_PEX_1 },
+	[2] = { .bus = I2C_BUS_PEX_2, .addr = I2C_ADDR_PEX_2, .ep = MCTP_EID_PEX_2 },
+	[3] = { .bus = I2C_BUS_PEX_3, .addr = I2C_ADDR_PEX_3, .ep = MCTP_EID_PEX_3 },
+};
 
 typedef struct _mctp_smbus_port {
 	mctp *mctp_inst;
@@ -98,6 +117,7 @@ static mctp_smbus_port smbus_port[] = {
 	{ .conf.smbus_conf.addr = I2C_ADDR_BIC, .conf.smbus_conf.bus = I2C_BUS_NIC_5 },
 	{ .conf.smbus_conf.addr = I2C_ADDR_BIC, .conf.smbus_conf.bus = I2C_BUS_NIC_6 },
 	{ .conf.smbus_conf.addr = I2C_ADDR_BIC, .conf.smbus_conf.bus = I2C_BUS_NIC_7 },
+	{ .conf.smbus_conf.addr = I2C_ADDR_BIC, .conf.smbus_conf.bus = I2C_BUS_PEX_0 },
 };
 
 mctp_route_entry mctp_route_tbl[] = {
@@ -110,6 +130,10 @@ mctp_route_entry mctp_route_tbl[] = {
 	{ MCTP_EID_NIC_5, I2C_BUS_NIC_5, I2C_ADDR_NIC },
 	{ MCTP_EID_NIC_6, I2C_BUS_NIC_6, I2C_ADDR_NIC },
 	{ MCTP_EID_NIC_7, I2C_BUS_NIC_7, I2C_ADDR_NIC },
+	{ MCTP_EID_PEX_0, I2C_BUS_PEX_0, I2C_ADDR_PEX_0 },
+	{ MCTP_EID_PEX_1, I2C_BUS_PEX_1, I2C_ADDR_PEX_1 },
+	{ MCTP_EID_PEX_2, I2C_BUS_PEX_2, I2C_ADDR_PEX_2 },
+	{ MCTP_EID_PEX_3, I2C_BUS_PEX_3, I2C_ADDR_PEX_3 },
 };
 
 static mctp *find_mctp_by_smbus(uint8_t bus)
@@ -287,12 +311,18 @@ bool mctp_add_sel_to_ipmi(common_addsel_msg_t *sel_msg)
 	return true;
 }
 
-bool mctp_vd_pci_get_fw_version()
+bool mctp_vd_pci_get_fw_version(uint8_t pex_idx, struct _get_fw_rev_resp *resp)
 {
+	if (pex_idx >= ARRAY_SIZE(pex_dev_info)) {
+		LOG_ERR("Invalid pex index given");
+		return false;
+	}
+
 	mctp_vend_pci_msg msg;
 	memset(&msg, 0, sizeof(msg));
 	msg.ext_params.type = MCTP_MEDIUM_TYPE_SMBUS;
-	msg.ext_params.smbus_ext_params.addr = 0xff;
+	msg.ext_params.smbus_ext_params.addr = pex_dev_info[pex_idx].addr;
+	msg.ext_params.ep = pex_dev_info[pex_idx].ep;
 
 	msg.hdr.cmd = SM_API_CMD_FW_REV;
 	struct _get_fw_rev_req req_data;
@@ -302,11 +332,149 @@ bool mctp_vd_pci_get_fw_version()
 	msg.cmd_data = (uint8_t *)&req_data;
 	msg.cmd_data_len = sizeof(req_data);
 
-	uint16_t buffer[64];
-	if (mctp_vend_pci_read(find_mctp_by_smbus(0xFF), &msg, buffer, sizeof(buffer))) {
-		LOG_ERR("error hapened!");
+	uint8_t buffer[64];
+	memset(buffer, 0, ARRAY_SIZE(buffer));
+
+	uint16_t ret_len = mctp_vend_pci_read(find_mctp_by_smbus(pex_dev_info[pex_idx].bus), &msg,
+					      buffer, ARRAY_SIZE(buffer));
+	if (ret_len == 0) {
+		LOG_ERR("Failed to read pex %d fw revision!", pex_idx);
 		return false;
 	}
+
+	LOG_HEXDUMP_DBG(buffer, ret_len, __func__);
+	if (ret_len != sizeof(struct _get_fw_rev_resp)) {
+		LOG_ERR("Unexpected response length of fw revision command from pex %d", pex_idx);
+		return false;
+	}
+
+	memcpy(resp, buffer, ret_len);
+
+	return true;
+}
+
+bool mctp_vd_pci_get_sw_attr(uint8_t pex_idx, struct _get_sw_attr_resp *resp)
+{
+	if (pex_idx >= ARRAY_SIZE(pex_dev_info)) {
+		LOG_ERR("Invalid pex index given");
+		return false;
+	}
+
+	mctp_vend_pci_msg msg;
+	memset(&msg, 0, sizeof(msg));
+	msg.ext_params.type = MCTP_MEDIUM_TYPE_SMBUS;
+	msg.ext_params.smbus_ext_params.addr = pex_dev_info[pex_idx].addr;
+	msg.ext_params.ep = pex_dev_info[pex_idx].ep;
+
+	msg.hdr.cmd = SM_API_CMD_GET_SW_ATTR;
+	struct _get_sw_attr_req req_data;
+	req_data.switch_id = 0x0000;
+	req_data.rserv = 0x0000;
+
+	msg.cmd_data = (uint8_t *)&req_data;
+	msg.cmd_data_len = sizeof(req_data);
+
+	uint8_t buffer[sizeof(struct _get_sw_attr_resp)];
+	memset(buffer, 0, ARRAY_SIZE(buffer));
+
+	uint16_t ret_len = mctp_vend_pci_read(find_mctp_by_smbus(pex_dev_info[pex_idx].bus), &msg,
+					      buffer, ARRAY_SIZE(buffer));
+	if (ret_len == 0) {
+		LOG_ERR("Failed to read pex %d sw attributes!", pex_idx);
+		return false;
+	}
+
+	LOG_HEXDUMP_DBG(buffer, ret_len, __func__);
+	if (ret_len != sizeof(struct _get_sw_attr_resp)) {
+		LOG_ERR("Unexpected response length of sw attributes command from pex %d", pex_idx);
+		return false;
+	}
+
+	memcpy(resp, buffer, ret_len);
+
+	return true;
+}
+
+bool mctp_vd_pci_get_sw_temp(uint8_t pex_idx, struct _get_sw_temp_resp *resp)
+{
+	if (pex_idx >= ARRAY_SIZE(pex_dev_info)) {
+		LOG_ERR("Invalid pex index given");
+		return false;
+	}
+
+	mctp_vend_pci_msg msg;
+	memset(&msg, 0, sizeof(msg));
+	msg.ext_params.type = MCTP_MEDIUM_TYPE_SMBUS;
+	msg.ext_params.smbus_ext_params.addr = pex_dev_info[pex_idx].addr;
+	msg.ext_params.ep = pex_dev_info[pex_idx].ep;
+
+	msg.hdr.cmd = SM_API_CMD_GET_SW_TEMP;
+	struct _get_sw_temp_req req_data;
+	req_data.switch_id = 0x0000;
+	req_data.rserv = 0x0000;
+
+	msg.cmd_data = (uint8_t *)&req_data;
+	msg.cmd_data_len = sizeof(req_data);
+
+	uint8_t buffer[sizeof(struct _get_sw_temp_resp)];
+	memset(buffer, 0, ARRAY_SIZE(buffer));
+
+	uint16_t ret_len = mctp_vend_pci_read(find_mctp_by_smbus(pex_dev_info[pex_idx].bus), &msg,
+					      buffer, ARRAY_SIZE(buffer));
+	if (ret_len == 0) {
+		LOG_ERR("Failed to read pex %d mfg info!", pex_idx);
+		return false;
+	}
+
+	LOG_HEXDUMP_DBG(buffer, ret_len, __func__);
+	if (ret_len != sizeof(struct _get_sw_temp_resp)) {
+		LOG_ERR("Unexpected response length of mfg info command from pex %d", pex_idx);
+		return false;
+	}
+
+	memcpy(resp, buffer, ret_len);
+
+	return true;
+}
+
+bool mctp_vd_pci_get_mfg_info(uint8_t pex_idx, struct _sm_sw_mfg_info_resp *resp)
+{
+	if (pex_idx >= ARRAY_SIZE(pex_dev_info)) {
+		LOG_ERR("Invalid pex index given");
+		return false;
+	}
+
+	mctp_vend_pci_msg msg;
+	memset(&msg, 0, sizeof(msg));
+	msg.ext_params.type = MCTP_MEDIUM_TYPE_SMBUS;
+	msg.ext_params.smbus_ext_params.addr = pex_dev_info[pex_idx].addr;
+	msg.ext_params.ep = pex_dev_info[pex_idx].ep;
+
+	msg.hdr.cmd = SM_API_CMD_GET_SW_MFG_INFO;
+	struct _sm_sw_mfg_info_req req_data;
+	req_data.switch_id = 0x0000;
+	req_data.rserv = 0x0000;
+
+	msg.cmd_data = (uint8_t *)&req_data;
+	msg.cmd_data_len = sizeof(req_data);
+
+	uint8_t buffer[sizeof(struct _sm_sw_mfg_info_resp)];
+	memset(buffer, 0, ARRAY_SIZE(buffer));
+
+	uint16_t ret_len = mctp_vend_pci_read(find_mctp_by_smbus(pex_dev_info[pex_idx].bus), &msg,
+					      buffer, ARRAY_SIZE(buffer));
+	if (ret_len == 0) {
+		LOG_ERR("Failed to read pex %d mfg info!", pex_idx);
+		return false;
+	}
+
+	LOG_HEXDUMP_DBG(buffer, ret_len, __func__);
+	if (ret_len != sizeof(struct _sm_sw_mfg_info_resp)) {
+		LOG_ERR("Unexpected response length of mfg info command from pex %d", pex_idx);
+		return false;
+	}
+
+	memcpy(resp, buffer, ret_len);
 
 	return true;
 }
@@ -328,6 +496,10 @@ static uint8_t mctp_msg_recv(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext_
 
 	case MCTP_MSG_TYPE_PLDM:
 		mctp_pldm_cmd_handler(mctp_p, buf, len, ext_params);
+		break;
+
+	case MCTP_MSG_TYPE_VEN_DEF_PCI:
+		mctp_vdm_pci_cmd_handler(mctp_p, buf, len, ext_params);
 		break;
 
 	default:
