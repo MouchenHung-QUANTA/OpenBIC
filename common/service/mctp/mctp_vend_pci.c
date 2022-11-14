@@ -31,8 +31,9 @@ LOG_MODULE_DECLARE(mctp);
 #define RESP_MSG_PROC_MUTEX_WAIT_TO_MS 1000
 #define TO_CHK_INTERVAL_MS 1000
 
-#define VDM_PCI_READ_EVENT_SUCCESS BIT(0)
-#define VDM_PCI_READ_EVENT_TIMEOUT BIT(1)
+#define VDM_PCI_READ_EVENT_SUCCESS BIT(0) // Get success cc from pex
+#define VDM_PCI_READ_EVENT_FAILED BIT(1) // Get bad cc from pex
+#define VDM_PCI_READ_EVENT_TIMEOUT BIT(2) // Can't get response in time
 
 static K_MUTEX_DEFINE(wait_recv_resp_mutex);
 static sys_slist_t wait_recv_resp_list = SYS_SLIST_STATIC_INIT(&wait_recv_resp_list);
@@ -130,6 +131,80 @@ static void mctp_vend_pci_msg_timeout_monitor(void *dummy0, void *dummy1, void *
 	}
 }
 
+static uint8_t mctp_vdm_pci_cmd_resp_process(mctp *mctp_inst, uint8_t *buf, uint32_t len,
+					     mctp_ext_params ext_params)
+{
+	CHECK_NULL_ARG_WITH_RETURN(mctp_inst, MCTP_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(buf, MCTP_ERROR);
+
+	if (!len)
+		return MCTP_ERROR;
+
+	if (k_mutex_lock(&wait_recv_resp_mutex, K_MSEC(RESP_MSG_PROC_MUTEX_WAIT_TO_MS))) {
+		LOG_WRN("mutex is locked over %d ms!", RESP_MSG_PROC_MUTEX_WAIT_TO_MS);
+		return MCTP_ERROR;
+	}
+
+	mctp_vend_pci_rsp_first_hdr *hdr = (mctp_vend_pci_rsp_first_hdr *)buf;
+	sys_snode_t *node;
+	sys_snode_t *s_node;
+	sys_snode_t *pre_node = NULL;
+	sys_snode_t *found_node = NULL;
+
+	SYS_SLIST_FOR_EACH_NODE_SAFE (&wait_recv_resp_list, node, s_node) {
+		wait_msg *p = (wait_msg *)node;
+		/* found the proper handler */
+		if ((p->msg.hdr.app_msg_tag == hdr->app_msg_tag) && (p->mctp_inst == mctp_inst)) {
+			found_node = node;
+			sys_slist_remove(&wait_recv_resp_list, pre_node, node);
+			break;
+		} else {
+			pre_node = node;
+		}
+	}
+	k_mutex_unlock(&wait_recv_resp_mutex);
+
+	if (found_node) {
+		/* invoke resp handler */
+		wait_msg *p = (wait_msg *)found_node;
+		if (p->msg.recv_resp_cb_fn) {
+			if (p->msg.rsp_hdr.cc != MCTP_7E_CC_SUCCESS) {
+				p->msg.recv_resp_cb_fn(
+					p->msg.recv_resp_cb_args, buf + sizeof(p->msg.rsp_hdr),
+					len - sizeof(p->msg.rsp_hdr)); /* remove mctp ctrl header for handler */
+			} else {
+				LOG_WRN("Get non-success complition code %d from 7E command %xh",
+					p->msg.rsp_hdr.cc, p->msg.hdr.cmd);
+				recv_resp_arg *recv_arg = (recv_resp_arg *)p->msg.recv_resp_cb_args;
+				uint8_t status = VDM_PCI_READ_EVENT_FAILED;
+				k_msgq_put(recv_arg->msgq, &status, K_NO_WAIT);
+			}
+		}
+
+		free(p);
+	}
+
+	return MCTP_SUCCESS;
+}
+
+uint8_t mctp_vdm_pci_cmd_handler(void *mctp_p, uint8_t *buf, uint32_t len,
+				 mctp_ext_params ext_params)
+{
+	CHECK_NULL_ARG_WITH_RETURN(mctp_p, MCTP_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(buf, MCTP_ERROR);
+
+	if (!len)
+		return MCTP_ERROR;
+
+	mctp *mctp_inst = (mctp *)mctp_p;
+
+	/* Assume that only catch response-messages from pex */
+	if (1)
+		return mctp_vdm_pci_cmd_resp_process(mctp_inst, buf, len, ext_params);
+
+	return MCTP_SUCCESS;
+}
+
 uint8_t mctp_vend_pci_msg_packer(uint8_t *buff, uint16_t *len, mctp_vend_pci_pkt_t pkt_t)
 {
 	/* TODO */
@@ -175,70 +250,6 @@ static uint8_t find_rsp_len_by_cmd(SM_API_COMMANDS cmd, uint16_t req_len, uint16
 error:
 	LOG_ERR("mctp_vend_pci_send_msg: given with invalid request length");
 	return MCTP_ERROR;
-}
-
-static uint8_t mctp_vdm_pci_cmd_resp_process(mctp *mctp_inst, uint8_t *buf, uint32_t len,
-					     mctp_ext_params ext_params)
-{
-	CHECK_NULL_ARG_WITH_RETURN(mctp_inst, MCTP_ERROR);
-	CHECK_NULL_ARG_WITH_RETURN(buf, MCTP_ERROR);
-
-	if (!len)
-		return MCTP_ERROR;
-
-	if (k_mutex_lock(&wait_recv_resp_mutex, K_MSEC(RESP_MSG_PROC_MUTEX_WAIT_TO_MS))) {
-		LOG_WRN("mutex is locked over %d ms!", RESP_MSG_PROC_MUTEX_WAIT_TO_MS);
-		return MCTP_ERROR;
-	}
-
-	mctp_vend_pci_rsp_first_hdr *hdr = (mctp_vend_pci_rsp_first_hdr *)buf;
-	sys_snode_t *node;
-	sys_snode_t *s_node;
-	sys_snode_t *pre_node = NULL;
-	sys_snode_t *found_node = NULL;
-
-	SYS_SLIST_FOR_EACH_NODE_SAFE (&wait_recv_resp_list, node, s_node) {
-		wait_msg *p = (wait_msg *)node;
-		/* found the proper handler */
-		if ((p->msg.hdr.app_msg_tag == hdr->app_msg_tag) && (p->mctp_inst == mctp_inst)) {
-			found_node = node;
-			sys_slist_remove(&wait_recv_resp_list, pre_node, node);
-			break;
-		} else {
-			pre_node = node;
-		}
-	}
-	k_mutex_unlock(&wait_recv_resp_mutex);
-
-	if (found_node) {
-		/* invoke resp handler */
-		wait_msg *p = (wait_msg *)found_node;
-		if (p->msg.recv_resp_cb_fn)
-			p->msg.recv_resp_cb_fn(
-				p->msg.recv_resp_cb_args, buf + sizeof(p->msg.hdr),
-				len - sizeof(p->msg.hdr)); /* remove mctp ctrl header for handler */
-		free(p);
-	}
-
-	return MCTP_SUCCESS;
-}
-
-uint8_t mctp_vdm_pci_cmd_handler(void *mctp_p, uint8_t *buf, uint32_t len,
-				 mctp_ext_params ext_params)
-{
-	CHECK_NULL_ARG_WITH_RETURN(mctp_p, MCTP_ERROR);
-	CHECK_NULL_ARG_WITH_RETURN(buf, MCTP_ERROR);
-
-	if (!len)
-		return MCTP_ERROR;
-
-	mctp *mctp_inst = (mctp *)mctp_p;
-
-	/* Assume that only catch response-messages from pex */
-	if (1)
-		return mctp_vdm_pci_cmd_resp_process(mctp_inst, buf, len, ext_params);
-
-	return MCTP_SUCCESS;
 }
 
 uint8_t mctp_vend_pci_send_msg(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *buff,
@@ -401,6 +412,10 @@ uint16_t mctp_vend_pci_read(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *rbuf,
 			}
 			if (event == VDM_PCI_READ_EVENT_SUCCESS)
 				break;
+			else if (event == VDM_PCI_READ_EVENT_FAILED) {
+				LOG_WRN("[%s] Failed to get success CC from pex!", __func__);
+				return 0;
+			}
 		}
 
 		if (retry == MCTP_VEND_PCI_MSG_RETRY) {

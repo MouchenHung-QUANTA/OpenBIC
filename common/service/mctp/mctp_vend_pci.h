@@ -269,6 +269,7 @@ typedef struct __attribute__((packed)) {
 
 typedef struct {
 	mctp_vend_pci_req_first_hdr hdr;
+	mctp_vend_pci_rsp_first_hdr rsp_hdr;
 	uint8_t *cmd_data;
 	uint16_t cmd_data_len;
 	mctp_ext_params ext_params;
