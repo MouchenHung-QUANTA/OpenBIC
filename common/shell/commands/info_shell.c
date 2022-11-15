@@ -50,19 +50,23 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 		"========================{SHELL COMMAND INFO}========================================");
 
 	shell_print(shell, "-----------------------------------------------------");
-	struct _get_fw_rev_resp rsp;
+	struct _get_fw_rev_resp *rsp = NULL;
+	struct _get_fw_rev_req req;
+	req.rserv = 0x0000;
+	req.switch_id = 0x0000;
 	for (int i = 0; i < 4; i++) {
-		if (mctp_vd_pci_get_fw_version(i, &rsp) == false) {
+		rsp = mctp_vd_pci_access(i, &req, SM_API_CMD_FW_REV);
+		if (rsp == NULL) {
 			shell_error(shell, "PEX %d get fw revision failed!", i);
 			continue;
 		}
 
 		shell_print(shell, "[ PEX %d get revision ]", i);
-		shell_print(shell, "* fw version: %d.%d.%d.%d", rsp.FwVer.Field.Major,
-			    rsp.FwVer.Field.Minor, rsp.FwVer.Field.Dev, rsp.FwVer.Field.Unit,
-			    rsp.FwVer.Field.Dev);
-		shell_print(shell, "* SM api version: %d.%d", rsp.SmApiVer.Field.Major,
-			    rsp.SmApiVer.Field.Minor);
+		shell_print(shell, "* fw version: %d.%d.%d.%d", rsp->FwVer.Field.Major,
+			    rsp->FwVer.Field.Minor, rsp->FwVer.Field.Dev, rsp->FwVer.Field.Unit,
+			    rsp->FwVer.Field.Dev);
+		shell_print(shell, "* SM api version: %d.%d", rsp->SmApiVer.Field.Major,
+			    rsp->SmApiVer.Field.Minor);
 	}
 
 	shell_print(shell, "-----------------------------------------------------");

@@ -311,6 +311,76 @@ bool mctp_add_sel_to_ipmi(common_addsel_msg_t *sel_msg)
 	return true;
 }
 
+void *mctp_vd_pci_access(uint8_t pex_idx, void *req, SM_API_COMMANDS access_cmd)
+{
+	CHECK_NULL_ARG_WITH_RETURN(req, NULL);
+
+	if (pex_idx >= ARRAY_SIZE(pex_dev_info)) {
+		LOG_ERR("Invalid pex index given");
+		return NULL;
+	}
+
+	uint16_t expect_ret_len = 0;
+
+	mctp_vend_pci_msg msg;
+	memset(&msg, 0, sizeof(msg));
+	msg.ext_params.type = MCTP_MEDIUM_TYPE_SMBUS;
+	msg.ext_params.smbus_ext_params.addr = pex_dev_info[pex_idx].addr;
+	msg.ext_params.ep = pex_dev_info[pex_idx].ep;
+
+	switch (access_cmd) {
+	case SM_API_CMD_FW_REV:
+		memcpy(msg.cmd_data, req, sizeof(struct _get_fw_rev_req));
+		msg.cmd_data_len = sizeof(struct _get_fw_rev_req);
+		expect_ret_len = sizeof(struct _get_fw_rev_resp);
+		break;
+
+	case SM_API_CMD_GET_SW_ATTR:
+		memcpy(msg.cmd_data, req, sizeof(struct _get_sw_attr_req));
+		msg.cmd_data_len = sizeof(struct _get_sw_attr_req);
+		expect_ret_len = sizeof(struct _get_sw_attr_resp);
+		break;
+
+	case SM_API_CMD_GET_SW_TEMP:
+		memcpy(msg.cmd_data, req, sizeof(struct _get_sw_temp_req));
+		msg.cmd_data_len = sizeof(struct _get_sw_temp_req);
+		expect_ret_len = sizeof(struct _get_sw_temp_resp);
+		break;
+
+	case SM_API_CMD_GET_SW_MFG_INFO:
+		memcpy(msg.cmd_data, req, sizeof(struct _sm_sw_mfg_info_req));
+		msg.cmd_data_len = sizeof(struct _sm_sw_mfg_info_req);
+		expect_ret_len = sizeof(struct _sm_sw_mfg_info_resp);
+		break;
+
+	default:
+		LOG_ERR("Invalid command %xh for pex %d", access_cmd, pex_idx);
+		return NULL;
+	}
+
+	msg.req_hdr.cmd = access_cmd;
+
+	uint8_t *rsp_buff = malloc(sizeof(uint8_t) * MAX_MCTP_VEND_PCI_PAYLOAD_LEN);
+	memset(rsp_buff, 0, MAX_MCTP_VEND_PCI_PAYLOAD_LEN);
+
+	uint16_t ret_len = mctp_vend_pci_read(find_mctp_by_smbus(pex_dev_info[pex_idx].bus), &msg,
+					      rsp_buff, MAX_MCTP_VEND_PCI_PAYLOAD_LEN);
+
+	if (ret_len == 0) {
+		LOG_ERR("Failed to access pex %d with command %xh!", pex_idx, access_cmd);
+		return NULL;
+	}
+
+	LOG_HEXDUMP_DBG(rsp_buff, ret_len, __func__);
+	if (ret_len != expect_ret_len) {
+		LOG_ERR("Unexpected response length of command %xh from pex %d", access_cmd,
+			pex_idx);
+		return NULL;
+	}
+
+	return rsp_buff;
+}
+
 bool mctp_vd_pci_get_fw_version(uint8_t pex_idx, struct _get_fw_rev_resp *resp)
 {
 	if (pex_idx >= ARRAY_SIZE(pex_dev_info)) {
