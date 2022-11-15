@@ -70,6 +70,9 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 			    rsp->SmApiVer.Field.Minor);
 	}
 
+	sm_switch_attr sw_attr[4];
+	memset(sw_attr, 0, sizeof(sm_switch_attr));
+
 	shell_print(shell, "-----------------------------------------------------");
 	struct _get_sw_attr_resp rsp1;
 	for (int i = 0; i < 4; i++) {
@@ -78,7 +81,7 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 			continue;
 		}
 
-		shell_print(shell, "[ PEX %d get attributes ]", i);
+		shell_print(shell, "[ PEX %d get sw attributes ]", i);
 		shell_print(shell, "* Switch id:          %.4xh", rsp1.SwAttr.SwProp.SwitchID);
 		shell_print(shell, "* Chip type:          %.4xh", rsp1.SwAttr.SwProp.ChipType);
 		shell_print(shell, "* Chip id:            %.4xh", rsp1.SwAttr.SwProp.ChipID);
@@ -97,6 +100,46 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 				    rsp1.SwAttr.SwProp.Stn[stn_idx].ActivePortCount);
 			shell_print(shell, "  * Config:             %.2xh",
 				    rsp1.SwAttr.SwProp.Stn[stn_idx].Config);
+		}
+
+		memcpy(sw_attr + i, &rsp1.SwAttr, sizeof(sm_switch_attr));
+	}
+
+	shell_print(shell, "-----------------------------------------------------");
+	struct _get_port_attr_resp *rsp5;
+	struct _get_port_attr_req req5;
+	for (int i = 0; i < 4; i++) {
+		shell_print(shell, "[ PEX %d get port attributes ]", i);
+		for (int pord_idx = 0; pord_idx < PMG_MAX_PORT; pord_idx++) {
+			req5.Port_gid.u.GID.SwitchNum =
+				sw_attr[i].SwProp.SwitchID.u.DN.Number & 0x7F;
+			req5.Port_gid.u.GID.AddressType = 0;
+			req5.Port_gid.u.GID.Domain = sw_attr[i].SwProp.SwitchID.u.DN.Domain;
+			req5.Port_gid.u.GID.Bus = 0;
+			req5.Port_gid.u.GID.DevIden.port = pord_idx;
+
+			rsp5 = NULL;
+			rsp5 = mctp_vd_pci_access(i, &req, SM_API_CMD_GET_PORT_ATTR);
+			if (rsp5 == NULL) {
+				shell_error(shell, "PEX %d get port %d attributes failed!", i,
+					    pord_idx);
+				continue;
+			}
+
+			shell_print(shell, "  [ Port %d ]", i);
+			shell_print(shell, "    * Port number:          %.4xh",
+				    rsp5->PortAttr.PortNum);
+			shell_print(shell, "    * GID:                  %.4xh", rsp5->PortAttr.GID);
+			shell_print(shell, "    * Type:                 %s",
+				    (rsp5->PortAttr.Type == PMG_SW_PORT_TYPE_DS) ?
+					    "DS" :
+					    (rsp5->PortAttr.Type == PMG_SW_PORT_TYPE_FABRIC) ?
+					    "FABRIC" :
+					    (rsp5->PortAttr.Type == PMG_SW_PORT_TYPE_MGMT) ?
+					    "MFMT" :
+					    (rsp5->PortAttr.Type == PMG_SW_PORT_TYPE_HOST) ?
+					    "HOST" :
+					    "N/A");
 		}
 	}
 

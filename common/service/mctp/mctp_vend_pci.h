@@ -192,6 +192,16 @@ typedef enum _PMG_MCPU_MSG_TYPE {
 	PMG_MCPU_MSG_TYPE_HAM = 3 /**< MCPU messages received from Host for Host-Arm Messages */
 } PMG_MCPU_MSG_TYPE;
 
+/** Switch port types */
+typedef enum _PMG_SW_PORT_TYPE
+{
+    PMG_SW_PORT_TYPE_DS          = 0,       /**< Downstream Port type */
+    PMG_SW_PORT_TYPE_FABRIC      = 1,       /**< Fabric Port type */
+    PMG_SW_PORT_TYPE_MGMT        = 2,       /**< Management Port type */
+    PMG_SW_PORT_TYPE_HOST        = 3,       /**< Host Port type */
+    PMG_SW_PORT_TYPE_DISABLED    = 0xFF     /**< Disabled Port type */
+} PMG_SW_PORT_TYPE;
+
 typedef enum {
 	FIRST_PACKET,
 	SUPP_PACKET,
@@ -293,6 +303,90 @@ typedef struct _pmg_switch_id {
 	} u;
 } __packed pmg_switch_id;
 
+/** Unique number to identify port/device in the topology */
+typedef union _sm_dev_iden_type
+{
+    uint8_t port;
+    struct
+    {
+        uint8_t  Func : 3;               /**< Function number */
+        uint8_t  Dev : 5;                /**< Device number */
+    } FD;
+} __packed sm_dev_iden_type;
+
+/** Port GID */
+typedef struct _sm_port_gid
+{
+    union
+    {
+        uint32_t     word;
+        struct
+        {
+            uint8_t SwitchNum : 7;          /**< Switch number within domain */
+            uint8_t AddressType : 1;        /**< Port Type identifier, if 1 - the identifier is based on switch, domain and BDF number */
+                                            /**< If 0 - the identifier is based on switch, domain and port number */
+            uint8_t Domain;                 /**< Domain number */
+            uint8_t Bus;                    /**< Bus number */
+            sm_dev_iden_type DevIden;
+        } GID;
+    }u;
+} __packed sm_port_gid;
+
+/** PCIe-specific properties */
+typedef struct _pcie_port_prop
+{
+    uint8_t  PortType;                          /**< PCIe defined port type (PCIE_PORT_TYPE enum) */
+    uint8_t  PortNumber;                        /**< Internal port number */
+    uint8_t  LinkWidth;                         /**< Negotiated link width */
+    uint8_t  MaxLinkWidth;                      /**< Max link width device is capable of */
+    uint8_t  LinkSpeed;                         /**< Negotiated link speed */
+    uint8_t  MaxLinkSpeed;                      /**< Max link speed device is capable of */
+    uint16_t MaxReadReqSize;                    /**< Max read request size allowed */
+    uint16_t MaxPayloadSize;                    /**< Max payload size setting */
+    uint16_t MaxPayloadSupported;               /**< Max payload size supported by device */
+} __packed pcie_port_prop;
+
+typedef struct _sm_port_attr
+{
+    pmg_switch_id          SwitchId;               /**< Switch Id to which the Port belongs */
+    uint8_t                Reserved;               /**< Reserved */
+    uint8_t                ClockMode;              /**< Clock Mode for Port */
+    uint8_t                PortNum;                /**< Port Number whose attributes are requested */
+    uint8_t                Stn;                    /**< Station port is in */
+    uint8_t                StnPort;                /**< Port number in station */
+    uint8_t                Type;                   /**< Port type */
+    uint32_t               GID;                    /**< Unique Global ID of port */
+    pcie_port_prop         Pcie;                   /**< PCIe properties of port */
+    union
+    {                                                   /**< Type specific attributes */
+        uint64_t           Default;                /**< For Invalid Port Types or Disabled Ports */
+        struct                                          /**< DS Port Attributes */
+        {
+            uint8_t        GblBusSec;              /**< Global DS Secondary Bus */
+            uint8_t        GblBusSub;              /**< Global DS Subordinate Bus */
+            uint16_t       DsDevCount;             /**< Number of Downstream devices present */
+            uint8_t        HostPortNum;            /**< Host port number assigned to, if any */
+            uint8_t        Reserved[3];            /**< Reserved */
+        } DsPort;
+
+        struct                                          /**< Host Port Attributes */
+        {
+            uint8_t        GblPciBus;              /**< Assigned Global Bus */
+            uint8_t        VSlotCount;             /**< Number of Virtual Slots Assigned */
+            uint16_t       HostFlags;              /**< Host Flags: TWC, MPT, GDMA, etc */
+            uint8_t        Reserved[4];            /**< Reserved */
+        } HostPort;
+
+        struct                                          /**< Fabric Port Attributes */
+        {
+            uint8_t        Valid;                  /**< Is Valid Connection */
+            uint8_t        PeerPort;               /**< Peer switch connected port number */
+            pmg_switch_id  PeerID;                 /**< Switch ID of connected peer switch */
+            uint8_t        Reserved[4];            /**< Reserved */
+        } FabricPort;
+    } u;
+} __packed sm_port_attr;
+
 /** Switch properties */
 typedef struct _pmg_switch_prop {
 	pmg_switch_id SwitchID; /**< Switch ID */
@@ -371,6 +465,16 @@ struct _get_sw_attr_resp {
 	uint16_t Status; /**< Operation Status */
 	uint16_t Reserved; /**< Reserved */
 	sm_switch_attr SwAttr; /**< struct of type SM_SWITCH_ATTR */
+} __attribute__((packed));
+
+struct _get_port_attr_req {
+	sm_port_gid Port_gid;
+} __attribute__((packed));
+
+struct _get_port_attr_resp {
+    uint16_t Status;                 /**< Operation Status */
+    uint16_t Reserved;               /**< Reserved */
+    sm_port_attr PortAttr;           /**< struct of type SM_PORT_ATTR */
 } __attribute__((packed));
 
 struct _sm_sw_mfg_info_req {

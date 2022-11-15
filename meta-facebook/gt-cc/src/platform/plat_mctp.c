@@ -353,6 +353,12 @@ void *mctp_vd_pci_access(uint8_t pex_idx, void *req, SM_API_COMMANDS access_cmd)
 		expect_ret_len = sizeof(struct _sm_sw_mfg_info_resp);
 		break;
 
+	case SM_API_CMD_GET_PORT_ATTR:
+		memcpy(msg.cmd_data, req, sizeof(struct _get_port_attr_req));
+		msg.cmd_data_len = sizeof(struct _get_port_attr_req);
+		expect_ret_len = sizeof(struct _get_port_attr_resp);
+		break;
+
 	default:
 		LOG_ERR("Invalid command %xh for pex %d", access_cmd, pex_idx);
 		return NULL;
