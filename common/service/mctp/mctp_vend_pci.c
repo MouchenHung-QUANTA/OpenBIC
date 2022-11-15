@@ -101,8 +101,8 @@ static uint8_t mctp_vend_pci_msg_timeout_check(sys_slist_t *list, struct k_mutex
 		wait_msg *p = (wait_msg *)node;
 
 		if ((p->exp_to_ms <= cur_uptime)) {
-			LOG_ERR("mctp vendor pci msg timeout, remove cmd %x tag %x", p->msg.hdr.cmd,
-				p->msg.hdr.app_msg_tag);
+			LOG_ERR("mctp vendor pci msg timeout, remove cmd %x tag %x",
+				p->msg.req_hdr.cmd, p->msg.req_hdr.app_msg_tag);
 			sys_slist_remove(list, pre_node, node);
 
 			if (p->msg.timeout_cb_fn)
@@ -154,7 +154,8 @@ static uint8_t mctp_vdm_pci_cmd_resp_process(mctp *mctp_inst, uint8_t *buf, uint
 	SYS_SLIST_FOR_EACH_NODE_SAFE (&wait_recv_resp_list, node, s_node) {
 		wait_msg *p = (wait_msg *)node;
 		/* found the proper handler */
-		if ((p->msg.hdr.app_msg_tag == hdr->app_msg_tag) && (p->mctp_inst == mctp_inst)) {
+		if ((p->msg.req_hdr.app_msg_tag == hdr->app_msg_tag) &&
+		    (p->mctp_inst == mctp_inst)) {
 			found_node = node;
 			sys_slist_remove(&wait_recv_resp_list, pre_node, node);
 			break;
@@ -174,7 +175,7 @@ static uint8_t mctp_vdm_pci_cmd_resp_process(mctp *mctp_inst, uint8_t *buf, uint
 					len - sizeof(p->msg.rsp_hdr)); /* remove mctp ctrl header for handler */
 			} else {
 				LOG_WRN("Get non-success complition code %d from 7E command %xh",
-					p->msg.rsp_hdr.cc, p->msg.hdr.cmd);
+					p->msg.rsp_hdr.cc, p->msg.req_hdr.cmd);
 				recv_resp_arg *recv_arg = (recv_resp_arg *)p->msg.recv_resp_cb_args;
 				uint8_t status = VDM_PCI_READ_EVENT_FAILED;
 				k_msgq_put(recv_arg->msgq, &status, K_NO_WAIT);
@@ -202,12 +203,6 @@ uint8_t mctp_vdm_pci_cmd_handler(void *mctp_p, uint8_t *buf, uint32_t len,
 	if (1)
 		return mctp_vdm_pci_cmd_resp_process(mctp_inst, buf, len, ext_params);
 
-	return MCTP_SUCCESS;
-}
-
-uint8_t mctp_vend_pci_msg_packer(uint8_t *buff, uint16_t *len, mctp_vend_pci_pkt_t pkt_t)
-{
-	/* TODO */
 	return MCTP_SUCCESS;
 }
 
@@ -294,40 +289,43 @@ uint16_t mctp_vend_pci_read(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *rbuf,
 	CHECK_NULL_ARG_WITH_RETURN(msg, MCTP_ERROR);
 	CHECK_NULL_ARG_WITH_RETURN(msg->cmd_data, MCTP_ERROR);
 
-	if (msg->hdr.cmd >= SM_API_CMD_MAX) {
+	if (msg->req_hdr.cmd >= SM_API_CMD_MAX) {
 		LOG_ERR("Unsupported 7E SM command");
 		return 0;
 	}
 
-	if (find_rsp_len_by_cmd(msg->hdr.cmd, msg->cmd_data_len, &msg->hdr.resp_len))
+	if (find_rsp_len_by_cmd(msg->req_hdr.cmd, msg->cmd_data_len, &msg->req_hdr.resp_len))
 		return 0;
 
-	static uint8_t inst_id;
-	msg->hdr.msg_type = MCTP_MSG_TYPE_VEN_DEF_PCI & 0x7F;
-	msg->hdr.ic = 0;
-	msg->hdr.vendor_id_hi = (BRDCM_ID >> 8) & 0xFF;
-	msg->hdr.vendor_id_low = BRDCM_ID & 0xFF;
-	msg->hdr.payload_id = MCTP_PAYLOADID_SL_COMMAND;
+	memset(&msg->req_sup_hdr, 0, sizeof(msg->req_sup_hdr));
+	memset(&msg->rsp_hdr, 0, sizeof(msg->req_sup_hdr));
+	memset(&msg->rsp_sup_hdr, 0, sizeof(msg->req_sup_hdr));
+
+	msg->req_hdr.msg_type = MCTP_MSG_TYPE_VEN_DEF_PCI & 0x7F;
+	msg->req_hdr.ic = 0;
+	msg->req_hdr.vendor_id_hi = (BRDCM_ID >> 8) & 0xFF;
+	msg->req_hdr.vendor_id_low = BRDCM_ID & 0xFF;
+	msg->req_hdr.payload_id = MCTP_PAYLOADID_SL_COMMAND;
 	msg->ext_params.tag_owner = 1;
 
-	/* Set rsp relative function */
+	recv_resp_arg rcv_p;
 	uint8_t event_msgq_buffer[1];
 	struct k_msgq event_msgq;
 
 	k_msgq_init(&event_msgq, event_msgq_buffer, sizeof(uint8_t), 1);
 
-	recv_resp_arg rcv_p;
-
+	static uint8_t inst_id;
 	uint16_t len = 0;
 	uint16_t payload_msg_len = 0;
 	uint16_t remain_payload_msg_len = msg->cmd_data_len;
+	uint8_t *payload_data_p = msg->cmd_data;
 	uint8_t buf[MAX_MCTP_VEND_PCI_PAYLOAD_LEN];
+
 	uint16_t total_pkt = 1;
 	total_pkt += (msg->cmd_data_len / MAX_MCTP_VEND_PCI_PAYLOAD_LEN);
 	if (total_pkt != 1 && msg->cmd_data_len % MAX_MCTP_VEND_PCI_PAYLOAD_LEN)
 		total_pkt++;
 
-	uint8_t *payload_data_p = msg->cmd_data;
 	for (int cur_idx = 0; cur_idx < total_pkt; cur_idx++) {
 		payload_msg_len = remain_payload_msg_len;
 		if (remain_payload_msg_len > MAX_MCTP_VEND_PCI_PAYLOAD_LEN)
@@ -335,9 +333,9 @@ uint16_t mctp_vend_pci_read(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *rbuf,
 
 		if (cur_idx == 0) {
 			/* First packet */
-			msg->hdr.payload_len = sizeof(pmg_mcpu_msg_hdr) + payload_msg_len;
-			msg->hdr.pkt_seq_cnt = cur_idx;
-			msg->hdr.app_msg_tag = (++inst_id) & MCTP_VEND_PCI_INST_ID_MASK;
+			msg->req_hdr.payload_len = sizeof(pmg_mcpu_msg_hdr) + payload_msg_len;
+			msg->req_hdr.pkt_seq_cnt = cur_idx;
+			msg->req_hdr.app_msg_tag = (++inst_id) & MCTP_VEND_PCI_INST_ID_MASK;
 
 			pmg_mcpu_msg_hdr payload_hdr;
 			payload_hdr.msg_len =
@@ -350,15 +348,15 @@ uint16_t mctp_vend_pci_read(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *rbuf,
 
 			payload_hdr.msg_type = PMG_MCPU_MSG_TYPE_FABRIC_EVENT;
 			payload_hdr.msg_flags = 0;
-			payload_hdr.msg_type_specific = msg->hdr.cmd;
-			payload_hdr.pkt_num = msg->hdr.pkt_seq_cnt;
-			payload_hdr.req_tag = msg->hdr.app_msg_tag;
+			payload_hdr.msg_type_specific = msg->req_hdr.cmd;
+			payload_hdr.pkt_num = msg->req_hdr.pkt_seq_cnt;
+			payload_hdr.req_tag = msg->req_hdr.app_msg_tag;
 			payload_hdr.dest_domain = 0;
 			payload_hdr.dest_id = 0; //Thist must be MCTP eid
 			payload_hdr.dest_addr_type = PMG_MCPU_MSG_ADDRESS_TYPE_PCIE;
 			payload_hdr.dest_type_specific = 0;
 
-			memcpy(buf, &msg->hdr, sizeof(mctp_vend_pci_req_first_hdr));
+			memcpy(buf, &msg->req_hdr, sizeof(mctp_vend_pci_req_first_hdr));
 			memcpy(buf + sizeof(mctp_vend_pci_req_first_hdr), &payload_hdr,
 			       sizeof(pmg_mcpu_msg_hdr));
 			memcpy(buf + sizeof(mctp_vend_pci_req_first_hdr) + sizeof(pmg_mcpu_msg_hdr),
@@ -368,13 +366,13 @@ uint16_t mctp_vend_pci_read(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *rbuf,
 		} else {
 			/* Suppliment packet */
 			mctp_vend_pci_req_supp_hdr supp_hdr;
-			supp_hdr.vendor_id_hi = msg->hdr.vendor_id_hi;
-			supp_hdr.vendor_id_low = msg->hdr.vendor_id_low;
-			supp_hdr.payload_id = msg->hdr.payload_id;
+			supp_hdr.vendor_id_hi = msg->req_hdr.vendor_id_hi;
+			supp_hdr.vendor_id_low = msg->req_hdr.vendor_id_low;
+			supp_hdr.payload_id = msg->req_hdr.payload_id;
 			supp_hdr.rsv = 0x00;
 			supp_hdr.pkt_seq_cnt = cur_idx;
 			supp_hdr.app_msg_tag = (++inst_id) & MCTP_VEND_PCI_INST_ID_MASK;
-			supp_hdr.cmd = msg->hdr.cmd;
+			supp_hdr.cmd = msg->req_hdr.cmd;
 
 			memcpy(buf, &supp_hdr, sizeof(mctp_vend_pci_req_supp_hdr));
 			memcpy(buf + sizeof(mctp_vend_pci_req_supp_hdr), payload_data_p,
@@ -430,6 +428,7 @@ uint16_t mctp_vend_pci_read(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *rbuf,
 
 #endif
 
+		payload_data_p += payload_msg_len;
 		remain_payload_msg_len -= payload_msg_len;
 		if (cur_idx != (total_pkt - 1)) {
 			payload_data_p += payload_msg_len;

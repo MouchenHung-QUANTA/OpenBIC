@@ -268,8 +268,10 @@ typedef struct __attribute__((packed)) {
 } pmg_mcpu_msg_hdr;
 
 typedef struct {
-	mctp_vend_pci_req_first_hdr hdr;
+	mctp_vend_pci_req_first_hdr req_hdr;
+	mctp_vend_pci_req_supp_hdr req_sup_hdr;
 	mctp_vend_pci_rsp_first_hdr rsp_hdr;
+	mctp_vend_pci_rsp_supp_hdr rsp_sup_hdr;
 	uint8_t *cmd_data;
 	uint16_t cmd_data_len;
 	mctp_ext_params ext_params;

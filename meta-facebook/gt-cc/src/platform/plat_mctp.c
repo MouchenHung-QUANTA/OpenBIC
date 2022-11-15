@@ -324,7 +324,7 @@ bool mctp_vd_pci_get_fw_version(uint8_t pex_idx, struct _get_fw_rev_resp *resp)
 	msg.ext_params.smbus_ext_params.addr = pex_dev_info[pex_idx].addr;
 	msg.ext_params.ep = pex_dev_info[pex_idx].ep;
 
-	msg.hdr.cmd = SM_API_CMD_FW_REV;
+	msg.req_hdr.cmd = SM_API_CMD_FW_REV;
 	struct _get_fw_rev_req req_data;
 	req_data.switch_id = 0x0000;
 	req_data.rserv = 0x0000;
@@ -366,7 +366,7 @@ bool mctp_vd_pci_get_sw_attr(uint8_t pex_idx, struct _get_sw_attr_resp *resp)
 	msg.ext_params.smbus_ext_params.addr = pex_dev_info[pex_idx].addr;
 	msg.ext_params.ep = pex_dev_info[pex_idx].ep;
 
-	msg.hdr.cmd = SM_API_CMD_GET_SW_ATTR;
+	msg.req_hdr.cmd = SM_API_CMD_GET_SW_ATTR;
 	struct _get_sw_attr_req req_data;
 	req_data.switch_id = 0x0000;
 	req_data.rserv = 0x0000;
@@ -408,7 +408,7 @@ bool mctp_vd_pci_get_sw_temp(uint8_t pex_idx, struct _get_sw_temp_resp *resp)
 	msg.ext_params.smbus_ext_params.addr = pex_dev_info[pex_idx].addr;
 	msg.ext_params.ep = pex_dev_info[pex_idx].ep;
 
-	msg.hdr.cmd = SM_API_CMD_GET_SW_TEMP;
+	msg.req_hdr.cmd = SM_API_CMD_GET_SW_TEMP;
 	struct _get_sw_temp_req req_data;
 	req_data.switch_id = 0x0000;
 	req_data.rserv = 0x0000;
@@ -450,7 +450,7 @@ bool mctp_vd_pci_get_mfg_info(uint8_t pex_idx, struct _sm_sw_mfg_info_resp *resp
 	msg.ext_params.smbus_ext_params.addr = pex_dev_info[pex_idx].addr;
 	msg.ext_params.ep = pex_dev_info[pex_idx].ep;
 
-	msg.hdr.cmd = SM_API_CMD_GET_SW_MFG_INFO;
+	msg.req_hdr.cmd = SM_API_CMD_GET_SW_MFG_INFO;
 	struct _sm_sw_mfg_info_req req_data;
 	req_data.switch_id = 0x0000;
 	req_data.rserv = 0x0000;
