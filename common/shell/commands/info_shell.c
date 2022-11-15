@@ -50,11 +50,12 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 		"========================{SHELL COMMAND INFO}========================================");
 
 	shell_print(shell, "-----------------------------------------------------");
-	struct _get_fw_rev_resp *rsp = NULL;
+	struct _get_fw_rev_resp *rsp;
 	struct _get_fw_rev_req req;
 	req.rserv = 0x0000;
 	req.switch_id = 0x0000;
 	for (int i = 0; i < 4; i++) {
+		rsp = NULL;
 		rsp = mctp_vd_pci_access(i, &req, SM_API_CMD_FW_REV);
 		if (rsp == NULL) {
 			shell_error(shell, "PEX %d get fw revision failed!", i);
