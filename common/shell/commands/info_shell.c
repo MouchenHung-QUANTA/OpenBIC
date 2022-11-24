@@ -17,7 +17,7 @@
 #include "info_shell.h"
 #include "plat_version.h"
 #include "util_sys.h"
-#include "mctp_vend_pci.h"
+#include "mctp_vdm_pci_brcm.h"
 #include "plat_mctp.h"
 
 #ifndef CONFIG_BOARD

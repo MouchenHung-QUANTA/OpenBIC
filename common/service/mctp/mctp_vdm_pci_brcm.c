@@ -15,7 +15,7 @@
  */
 
 #include "mctp.h"
-#include "mctp_vend_pci.h"
+#include "mctp_vdm_pci_brcm.h"
 #include "libutil.h"
 #include <logging/log.h>
 #include <stdint.h>
@@ -42,7 +42,7 @@ typedef struct _wait_msg {
 	sys_snode_t node;
 	mctp *mctp_inst;
 	int64_t exp_to_ms;
-	mctp_vend_pci_msg msg;
+	mctp_vdm_pci_brcm_msg msg;
 } wait_msg;
 
 typedef struct _recv_resp_arg {
@@ -188,8 +188,8 @@ static uint8_t mctp_vdm_pci_cmd_resp_process(mctp *mctp_inst, uint8_t *buf, uint
 	return MCTP_SUCCESS;
 }
 
-uint8_t mctp_vdm_pci_cmd_handler(void *mctp_p, uint8_t *buf, uint32_t len,
-				 mctp_ext_params ext_params)
+uint8_t mctp_vdm_pci_brcm_cmd_handler(void *mctp_p, uint8_t *buf, uint32_t len,
+				      mctp_ext_params ext_params)
 {
 	CHECK_NULL_ARG_WITH_RETURN(mctp_p, MCTP_ERROR);
 	CHECK_NULL_ARG_WITH_RETURN(buf, MCTP_ERROR);
@@ -236,19 +236,19 @@ static uint8_t find_rsp_len_by_cmd(SM_API_COMMANDS cmd, uint16_t req_len, uint16
 		break;
 
 	default:
-		LOG_ERR("mctp_vend_pci_send_msg: given unsupported request command");
+		LOG_ERR("Given unsupported request command");
 		return MCTP_ERROR;
 	}
 
 	return MCTP_SUCCESS;
 
 error:
-	LOG_ERR("mctp_vend_pci_send_msg: given with invalid request length");
+	LOG_ERR("Given with invalid request length");
 	return MCTP_ERROR;
 }
 
-uint8_t mctp_vend_pci_send_msg(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *buff,
-			       uint16_t buff_len)
+static uint8_t mctp_vdm_pci_send_msg(void *mctp_p, mctp_vdm_pci_brcm_msg *msg, uint8_t *buff,
+				     uint16_t buff_len)
 {
 	CHECK_NULL_ARG_WITH_RETURN(mctp_p, MCTP_ERROR);
 	CHECK_NULL_ARG_WITH_RETURN(msg, MCTP_ERROR);
@@ -283,14 +283,15 @@ uint8_t mctp_vend_pci_send_msg(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *bu
 	return MCTP_SUCCESS;
 }
 
-uint16_t mctp_vend_pci_read(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *rbuf, uint16_t rbuf_len)
+uint16_t mctp_vdm_pci_brcm_read(void *mctp_p, mctp_vdm_pci_brcm_msg *msg, uint8_t *rbuf,
+				uint16_t rbuf_len)
 {
 	CHECK_NULL_ARG_WITH_RETURN(mctp_p, MCTP_ERROR);
 	CHECK_NULL_ARG_WITH_RETURN(msg, MCTP_ERROR);
 	CHECK_NULL_ARG_WITH_RETURN(msg->cmd_data, MCTP_ERROR);
 
 	if (msg->req_hdr.cmd >= SM_API_CMD_MAX) {
-		LOG_ERR("Unsupported 7E SM command");
+		LOG_ERR("Unsupported Broadcom MCTP SM command");
 		return 0;
 	}
 
@@ -380,9 +381,9 @@ uint16_t mctp_vend_pci_read(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *rbuf,
 			len = sizeof(mctp_vend_pci_req_supp_hdr) + payload_msg_len;
 		}
 
-		LOG_DBG("mctp_vdm_pci REQ tag[%d] pkt[%d/%d]", inst_id & MCTP_VEND_PCI_INST_ID_MASK,
-			cur_idx + 1, total_pkt);
-		LOG_HEXDUMP_DBG(buf, len, "Req data:");
+		LOG_DBG("REQ tag[%d] pkt[%d/%d]", inst_id & MCTP_VEND_PCI_INST_ID_MASK, cur_idx + 1,
+			total_pkt);
+		LOG_HEXDUMP_DBG(buf, len, "");
 #if 1
 		rcv_p.msgq = &event_msgq;
 		rcv_p.rbuf_len = rbuf_len;
@@ -396,7 +397,7 @@ uint16_t mctp_vend_pci_read(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *rbuf,
 		int retry = 0;
 		for (retry = 0; retry < MCTP_VEND_PCI_MSG_RETRY; retry++) {
 			/* Send out message */
-			if (mctp_vend_pci_send_msg(mctp_p, msg, buf, len) != MCTP_SUCCESS) {
+			if (mctp_vdm_pci_send_msg(mctp_p, msg, buf, len) != MCTP_SUCCESS) {
 				LOG_WRN("[%s] send msg failed!", __func__);
 				continue;
 			}
@@ -417,14 +418,14 @@ uint16_t mctp_vend_pci_read(void *mctp_p, mctp_vend_pci_msg *msg, uint8_t *rbuf,
 		}
 
 		if (retry == MCTP_VEND_PCI_MSG_RETRY) {
-			LOG_ERR("MCTP VEND PCI send&receive retry over limit at packet #%d/%d\n",
+			LOG_ERR("Message send&receive retry over limit at packet #%d/%d\n",
 				cur_idx + 1, total_pkt);
 			return 0;
 		}
 
-		LOG_DBG("mctp_vdm_pci RSP seq[%d] pkt[%d/%d]:",
-			inst_id & MCTP_VEND_PCI_INST_ID_MASK, cur_idx + 1, total_pkt);
-		LOG_HEXDUMP_DBG(rbuf, rcv_p.return_len, "Rsp data:");
+		LOG_DBG("RSP seq[%d] pkt[%d/%d]:", inst_id & MCTP_VEND_PCI_INST_ID_MASK,
+			cur_idx + 1, total_pkt);
+		LOG_HEXDUMP_DBG(rbuf, rcv_p.return_len, "");
 
 #endif
 

@@ -19,7 +19,7 @@
 
 #include "storage_handler.h"
 #include "pldm_oem.h"
-#include "mctp_vend_pci.h"
+#include "mctp_vdm_pci_brcm.h"
 
 struct mctp_to_ipmi_header_req {
 	uint8_t iana[IANA_LEN];

@@ -27,7 +27,7 @@
 #include <stdlib.h>
 #include "mctp.h"
 #include "mctp_ctrl.h"
-#include "mctp_vend_pci.h"
+#include "mctp_vdm_pci_brcm.h"
 #include "pldm.h"
 #include "ipmi.h"
 #include "sensor.h"
@@ -322,7 +322,7 @@ void *mctp_vd_pci_access(uint8_t pex_idx, void *req, SM_API_COMMANDS access_cmd)
 
 	uint16_t expect_ret_len = 0;
 
-	mctp_vend_pci_msg msg;
+	mctp_vdm_pci_brcm_msg msg;
 	memset(&msg, 0, sizeof(msg));
 	msg.ext_params.type = MCTP_MEDIUM_TYPE_SMBUS;
 	msg.ext_params.smbus_ext_params.addr = pex_dev_info[pex_idx].addr;
@@ -369,8 +369,8 @@ void *mctp_vd_pci_access(uint8_t pex_idx, void *req, SM_API_COMMANDS access_cmd)
 	uint8_t *rsp_buff = malloc(sizeof(uint8_t) * MAX_MCTP_VEND_PCI_PAYLOAD_LEN);
 	memset(rsp_buff, 0, MAX_MCTP_VEND_PCI_PAYLOAD_LEN);
 
-	uint16_t ret_len = mctp_vend_pci_read(find_mctp_by_smbus(pex_dev_info[pex_idx].bus), &msg,
-					      rsp_buff, MAX_MCTP_VEND_PCI_PAYLOAD_LEN);
+	uint16_t ret_len = mctp_vdm_pci_brcm_read(find_mctp_by_smbus(pex_dev_info[pex_idx].bus),
+						  &msg, rsp_buff, MAX_MCTP_VEND_PCI_PAYLOAD_LEN);
 
 	if (ret_len == 0) {
 		LOG_ERR("Failed to access pex %d with command %xh!", pex_idx, access_cmd);
@@ -394,7 +394,7 @@ bool mctp_vd_pci_get_fw_version(uint8_t pex_idx, struct _get_fw_rev_resp *resp)
 		return false;
 	}
 
-	mctp_vend_pci_msg msg;
+	mctp_vdm_pci_brcm_msg msg;
 	memset(&msg, 0, sizeof(msg));
 	msg.ext_params.type = MCTP_MEDIUM_TYPE_SMBUS;
 	msg.ext_params.smbus_ext_params.addr = pex_dev_info[pex_idx].addr;
@@ -411,8 +411,8 @@ bool mctp_vd_pci_get_fw_version(uint8_t pex_idx, struct _get_fw_rev_resp *resp)
 	uint8_t buffer[64];
 	memset(buffer, 0, ARRAY_SIZE(buffer));
 
-	uint16_t ret_len = mctp_vend_pci_read(find_mctp_by_smbus(pex_dev_info[pex_idx].bus), &msg,
-					      buffer, ARRAY_SIZE(buffer));
+	uint16_t ret_len = mctp_vdm_pci_brcm_read(find_mctp_by_smbus(pex_dev_info[pex_idx].bus),
+						  &msg, buffer, ARRAY_SIZE(buffer));
 	if (ret_len == 0) {
 		LOG_ERR("Failed to read pex %d fw revision!", pex_idx);
 		return false;
@@ -436,7 +436,7 @@ bool mctp_vd_pci_get_sw_attr(uint8_t pex_idx, struct _get_sw_attr_resp *resp)
 		return false;
 	}
 
-	mctp_vend_pci_msg msg;
+	mctp_vdm_pci_brcm_msg msg;
 	memset(&msg, 0, sizeof(msg));
 	msg.ext_params.type = MCTP_MEDIUM_TYPE_SMBUS;
 	msg.ext_params.smbus_ext_params.addr = pex_dev_info[pex_idx].addr;
@@ -453,8 +453,8 @@ bool mctp_vd_pci_get_sw_attr(uint8_t pex_idx, struct _get_sw_attr_resp *resp)
 	uint8_t buffer[sizeof(struct _get_sw_attr_resp)];
 	memset(buffer, 0, ARRAY_SIZE(buffer));
 
-	uint16_t ret_len = mctp_vend_pci_read(find_mctp_by_smbus(pex_dev_info[pex_idx].bus), &msg,
-					      buffer, ARRAY_SIZE(buffer));
+	uint16_t ret_len = mctp_vdm_pci_brcm_read(find_mctp_by_smbus(pex_dev_info[pex_idx].bus),
+						  &msg, buffer, ARRAY_SIZE(buffer));
 	if (ret_len == 0) {
 		LOG_ERR("Failed to read pex %d sw attributes!", pex_idx);
 		return false;
@@ -478,7 +478,7 @@ bool mctp_vd_pci_get_sw_temp(uint8_t pex_idx, struct _get_sw_temp_resp *resp)
 		return false;
 	}
 
-	mctp_vend_pci_msg msg;
+	mctp_vdm_pci_brcm_msg msg;
 	memset(&msg, 0, sizeof(msg));
 	msg.ext_params.type = MCTP_MEDIUM_TYPE_SMBUS;
 	msg.ext_params.smbus_ext_params.addr = pex_dev_info[pex_idx].addr;
@@ -495,8 +495,8 @@ bool mctp_vd_pci_get_sw_temp(uint8_t pex_idx, struct _get_sw_temp_resp *resp)
 	uint8_t buffer[sizeof(struct _get_sw_temp_resp)];
 	memset(buffer, 0, ARRAY_SIZE(buffer));
 
-	uint16_t ret_len = mctp_vend_pci_read(find_mctp_by_smbus(pex_dev_info[pex_idx].bus), &msg,
-					      buffer, ARRAY_SIZE(buffer));
+	uint16_t ret_len = mctp_vdm_pci_brcm_read(find_mctp_by_smbus(pex_dev_info[pex_idx].bus),
+						  &msg, buffer, ARRAY_SIZE(buffer));
 	if (ret_len == 0) {
 		LOG_ERR("Failed to read pex %d mfg info!", pex_idx);
 		return false;
@@ -520,7 +520,7 @@ bool mctp_vd_pci_get_mfg_info(uint8_t pex_idx, struct _sm_sw_mfg_info_resp *resp
 		return false;
 	}
 
-	mctp_vend_pci_msg msg;
+	mctp_vdm_pci_brcm_msg msg;
 	memset(&msg, 0, sizeof(msg));
 	msg.ext_params.type = MCTP_MEDIUM_TYPE_SMBUS;
 	msg.ext_params.smbus_ext_params.addr = pex_dev_info[pex_idx].addr;
@@ -537,8 +537,8 @@ bool mctp_vd_pci_get_mfg_info(uint8_t pex_idx, struct _sm_sw_mfg_info_resp *resp
 	uint8_t buffer[sizeof(struct _sm_sw_mfg_info_resp)];
 	memset(buffer, 0, ARRAY_SIZE(buffer));
 
-	uint16_t ret_len = mctp_vend_pci_read(find_mctp_by_smbus(pex_dev_info[pex_idx].bus), &msg,
-					      buffer, ARRAY_SIZE(buffer));
+	uint16_t ret_len = mctp_vdm_pci_brcm_read(find_mctp_by_smbus(pex_dev_info[pex_idx].bus),
+						  &msg, buffer, ARRAY_SIZE(buffer));
 	if (ret_len == 0) {
 		LOG_ERR("Failed to read pex %d mfg info!", pex_idx);
 		return false;
@@ -575,7 +575,7 @@ static uint8_t mctp_msg_recv(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext_
 		break;
 
 	case MCTP_MSG_TYPE_VEN_DEF_PCI:
-		mctp_vdm_pci_cmd_handler(mctp_p, buf, len, ext_params);
+		mctp_vdm_pci_brcm_cmd_handler(mctp_p, buf, len, ext_params);
 		break;
 
 	default:
