@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <drivers/spi_nor.h>
 #include <drivers/flash.h>
+#include <logging/log.h>
 
 #include "libutil.h"
 #include "ipmi.h"
@@ -42,6 +43,8 @@
 #include "plat_mctp.h"
 #include "pex89000.h"
 #include "power_status.h"
+
+LOG_MODULE_REGISTER(plat_ipmi);
 
 struct bridge_compnt_info_s {
 	uint8_t compnt_id;
@@ -167,7 +170,7 @@ void OEM_1S_FW_UPDATE(ipmi_msg *msg)
 		break;
 	}
 	if (status != FWUPDATE_SUCCESS) {
-		printf("firmware (0x%02X) update failed cc: %x\n", target, msg->completion_code);
+		LOG_WRN("firmware (0x%02X) update failed cc: %x", target, msg->completion_code);
 	}
 
 	return;

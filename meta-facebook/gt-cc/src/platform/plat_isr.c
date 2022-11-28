@@ -55,8 +55,16 @@ void dc_on_init_component()
 					continue;
 				}
 			}
-			if (pex89000_init(sensor_num) != SENSOR_INIT_SUCCESS) {
-				LOG_ERR("sensor 0x%x init failed", cfg->num);
+			LOG_WRN("[PEX-%d INIT]", i);
+			while (1)
+			{
+				if (pex89000_init(sensor_num) != SENSOR_INIT_SUCCESS) {
+					LOG_WRN("[PEX #%d] waiting for ready...", cfg->num);
+				} else {
+					LOG_WRN("[PEX #%d] is ready!!", cfg->num);
+					break;
+				}
+				k_msleep(100);
 			}
 			if (cfg->post_sensor_read_hook) {
 				if (!cfg->post_sensor_read_hook(sensor_num,
@@ -80,6 +88,10 @@ K_WORK_DELAYABLE_DEFINE(set_DC_on_5s_work, dc_on_init_component);
 void ISR_DC_ON()
 {
 	/* Check whether DC on to send work to initial PEX */
-	if (is_mb_dc_on())
-		k_work_schedule(&set_DC_on_5s_work, K_SECONDS(DC_ON_5_SECOND));
+	if (is_mb_dc_on()) {
+		LOG_WRN("[DC ON]");
+		k_work_schedule(&set_DC_on_5s_work, K_NO_WAIT);
+	}else{
+		LOG_WRN("[DC OFF]");
+	}
 }

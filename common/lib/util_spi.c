@@ -320,6 +320,7 @@ uint8_t fw_update(uint32_t offset, uint16_t msg_len, uint8_t *msg_buf, bool sect
 			uint8_t rc = 0;
 			rc = spi_nor_re_init(flash_dev);
 			if (rc != 0) {
+				printf("=====> spi_nor_re_init: %d\n", rc);
 				return rc;
 			}
 			flash_device_list[flash_position].isinit = true;
@@ -350,9 +351,11 @@ uint8_t fw_update(uint32_t offset, uint16_t msg_len, uint8_t *msg_buf, bool sect
 
 		if (sector_end &&
 		    (flash_position == DEVSPI_FMC_CS0)) { // reboot bic itself after fw update
+			printf("* BIC reset at fwupdate ofst %d msglen %d\n", offset, msg_len);
 			submit_bic_warm_reset();
 		}
-
+		if (ret)
+			printf("=====> do_update: %d\n", ret);
 		return ret;
 	}
 
