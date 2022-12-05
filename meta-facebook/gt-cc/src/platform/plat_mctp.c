@@ -330,31 +330,26 @@ void *mctp_vd_pci_access(uint8_t pex_idx, void *req, SM_API_COMMANDS access_cmd)
 
 	switch (access_cmd) {
 	case SM_API_CMD_FW_REV:
-		memcpy(msg.cmd_data, req, sizeof(struct _get_fw_rev_req));
 		msg.cmd_data_len = sizeof(struct _get_fw_rev_req);
 		expect_ret_len = sizeof(struct _get_fw_rev_resp);
 		break;
 
 	case SM_API_CMD_GET_SW_ATTR:
-		memcpy(msg.cmd_data, req, sizeof(struct _get_sw_attr_req));
 		msg.cmd_data_len = sizeof(struct _get_sw_attr_req);
 		expect_ret_len = sizeof(struct _get_sw_attr_resp);
 		break;
 
 	case SM_API_CMD_GET_SW_TEMP:
-		memcpy(msg.cmd_data, req, sizeof(struct _get_sw_temp_req));
 		msg.cmd_data_len = sizeof(struct _get_sw_temp_req);
 		expect_ret_len = sizeof(struct _get_sw_temp_resp);
 		break;
 
 	case SM_API_CMD_GET_SW_MFG_INFO:
-		memcpy(msg.cmd_data, req, sizeof(struct _sm_sw_mfg_info_req));
 		msg.cmd_data_len = sizeof(struct _sm_sw_mfg_info_req);
 		expect_ret_len = sizeof(struct _sm_sw_mfg_info_resp);
 		break;
 
 	case SM_API_CMD_GET_PORT_ATTR:
-		memcpy(msg.cmd_data, req, sizeof(struct _get_port_attr_req));
 		msg.cmd_data_len = sizeof(struct _get_port_attr_req);
 		expect_ret_len = sizeof(struct _get_port_attr_resp);
 		break;
@@ -364,6 +359,7 @@ void *mctp_vd_pci_access(uint8_t pex_idx, void *req, SM_API_COMMANDS access_cmd)
 		return NULL;
 	}
 
+	msg.cmd_data = (uint8_t *)req;
 	msg.req_hdr.cmd = access_cmd;
 
 	uint8_t *rsp_buff = malloc(sizeof(uint8_t) * MAX_MCTP_VEND_PCI_PAYLOAD_LEN);

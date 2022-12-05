@@ -170,15 +170,15 @@ static uint8_t mctp_vdm_pci_cmd_resp_process(mctp *mctp_inst, uint8_t *buf, uint
 		wait_msg *p = (wait_msg *)found_node;
 		if (p->msg.recv_resp_cb_fn) {
 			if (p->msg.rsp_hdr.cc != MCTP_7E_CC_SUCCESS) {
-				p->msg.recv_resp_cb_fn(
-					p->msg.recv_resp_cb_args, buf + sizeof(p->msg.rsp_hdr),
-					len - sizeof(p->msg.rsp_hdr)); /* remove mctp ctrl header for handler */
-			} else {
 				LOG_WRN("Get non-success complition code %d from 7E command %xh",
 					p->msg.rsp_hdr.cc, p->msg.req_hdr.cmd);
 				recv_resp_arg *recv_arg = (recv_resp_arg *)p->msg.recv_resp_cb_args;
 				uint8_t status = VDM_PCI_READ_EVENT_FAILED;
 				k_msgq_put(recv_arg->msgq, &status, K_NO_WAIT);
+			} else {
+				p->msg.recv_resp_cb_fn(
+					p->msg.recv_resp_cb_args, buf + sizeof(p->msg.rsp_hdr),
+					len - sizeof(p->msg.rsp_hdr)); /* remove mctp ctrl header for handler */
 			}
 		}
 
@@ -223,6 +223,12 @@ static uint8_t find_rsp_len_by_cmd(SM_API_COMMANDS cmd, uint16_t req_len, uint16
 		*rsp_len = sizeof(struct _get_sw_attr_resp);
 		break;
 
+	case SM_API_CMD_GET_PORT_ATTR:
+		if (req_len != sizeof(struct _get_port_attr_req))
+			goto error;
+		*rsp_len = sizeof(struct _get_port_attr_resp);
+		break;
+
 	case SM_API_CMD_GET_SW_MFG_INFO:
 		if (req_len != sizeof(struct _sm_sw_mfg_info_req))
 			goto error;
@@ -236,7 +242,7 @@ static uint8_t find_rsp_len_by_cmd(SM_API_COMMANDS cmd, uint16_t req_len, uint16
 		break;
 
 	default:
-		LOG_ERR("Given unsupported request command");
+		LOG_ERR("Given unsupported request command %xh", cmd);
 		return MCTP_ERROR;
 	}
 

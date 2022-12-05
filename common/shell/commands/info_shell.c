@@ -69,7 +69,7 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 		shell_print(shell, "* SM api version: %d.%d", rsp->SmApiVer.Field.Major,
 			    rsp->SmApiVer.Field.Minor);
 	}
-
+#if 1
 	sm_switch_attr sw_attr[4];
 	memset(sw_attr, 0, sizeof(sm_switch_attr));
 
@@ -110,23 +110,23 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 	struct _get_port_attr_req req5;
 	for (int i = 0; i < 4; i++) {
 		shell_print(shell, "[ PEX %d get port attributes ]", i);
-		for (int pord_idx = 0; pord_idx < PMG_MAX_PORT; pord_idx++) {
+		for (int port_idx = 0; port_idx < PMG_MAX_PORT; port_idx++) {
 			req5.Port_gid.u.GID.SwitchNum =
 				sw_attr[i].SwProp.SwitchID.u.DN.Number & 0x7F;
 			req5.Port_gid.u.GID.AddressType = 0;
 			req5.Port_gid.u.GID.Domain = sw_attr[i].SwProp.SwitchID.u.DN.Domain;
 			req5.Port_gid.u.GID.Bus = 0;
-			req5.Port_gid.u.GID.DevIden.port = pord_idx;
+			req5.Port_gid.u.GID.DevIden.port = port_idx;
 
 			rsp5 = NULL;
-			rsp5 = mctp_vd_pci_access(i, &req, SM_API_CMD_GET_PORT_ATTR);
+			rsp5 = mctp_vd_pci_access(i, &req5, SM_API_CMD_GET_PORT_ATTR);
 			if (rsp5 == NULL) {
 				shell_error(shell, "PEX %d get port %d attributes failed!", i,
-					    pord_idx);
+					    port_idx);
 				continue;
 			}
 
-			shell_print(shell, "  [ Port %d ]", i);
+			shell_print(shell, "  [ Port %d ]", port_idx);
 			shell_print(shell, "    * Port number:          %.4xh",
 				    rsp5->PortAttr.PortNum);
 			shell_print(shell, "    * GID:                  %.4xh", rsp5->PortAttr.GID);
@@ -167,7 +167,7 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 		shell_print(shell, "[ PEX %d get attributes ]", i);
 		shell_print(shell, "* Chip secure:         %xh", rsp3.SwMfgInfo.ChipSecure);
 		shell_print(shell, "* Chip secure ver num: %xh", rsp3.SwMfgInfo.ChipSecureVN);
-		shell_print(shell, "* Chip revision leval: %xh", rsp3.SwMfgInfo.ChipRev);
+		shell_print(shell, "* Chip revision level: %xh", rsp3.SwMfgInfo.ChipRev);
 		shell_print(shell, "* Chip id:             %.2xh", rsp3.SwMfgInfo.ChipID);
 		shell_print(shell, "* Chip type:           %.2xh", rsp3.SwMfgInfo.ChipType);
 		shell_print(shell, "* Lane numbers:        %.2xh", rsp3.SwMfgInfo.NumLanes);
@@ -182,6 +182,6 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 		shell_hexdump(shell, rsp3.SwMfgInfo.VendSpecData,
 			      HALI_MFG_CONFIG_VENDOR_SPECIFIC_LEN);
 	}
-
+#endif
 	return 0;
 }
