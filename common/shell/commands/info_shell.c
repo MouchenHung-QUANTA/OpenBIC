@@ -56,7 +56,7 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 	req.switch_id = 0x0000;
 	for (int i = 0; i < 4; i++) {
 		rsp = NULL;
-		rsp = mctp_vd_pci_access(i, &req, SM_API_CMD_FW_REV);
+		rsp = mctp_vdm_pci_brcm_access(i, &req, SM_API_CMD_FW_REV);
 		if (rsp == NULL) {
 			shell_error(shell, "PEX %d get fw revision failed!", i);
 			continue;
@@ -76,7 +76,7 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 	shell_print(shell, "-----------------------------------------------------");
 	struct _get_sw_attr_resp rsp1;
 	for (int i = 0; i < 4; i++) {
-		if (mctp_vd_pci_get_sw_attr(i, &rsp1) == false) {
+		if (mctp_vdm_pci_brcm_get_sw_attr(i, &rsp1) == false) {
 			shell_error(shell, "PEX %d get sw attributes failed!", i);
 			continue;
 		}
@@ -119,7 +119,7 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 			req5.Port_gid.u.GID.DevIden.port = port_idx;
 
 			rsp5 = NULL;
-			rsp5 = mctp_vd_pci_access(i, &req5, SM_API_CMD_GET_PORT_ATTR);
+			rsp5 = mctp_vdm_pci_brcm_access(i, &req5, SM_API_CMD_GET_PORT_ATTR);
 			if (rsp5 == NULL) {
 				shell_error(shell, "PEX %d get port %d attributes failed!", i,
 					    port_idx);
@@ -146,7 +146,7 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 	shell_print(shell, "-----------------------------------------------------");
 	struct _get_sw_temp_resp rsp2;
 	for (int i = 0; i < 4; i++) {
-		if (mctp_vd_pci_get_sw_temp(i, &rsp2) == false) {
+		if (mctp_vdm_pci_brcm_get_sw_temp(i, &rsp2) == false) {
 			shell_error(shell, "PEX %d get sw temp failed!", i);
 			continue;
 		}
@@ -159,7 +159,7 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 	shell_print(shell, "-----------------------------------------------------");
 	struct _sm_sw_mfg_info_resp rsp3;
 	for (int i = 0; i < 4; i++) {
-		if (mctp_vd_pci_get_mfg_info(i, &rsp3) == false) {
+		if (mctp_vdm_pci_brcm_get_mfg_info(i, &rsp3) == false) {
 			shell_error(shell, "PEX %d get mfg info failed!", i);
 			continue;
 		}

@@ -311,7 +311,7 @@ bool mctp_add_sel_to_ipmi(common_addsel_msg_t *sel_msg)
 	return true;
 }
 
-void *mctp_vd_pci_access(uint8_t pex_idx, void *req, SM_API_COMMANDS access_cmd)
+void *mctp_vdm_pci_brcm_access(uint8_t pex_idx, void *req, SM_API_COMMANDS access_cmd)
 {
 	CHECK_NULL_ARG_WITH_RETURN(req, NULL);
 
@@ -383,7 +383,7 @@ void *mctp_vd_pci_access(uint8_t pex_idx, void *req, SM_API_COMMANDS access_cmd)
 	return rsp_buff;
 }
 
-bool mctp_vd_pci_get_fw_version(uint8_t pex_idx, struct _get_fw_rev_resp *resp)
+bool mctp_vdm_pci_brcm_get_fw_version(uint8_t pex_idx, struct _get_fw_rev_resp *resp)
 {
 	if (pex_idx >= ARRAY_SIZE(pex_dev_info)) {
 		LOG_ERR("Invalid pex index given");
@@ -425,7 +425,7 @@ bool mctp_vd_pci_get_fw_version(uint8_t pex_idx, struct _get_fw_rev_resp *resp)
 	return true;
 }
 
-bool mctp_vd_pci_get_sw_attr(uint8_t pex_idx, struct _get_sw_attr_resp *resp)
+bool mctp_vdm_pci_brcm_get_sw_attr(uint8_t pex_idx, struct _get_sw_attr_resp *resp)
 {
 	if (pex_idx >= ARRAY_SIZE(pex_dev_info)) {
 		LOG_ERR("Invalid pex index given");
@@ -467,7 +467,7 @@ bool mctp_vd_pci_get_sw_attr(uint8_t pex_idx, struct _get_sw_attr_resp *resp)
 	return true;
 }
 
-bool mctp_vd_pci_get_sw_temp(uint8_t pex_idx, struct _get_sw_temp_resp *resp)
+bool mctp_vdm_pci_brcm_get_sw_temp(uint8_t pex_idx, struct _get_sw_temp_resp *resp)
 {
 	if (pex_idx >= ARRAY_SIZE(pex_dev_info)) {
 		LOG_ERR("Invalid pex index given");
@@ -509,7 +509,7 @@ bool mctp_vd_pci_get_sw_temp(uint8_t pex_idx, struct _get_sw_temp_resp *resp)
 	return true;
 }
 
-bool mctp_vd_pci_get_mfg_info(uint8_t pex_idx, struct _sm_sw_mfg_info_resp *resp)
+bool mctp_vdm_pci_brcm_get_mfg_info(uint8_t pex_idx, struct _sm_sw_mfg_info_resp *resp)
 {
 	if (pex_idx >= ARRAY_SIZE(pex_dev_info)) {
 		LOG_ERR("Invalid pex index given");

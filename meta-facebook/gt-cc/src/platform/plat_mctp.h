@@ -52,11 +52,11 @@ void plat_mctp_init(void);
 void send_cmd_to_dev(struct k_timer *timer);
 void send_cmd_to_dev_handler(struct k_work *work);
 bool mctp_add_sel_to_ipmi(common_addsel_msg_t *sel_msg);
-void *mctp_vd_pci_access(uint8_t pex_idx, void *req, SM_API_COMMANDS access_cmd);
-bool mctp_vd_pci_get_fw_version(uint8_t pex_idx, struct _get_fw_rev_resp *resp);
-bool mctp_vd_pci_get_sw_attr(uint8_t pex_idx, struct _get_sw_attr_resp *resp);
-bool mctp_vd_pci_get_sw_temp(uint8_t pex_idx, struct _get_sw_temp_resp *resp);
-bool mctp_vd_pci_get_mfg_info(uint8_t pex_idx, struct _sm_sw_mfg_info_resp *resp);
+void *mctp_vdm_pci_brcm_access(uint8_t pex_idx, void *req, SM_API_COMMANDS access_cmd);
+bool mctp_vdm_pci_brcm_get_fw_version(uint8_t pex_idx, struct _get_fw_rev_resp *resp);
+bool mctp_vdm_pci_brcm_get_sw_attr(uint8_t pex_idx, struct _get_sw_attr_resp *resp);
+bool mctp_vdm_pci_brcm_get_sw_temp(uint8_t pex_idx, struct _get_sw_temp_resp *resp);
+bool mctp_vdm_pci_brcm_get_mfg_info(uint8_t pex_idx, struct _sm_sw_mfg_info_resp *resp);
 
 extern struct pldm_variable_field nic_vesion[];
 
