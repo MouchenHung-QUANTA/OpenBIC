@@ -19,6 +19,7 @@
 #include "util_sys.h"
 #include "mctp_vdm_pci_brcm.h"
 #include "plat_mctp.h"
+#include "libutil.h"
 
 #ifndef CONFIG_BOARD
 #define CONFIG_BOARD "unknown"
@@ -50,12 +51,11 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 		"========================{SHELL COMMAND INFO}========================================");
 
 	shell_print(shell, "-----------------------------------------------------");
-	struct _get_fw_rev_resp *rsp;
+	struct _get_fw_rev_resp *rsp = NULL;
 	struct _get_fw_rev_req req;
 	req.rserv = 0x0000;
 	req.switch_id = 0x0000;
 	for (int i = 0; i < 4; i++) {
-		rsp = NULL;
 		rsp = mctp_vdm_pci_brcm_access(i, &req, SM_API_CMD_FW_REV);
 		if (rsp == NULL) {
 			shell_error(shell, "PEX %d get fw revision failed!", i);
@@ -68,6 +68,7 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 			    rsp->FwVer.Field.Dev);
 		shell_print(shell, "* SM api version: %d.%d", rsp->SmApiVer.Field.Major,
 			    rsp->SmApiVer.Field.Minor);
+		SAFE_FREE(rsp);
 	}
 #if 1
 	sm_switch_attr sw_attr[4];
@@ -118,7 +119,6 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 			req5.Port_gid.u.GID.Bus = 0;
 			req5.Port_gid.u.GID.DevIden.port = port_idx;
 
-			rsp5 = NULL;
 			rsp5 = mctp_vdm_pci_brcm_access(i, &req5, SM_API_CMD_GET_PORT_ATTR);
 			if (rsp5 == NULL) {
 				shell_error(shell, "PEX %d get port %d attributes failed!", i,
@@ -140,6 +140,7 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 					    (rsp5->PortAttr.Type == PMG_SW_PORT_TYPE_HOST) ?
 					    "HOST" :
 					    "N/A");
+			SAFE_FREE(rsp5);
 		}
 	}
 
