@@ -34,7 +34,8 @@ struct i2c_target_data {
 	uint8_t i2c_bus; /* i2c bus number */
 	const struct device *i2c_controller; /* i2c controller for one target bus */
 	struct i2c_slave_config config; /* i2c target relative config */
-	uint16_t max_msg_count; /* max message count that target could handle */
+	uint32_t max_msg_count; /* max message count that target could handle */
+	uint16_t max_msg_len; /* max message length that target could handle */
 	uint32_t buffer_idx; /* index point to array that store message */
 	struct i2c_msg_package current_msg; /* store message relative stuff */
 	struct k_msgq z_msgq_id; /* message queue of Zephyr api */
@@ -42,7 +43,8 @@ struct i2c_target_data {
 
 struct _i2c_target_config {
 	uint8_t address;
-	uint32_t i2c_msg_count;
+	uint32_t max_msg_count;
+	uint16_t max_msg_len;
 };
 
 struct i2c_target_device {

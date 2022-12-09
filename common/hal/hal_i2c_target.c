@@ -216,7 +216,7 @@ uint8_t i2c_target_cfg_get(uint8_t bus_num, struct _i2c_target_config *cfg)
 	struct i2c_target_data *data = &i2c_target_device_global[bus_num].data;
 
 	cfg->address = data->config.address;
-	cfg->i2c_msg_count = data->z_msgq_id.max_msgs;
+	cfg->max_msg_count = data->z_msgq_id.max_msgs;
 
 	return I2C_TARGET_API_NO_ERR;
 }
@@ -392,6 +392,11 @@ static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg)
 	if (!cfg)
 		return I2C_TARGET_API_INPUT_ERR;
 
+	if (!cfg->max_msg_count || !cfg->max_msg_len) {
+		LOG_ERR("Get zero set of max_msg_count or max_msg_len!");
+		return I2C_TARGET_API_INPUT_ERR;
+	}
+
 	int status;
 	uint8_t target_status = I2C_TARGET_HAS_NO_ERR;
 	int ret = I2C_TARGET_API_NO_ERR;
@@ -428,10 +433,11 @@ static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg)
 	}
 
 	uint8_t target_address = cfg->address;
-	uint16_t _max_msg_count = cfg->i2c_msg_count;
+	uint32_t _max_msg_count = cfg->max_msg_count;
+	uint16_t _max_msg_len = cfg->max_msg_len;
 
 	struct i2c_target_data *data = &i2c_target_device_global[bus_num].data;
-	char *i2C_target_queue_buffer;
+	char *i2C_target_queue_buffer = NULL;
 
 	/* do init, Only one time init for each bus target */
 	if (target_status & I2C_TARGET_NOT_INIT) {
@@ -465,8 +471,9 @@ static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg)
 		SAFE_FREE(data->z_msgq_id.buffer_start);
 	}
 
-	data->max_msg_count = _max_msg_count;
 	data->config.address = target_address >> 1; // to 7-bit target address
+	data->max_msg_count = _max_msg_count;
+	data->max_msg_len = _max_msg_len;
 
 	i2C_target_queue_buffer = malloc(data->max_msg_count * sizeof(struct i2c_msg_package));
 	if (!i2C_target_queue_buffer) {
