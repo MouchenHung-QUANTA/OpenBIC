@@ -18,6 +18,7 @@
 #define LIBUTIL_H
 
 #include <stdint.h>
+#include <stdlib.h>
 #include "ipmb.h"
 #include "hal_i2c.h"
 
