@@ -20,6 +20,7 @@ target_sources(app PRIVATE ${common_path}/lib/util_pmbus.c)
 target_sources(app PRIVATE ${common_path}/lib/util_spi.c)
 target_sources(app PRIVATE ${common_path}/lib/util_sys.c)
 target_sources(app PRIVATE ${common_path}/lib/util_worker.c)
+target_sources(app PRIVATE ${common_path}/lib/util_heap.c)
 
 target_include_directories(app PRIVATE ${ZEPHYR_BASE}/include/portability)
 

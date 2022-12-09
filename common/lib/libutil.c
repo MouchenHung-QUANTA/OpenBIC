@@ -80,3 +80,14 @@ void reverse_array(uint8_t arr[], uint8_t size)
 		arr[size - 1 - i] = temp;
 	}
 }
+
+__attribute__ ((__noinline__))
+void * get_pc () {
+	return __builtin_return_address(0);
+}
+
+void * get_sp () {
+	void *sp;
+    __asm__ __volatile__ ("mov %0, sp" : "=r"(sp));
+    return sp;
+}

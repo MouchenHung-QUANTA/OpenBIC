@@ -17,6 +17,9 @@
 #include "info_shell.h"
 #include "plat_version.h"
 #include "util_sys.h"
+#include <stdio.h>
+#include "util_heap.h"
+#include "libutil.h"
 
 #ifndef CONFIG_BOARD
 #define CONFIG_BOARD "unknown"
@@ -46,5 +49,12 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 	shell_print(
 		shell,
 		"========================{SHELL COMMAND INFO}========================================");
+
+	list_memory_array();
+
+	shell_print(shell, "pc: %x", get_pc());
+	shell_print(shell, "sp: %x", get_sp());
+
+
 	return 0;
 }

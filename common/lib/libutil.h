@@ -21,6 +21,15 @@
 #include "ipmb.h"
 #include "hal_i2c.h"
 
+void * get_sp ();
+void * get_pc ();
+
+#define VAR_TO_STR(var) #var
+
+#define SAFE_MALLOC_WITH_RETURN(pointer, type, cnt, ret_macro, ret_val) \
+	pointer = (type *)malloc(sizeof(type) * cnt);\
+	ret_macro(pointer, ret_val)
+
 #define SAFE_FREE(p)                                                                               \
 	if (p) {                                                                                   \
 		free(p);                                                                           \
