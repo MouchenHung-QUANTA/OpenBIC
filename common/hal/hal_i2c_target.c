@@ -69,13 +69,9 @@ static int do_i2c_target_unregister(uint8_t bus_num);
 
 static int i2c_target_write_requested(struct i2c_slave_config *config)
 {
+	CHECK_NULL_ARG_WITH_RETURN(config, 1);
+
 	struct i2c_target_data *data;
-
-	if (!config) {
-		LOG_ERR("Get empty config!");
-		return 1;
-	}
-
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
 	data->current_msg.msg_length = 0;
@@ -87,13 +83,9 @@ static int i2c_target_write_requested(struct i2c_slave_config *config)
 
 static int i2c_target_write_received(struct i2c_slave_config *config, uint8_t val)
 {
+	CHECK_NULL_ARG_WITH_RETURN(config, 1);
+
 	struct i2c_target_data *data;
-
-	if (!config) {
-		LOG_ERR("Get empty config!");
-		return 1;
-	}
-
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
 	if (data->buffer_idx >= MAX_I2C_TARGET_BUFF) {
@@ -107,13 +99,9 @@ static int i2c_target_write_received(struct i2c_slave_config *config, uint8_t va
 
 static int i2c_target_stop(struct i2c_slave_config *config)
 {
+	CHECK_NULL_ARG_WITH_RETURN(config, 1);
+
 	struct i2c_target_data *data;
-
-	if (!config) {
-		LOG_ERR("Get empty config!");
-		return 1;
-	}
-
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
 	if (data->buffer_idx) {
@@ -201,10 +189,9 @@ out:
 */
 uint8_t i2c_target_cfg_get(uint8_t bus_num, struct _i2c_target_config *cfg)
 {
-	uint8_t status;
+	CHECK_NULL_ARG_WITH_RETURN(cfg, I2C_TARGET_API_INPUT_ERR);
 
-	if (!cfg)
-		return I2C_TARGET_API_INPUT_ERR;
+	uint8_t status;
 
 	/* check input */
 	status = i2c_target_status_get(bus_num);
@@ -269,10 +256,10 @@ uint8_t i2c_target_status_print(uint8_t bus_num)
 */
 uint8_t i2c_target_read(uint8_t bus_num, uint8_t *buff, uint16_t buff_len, uint16_t *msg_len)
 {
-	uint8_t status;
+	CHECK_NULL_ARG_WITH_RETURN(buff, I2C_TARGET_API_INPUT_ERR);
+	CHECK_NULL_ARG_WITH_RETURN(msg_len, I2C_TARGET_API_INPUT_ERR);
 
-	if (!buff || !msg_len)
-		return I2C_TARGET_API_INPUT_ERR;
+	uint8_t status;
 
 	/* check input, support while bus target is unregistered */
 	status = i2c_target_status_get(bus_num);
@@ -340,9 +327,7 @@ int i2c_target_control(uint8_t bus_num, struct _i2c_target_config *cfg,
 	switch (mode) {
 	/* Case1: do config then register (if already config before, then modify config set) */
 	case I2C_CONTROL_REGISTER:
-		if (!cfg) {
-			return I2C_TARGET_API_INPUT_ERR;
-		}
+		CHECK_NULL_ARG_WITH_RETURN(cfg, I2C_TARGET_API_INPUT_ERR);
 
 		status = do_i2c_target_cfg(bus_num, cfg);
 		if (status) {
@@ -389,8 +374,7 @@ int i2c_target_control(uint8_t bus_num, struct _i2c_target_config *cfg,
 */
 static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg)
 {
-	if (!cfg)
-		return I2C_TARGET_API_INPUT_ERR;
+	CHECK_NULL_ARG_WITH_RETURN(cfg, I2C_TARGET_API_INPUT_ERR);
 
 	if (!cfg->max_msg_count || !cfg->max_msg_len) {
 		LOG_ERR("Get zero set of max_msg_count or max_msg_len!");
@@ -432,10 +416,6 @@ static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg)
 		return I2C_TARGET_API_LOCK_ERR;
 	}
 
-	uint8_t target_address = cfg->address;
-	uint32_t _max_msg_count = cfg->max_msg_count;
-	uint16_t _max_msg_len = cfg->max_msg_len;
-
 	struct i2c_target_data *data = &i2c_target_device_global[bus_num].data;
 	char *i2C_target_queue_buffer = NULL;
 
@@ -471,9 +451,9 @@ static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg)
 		SAFE_FREE(data->z_msgq_id.buffer_start);
 	}
 
-	data->config.address = target_address >> 1; // to 7-bit target address
-	data->max_msg_count = _max_msg_count;
-	data->max_msg_len = _max_msg_len;
+	data->config.address = cfg->address >> 1; // to 7-bit target address
+	data->max_msg_count = cfg->max_msg_count;
+	data->max_msg_len = cfg->max_msg_len;
 
 	i2C_target_queue_buffer = malloc(data->max_msg_count * sizeof(struct i2c_msg_package));
 	if (!i2C_target_queue_buffer) {
