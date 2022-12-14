@@ -56,6 +56,8 @@
 #define LOG_LEVEL CONFIG_I2C_LOG_LEVEL
 LOG_MODULE_REGISTER(hal_i2c_target);
 
+#define MAX_MSG_SIZE 512
+
 /* I2C target device arr */
 static struct i2c_target_device i2c_target_device_global[MAX_TARGET_NUM] = { 0 };
 
@@ -75,7 +77,16 @@ static int i2c_target_write_requested(struct i2c_slave_config *config)
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
 	data->current_msg.msg_length = 0;
-	memset(data->current_msg.msg, 0x0, MAX_I2C_TARGET_BUFF);
+
+	if (data->current_msg.msg)
+		SAFE_FREE(data->current_msg.msg);
+	data->current_msg.msg = (uint8_t *)malloc(MAX_MSG_SIZE);
+	if (!data->current_msg.msg) {
+		LOG_ERR("Buffer malloc failed!");
+		return 1;
+	}
+	memset(data->current_msg.msg, 0, MAX_MSG_SIZE);
+
 	data->buffer_idx = 0;
 
 	return 0;
@@ -88,11 +99,12 @@ static int i2c_target_write_received(struct i2c_slave_config *config, uint8_t va
 	struct i2c_target_data *data;
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
-	if (data->buffer_idx >= MAX_I2C_TARGET_BUFF) {
+	if (data->buffer_idx >= data->max_msg_len) {
 		LOG_ERR("Buffer_idx over limit!");
 		return 1;
 	}
-	data->current_msg.msg[data->buffer_idx++] = val;
+	*(data->current_msg.msg + data->buffer_idx) = val;
+	data->buffer_idx++;
 
 	return 0;
 }
@@ -235,6 +247,7 @@ uint8_t i2c_target_status_print(uint8_t bus_num)
 	printf("* init:        %d\n", target_info->is_init);
 	printf("* register:    %d\n", target_info->is_register);
 	printf("* address:     0x%x\n", data->config.address);
+	printf("* max length:  %d\n", data->max_msg_len);
 	printf("* status:      %d/%d\n", k_msgq_num_used_get(&data->z_msgq_id),
 	       data->z_msgq_id.max_msgs);
 	printf("=============================\n");
@@ -286,6 +299,9 @@ uint8_t i2c_target_read(uint8_t bus_num, uint8_t *buff, uint16_t buff_len, uint1
 		memcpy(buff, &(local_buf.msg), local_buf.msg_length);
 		*msg_len = local_buf.msg_length;
 	}
+
+	/* free message buffer */
+	SAFE_FREE(local_buf.msg);
 
 	/* if bus target has been unregister cause of queue full previously, then register it on */
 	if (k_msgq_num_used_get(&data->z_msgq_id) == (data->z_msgq_id.max_msgs - 1)) {
@@ -453,7 +469,7 @@ static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg)
 
 	data->config.address = cfg->address >> 1; // to 7-bit target address
 	data->max_msg_count = cfg->max_msg_count;
-	data->max_msg_len = cfg->max_msg_len;
+	data->current_msg.msg = NULL;
 
 	i2C_target_queue_buffer = malloc(data->max_msg_count * sizeof(struct i2c_msg_package));
 	if (!i2C_target_queue_buffer) {

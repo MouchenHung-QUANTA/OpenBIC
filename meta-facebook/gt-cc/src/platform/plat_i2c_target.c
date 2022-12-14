@@ -30,7 +30,7 @@
 #include "plat_i2c_target.h"
 
 #define DEF_MAX_MSG_CNT 10
-#define DEF_MAX_MSG_LEN 255
+#define DEF_MAX_MSG_LEN 256
 
 /* I2C target init-enable table */
 const bool I2C_TARGET_ENABLE_TABLE[MAX_TARGET_NUM] = {

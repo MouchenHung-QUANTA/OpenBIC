@@ -20,14 +20,13 @@
 #include <drivers/i2c.h>
 #include "hal_i2c.h"
 
-#define MAX_I2C_TARGET_BUFF 512
 #define MAX_TARGET_NUM 16
 #define I2C_DEVICE_PREFIX "I2C_"
 #define I2C_CONTROLLER_NAME_GET(inst) I2C_DEVICE_PREFIX #inst
 
 struct __attribute__((__packed__)) i2c_msg_package {
 	uint16_t msg_length;
-	uint8_t msg[MAX_I2C_TARGET_BUFF];
+	uint8_t *msg;
 };
 
 struct i2c_target_data {
