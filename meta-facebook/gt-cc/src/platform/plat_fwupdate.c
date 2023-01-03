@@ -28,9 +28,9 @@
 
 LOG_MODULE_REGISTER(plat_fwupdate);
 
-static uint8_t pldm_vr_update(uint16_t comp_id, void *mctp_p, void *ext_params);
-static uint8_t pldm_pex_update(uint16_t comp_id, void *mctp_p, void *ext_params);
-static uint8_t pldm_cpld_update(uint16_t comp_id, void *mctp_p, void *ext_params);
+static uint8_t pldm_vr_update(void *fw_update_param);
+static uint8_t pldm_pex_update(void *fw_update_param);
+static uint8_t pldm_cpld_update(void *fw_update_param);
 
 /* PLDM FW update table */
 // clang-format off
@@ -63,30 +63,23 @@ void load_pldmupdate_comp_config(void)
 	memcpy(comp_config, PLDMUPDATE_FW_CONFIG_TABLE, sizeof(PLDMUPDATE_FW_CONFIG_TABLE));
 }
 
-static uint8_t pldm_vr_update(uint16_t comp_id, void *mctp_p, void *ext_params)
+static uint8_t pldm_vr_update(void *fw_update_param)
 {
-	CHECK_NULL_ARG_WITH_RETURN(mctp_p, 1);
-	CHECK_NULL_ARG_WITH_RETURN(ext_params, 1);
-
 	LOG_WRN("Not support vr pldm update yet!");
 
 	return 0;
 }
 
-static uint8_t pldm_cpld_update(uint16_t comp_id, void *mctp_p, void *ext_params)
+static uint8_t pldm_cpld_update(void *fw_update_param)
 {
-	CHECK_NULL_ARG_WITH_RETURN(mctp_p, 1);
-	CHECK_NULL_ARG_WITH_RETURN(ext_params, 1);
 
 	LOG_WRN("Not support pex pldm update yet!");
 
 	return 0;
 }
 
-static uint8_t pldm_pex_update(uint16_t comp_id, void *mctp_p, void *ext_params)
+static uint8_t pldm_pex_update(void *fw_update_param)
 {
-	CHECK_NULL_ARG_WITH_RETURN(mctp_p, 1);
-	CHECK_NULL_ARG_WITH_RETURN(ext_params, 1);
 
 	LOG_WRN("Not support pex pldm update yet!");
 

@@ -114,8 +114,42 @@ __weak uint8_t pal_request_complete_fw_data(uint8_t *buff, uint32_t buff_len, vo
 	return 0;
 }
 
-uint8_t pldm_bic_update(uint16_t comp_class, void *mctp_p, void *ext_params)
+uint8_t pldm_bic_update(void *fw_update_param)
 {
+	CHECK_NULL_ARG_WITH_RETURN(fw_update_param, 1);
+
+	pldm_fw_update_param_t *p = (pldm_fw_update_param_t *)fw_update_param;
+	
+	CHECK_NULL_ARG_WITH_RETURN(p->data, 1);
+
+	uint8_t update_flag = 0;
+
+	/* prepare next data offset and length */
+	p->next_ofs = p->data_ofs + p->data_len;
+	p->next_len = fw_update_cfg.max_buff_size;
+
+	if (p->next_ofs < fw_update_cfg.image_size) {
+		if (p->next_ofs + p->next_len > fw_update_cfg.image_size)
+			p->next_len = fw_update_cfg.image_size - p->next_ofs;
+		
+		if (((p->next_ofs % SECTOR_SZ_64K) + p->next_len) > SECTOR_SZ_64K)
+			p->next_len = SECTOR_SZ_64K - (p->next_ofs % SECTOR_SZ_64K);
+	} else {
+		/* current data is the last packet
+		 * set the next data length to 0 to inform the update completely
+		 */
+		p->next_len = 0;
+		update_flag = (SECTOR_END_FLAG | NO_RESET_FLAG);
+	}
+
+	uint8_t ret = fw_update(p->data_ofs, p->data_len, p->data, update_flag, DEVSPI_FMC_CS0);
+
+	if (ret) {
+		LOG_ERR("Firmware update failed, offset(0x%x), length(0x%x), status(%d)",
+			p->data_ofs, p->data_len, ret);
+		return 1;
+	}
+#if 0
 	ARG_UNUSED(comp_class);
 	CHECK_NULL_ARG_WITH_RETURN(mctp_p, 1);
 	CHECK_NULL_ARG_WITH_RETURN(ext_params, 1);
@@ -179,7 +213,7 @@ uint8_t pldm_bic_update(uint16_t comp_class, void *mctp_p, void *ext_params)
 
 		req.offset += req.length;
 	}
-
+#endif
 	return 0;
 }
 
@@ -216,23 +250,23 @@ static uint8_t verify_comp(uint16_t comp_class, uint16_t comp_id, uint8_t comp_c
 
 	return COMP_RSP_CAN_UPDATE;
 }
-
-static uint8_t do_fwupdate(uint16_t comp_id, void *mctp_p, void *ext_params)
+#if 0
+static uint8_t do_fwupdate(pldm_fw_update_param_t *param)
 {
-	CHECK_NULL_ARG_WITH_RETURN(mctp_p, 1);
-	CHECK_NULL_ARG_WITH_RETURN(ext_params, 1);
+	CHECK_NULL_ARG_WITH_RETURN(param, 1);
+	CHECK_NULL_ARG_WITH_RETURN(param->data, 1);
 
 	if (comp_config_count == 0) {
 		LOG_ERR("comp_config not loaded yet");
 		return 1;
 	}
 
-	LOG_INF("Component %d start update process...", comp_id);
+	LOG_INF("Component %d start update process...", param->comp_id);
 
 	int idx = 0;
 	for (idx = 0; idx < comp_config_count; idx++) {
-		if (comp_config[idx].comp_identifier == comp_id && comp_config[idx].update_func) {
-			if (comp_config[idx].update_func(comp_id, mctp_p, ext_params)) {
+		if (comp_config[idx].comp_identifier == param->comp_id && comp_config[idx].update_func) {
+			if (comp_config[idx].update_func(param)) {
 				return 1;
 			}
 			break;
@@ -240,14 +274,15 @@ static uint8_t do_fwupdate(uint16_t comp_id, void *mctp_p, void *ext_params)
 	}
 
 	if (idx == comp_config_count) {
-		LOG_ERR("Not support pldm fw update for component %d", comp_id);
+		LOG_ERR("Not support pldm fw update for component %d", param->comp_id);
 		return 1;
 	}
 
-	LOG_INF("Component %d update success!", comp_id);
+	LOG_INF("Component %d update success!", param->comp_id);
 
 	return 0;
 }
+#endif
 
 static uint8_t do_self_activate(uint16_t comp_id)
 {
@@ -358,6 +393,23 @@ static uint8_t report_tranfer(void *mctp_p, void *ext_params, uint8_t result_cod
 	return 0;
 }
 
+static pldm_fwupdate_func found_fw_update_func(uint16_t comp_id)
+{
+	if (!comp_config_count) {
+		LOG_ERR("comp_config not loaded yet");
+		return NULL;
+	}
+
+	for (uint8_t idx = 0; idx < comp_config_count; idx++) {
+		if (comp_config[idx].comp_identifier == comp_id) {
+			LOG_INF("find comp %x update function %p", comp_id, comp_config[idx].update_func);
+			return comp_config[idx].update_func;
+		}
+	}
+
+	return NULL;
+}
+
 void req_fw_update_handler(void *mctp_p, void *ext_params, void *comp_id)
 {
 	if (!mctp_p || !ext_params || !comp_id) {
@@ -367,10 +419,56 @@ void req_fw_update_handler(void *mctp_p, void *ext_params, void *comp_id)
 		return;
 	}
 
-	if (do_fwupdate(*(uint16_t *)comp_id, mctp_p, ext_params)) {
-		report_tranfer(mctp_p, ext_params, PLDM_FW_UPDATE_GENERIC_ERROR);
-		goto exit;
+	pldm_fwupdate_func update_func = found_fw_update_func(*(uint16_t *)comp_id);
+	if (!update_func) {
+		LOG_WRN("Cannot find comp %x update function", *(uint16_t *)comp_id);
+		current_state = STATE_IDLE;
+		SAFE_FREE(ext_params);
+		return;
 	}
+
+	/* the request length is max_buf_size at first request */
+	struct pldm_request_firmware_data_req req = {
+		.offset = 0,
+		.length = fw_update_cfg.max_buff_size
+	};
+
+	do {
+		uint8_t resp_buf[req.length + 1];
+		memset(resp_buf, 0, req.length + 1);
+
+		uint16_t read_len = 
+			pldm_fw_update_read(mctp_p, PLDM_FW_UPDATE_CMD_CODE_REQUEST_FIRMWARE_DATA,
+					(uint8_t *)&req,
+					sizeof(struct pldm_request_firmware_data_req), resp_buf,
+					ARRAY_SIZE(resp_buf), ext_params);;
+		
+		/* read_len = request length + completion code */
+		if (read_len != req.length + 1) {
+			LOG_ERR("Request firmware update failed, offset(0x%x), length(0x%x), read length(%d)",
+				req.offset, req.length, read_len);
+			goto exit;
+		}
+
+		pldm_fw_update_param_t update_param = { 0 };
+		update_param.comp_id = *(uint16_t *)comp_id;
+		update_param.data = resp_buf + 1;
+		update_param.data_len = read_len - 1;
+		update_param.data_ofs = req.offset;
+
+		if (update_func(&update_param)) {
+			report_tranfer(mctp_p, ext_params, PLDM_FW_UPDATE_GENERIC_ERROR);
+			goto exit;
+		}
+
+		if (!update_param.next_len)
+			break;
+
+		req.offset = update_param.next_ofs;
+		req.length = update_param.next_len;
+
+	} while (1);
+
 
 	LOG_INF("Transfer complete");
 	if (report_tranfer(mctp_p, ext_params, PLDM_FW_UPDATE_TRANSFER_SUCCESS)) {

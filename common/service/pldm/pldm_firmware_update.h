@@ -193,8 +193,18 @@ enum comp_act_mdthod {
 	COMP_ACT_SUPP_PEND_COMP_IMG_SET = 0x0080,
 };
 
-typedef uint8_t (*pldm_fwupdate_func)(uint16_t comp_id, void *mctp_p, void *ext_params);
+// typedef uint8_t (*pldm_fwupdate_func)(uint16_t comp_id, void *mctp_p, void *ext_params);
+typedef uint8_t (*pldm_fwupdate_func)(void *fw_update_param);
 typedef uint8_t (*pldm_act_func)(void *arg);
+
+typedef struct pldm_fw_update_param {
+	uint16_t comp_id;
+	uint8_t *data;
+	uint32_t data_ofs;
+	uint32_t data_len;
+	uint32_t next_ofs;
+	uint32_t next_len;
+} pldm_fw_update_param_t;
 
 typedef struct pldm_fw_update_info {
 	bool enable;
@@ -334,7 +344,7 @@ uint16_t pldm_fw_update_read(void *mctp_p, enum pldm_firmware_update_commands cm
 			     uint16_t req_len, uint8_t *rbuf, uint16_t rbuf_len, void *ext_params);
 uint8_t pal_request_complete_fw_data(uint8_t *buff, uint32_t buff_len, void *mctp_p,
 				     void *ext_params);
-uint8_t pldm_bic_update(uint16_t comp_class, void *mctp_p, void *ext_params);
+uint8_t pldm_bic_update(void *fw_update_param);
 uint8_t pldm_bic_activate(void *arg);
 
 #ifdef __cplusplus
