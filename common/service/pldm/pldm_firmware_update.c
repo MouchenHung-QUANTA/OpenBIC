@@ -119,7 +119,7 @@ uint8_t pldm_bic_update(void *fw_update_param)
 	CHECK_NULL_ARG_WITH_RETURN(fw_update_param, 1);
 
 	pldm_fw_update_param_t *p = (pldm_fw_update_param_t *)fw_update_param;
-	
+
 	CHECK_NULL_ARG_WITH_RETURN(p->data, 1);
 
 	uint8_t update_flag = 0;
@@ -131,7 +131,7 @@ uint8_t pldm_bic_update(void *fw_update_param)
 	if (p->next_ofs < fw_update_cfg.image_size) {
 		if (p->next_ofs + p->next_len > fw_update_cfg.image_size)
 			p->next_len = fw_update_cfg.image_size - p->next_ofs;
-		
+
 		if (((p->next_ofs % SECTOR_SZ_64K) + p->next_len) > SECTOR_SZ_64K)
 			p->next_len = SECTOR_SZ_64K - (p->next_ofs % SECTOR_SZ_64K);
 	} else {
@@ -393,7 +393,7 @@ static uint8_t report_tranfer(void *mctp_p, void *ext_params, uint8_t result_cod
 	return 0;
 }
 
-static pldm_fwupdate_func found_fw_update_func(uint16_t comp_id)
+static pldm_fw_update_info_t *found_fw_update_func(uint16_t comp_id)
 {
 	if (!comp_config_count) {
 		LOG_ERR("comp_config not loaded yet");
@@ -402,8 +402,7 @@ static pldm_fwupdate_func found_fw_update_func(uint16_t comp_id)
 
 	for (uint8_t idx = 0; idx < comp_config_count; idx++) {
 		if (comp_config[idx].comp_identifier == comp_id) {
-			LOG_INF("find comp %x update function %p", comp_id, comp_config[idx].update_func);
-			return comp_config[idx].update_func;
+			return &comp_config[idx];
 		}
 	}
 
@@ -419,30 +418,41 @@ void req_fw_update_handler(void *mctp_p, void *ext_params, void *comp_id)
 		return;
 	}
 
-	pldm_fwupdate_func update_func = found_fw_update_func(*(uint16_t *)comp_id);
-	if (!update_func) {
+	LOG_INF("Component %d start update process...", *(uint16_t *)comp_id);
+
+	pldm_fw_update_info_t *fw_info = found_fw_update_func(*(uint16_t *)comp_id);
+	if (!fw_info->update_func) {
 		LOG_WRN("Cannot find comp %x update function", *(uint16_t *)comp_id);
 		current_state = STATE_IDLE;
 		SAFE_FREE(ext_params);
 		return;
 	}
 
+	pldm_fw_update_param_t update_param = { 0 };
+	update_param.comp_id = *(uint16_t *)comp_id;
+
+	/* do pre-update */
+	if (fw_info->pre_unpdate_func) {
+		if (fw_info->pre_unpdate_func(&update_param)) {
+			LOG_ERR("pre-update failed!");
+			goto exit;
+		}
+	}
+
 	/* the request length is max_buf_size at first request */
-	struct pldm_request_firmware_data_req req = {
-		.offset = 0,
-		.length = fw_update_cfg.max_buff_size
-	};
+	struct pldm_request_firmware_data_req req = { .offset = 0,
+						      .length = fw_update_cfg.max_buff_size };
 
 	do {
 		uint8_t resp_buf[req.length + 1];
 		memset(resp_buf, 0, req.length + 1);
 
-		uint16_t read_len = 
+		uint16_t read_len =
 			pldm_fw_update_read(mctp_p, PLDM_FW_UPDATE_CMD_CODE_REQUEST_FIRMWARE_DATA,
-					(uint8_t *)&req,
-					sizeof(struct pldm_request_firmware_data_req), resp_buf,
-					ARRAY_SIZE(resp_buf), ext_params);;
-		
+					    (uint8_t *)&req,
+					    sizeof(struct pldm_request_firmware_data_req), resp_buf,
+					    ARRAY_SIZE(resp_buf), ext_params);
+
 		/* read_len = request length + completion code */
 		if (read_len != req.length + 1) {
 			LOG_ERR("Request firmware update failed, offset(0x%x), length(0x%x), read length(%d)",
@@ -450,13 +460,16 @@ void req_fw_update_handler(void *mctp_p, void *ext_params, void *comp_id)
 			goto exit;
 		}
 
-		pldm_fw_update_param_t update_param = { 0 };
-		update_param.comp_id = *(uint16_t *)comp_id;
 		update_param.data = resp_buf + 1;
 		update_param.data_len = read_len - 1;
 		update_param.data_ofs = req.offset;
 
-		if (update_func(&update_param)) {
+		uint8_t percent = ((update_param.data_ofs + update_param.data_len) * 100) /
+				  fw_update_cfg.image_size;
+		LOG_INF("package loaded: %d%%", percent);
+
+		if (fw_info->update_func(&update_param)) {
+			LOG_ERR("Component %d update failed!", *(uint16_t *)comp_id);
 			report_tranfer(mctp_p, ext_params, PLDM_FW_UPDATE_GENERIC_ERROR);
 			goto exit;
 		}
@@ -469,6 +482,7 @@ void req_fw_update_handler(void *mctp_p, void *ext_params, void *comp_id)
 
 	} while (1);
 
+	LOG_INF("Component %d update success!", *(uint16_t *)comp_id);
 
 	LOG_INF("Transfer complete");
 	if (report_tranfer(mctp_p, ext_params, PLDM_FW_UPDATE_TRANSFER_SUCCESS)) {
@@ -492,6 +506,13 @@ void req_fw_update_handler(void *mctp_p, void *ext_params, void *comp_id)
 	current_state = STATE_RDY_XFER;
 
 exit:
+	/* do post-update */
+	if (fw_info->pos_unpdate_func) {
+		if (fw_info->pos_unpdate_func(&update_param)) {
+			LOG_ERR("post-update failed!");
+		}
+	}
+
 	fw_update_cfg.image_size = 0;
 
 	if (fw_update_tid) {

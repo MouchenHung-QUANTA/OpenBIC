@@ -204,6 +204,8 @@ typedef struct pldm_fw_update_param {
 	uint32_t data_len;
 	uint32_t next_ofs;
 	uint32_t next_len;
+	uint8_t bus; // i2c/jtag
+	uint8_t addr; // i2c
 } pldm_fw_update_param_t;
 
 typedef struct pldm_fw_update_info {
@@ -211,7 +213,9 @@ typedef struct pldm_fw_update_info {
 	uint16_t comp_classification;
 	uint16_t comp_identifier;
 	uint8_t comp_classification_index;
+	pldm_fwupdate_func pre_unpdate_func;
 	pldm_fwupdate_func update_func;
+	pldm_fwupdate_func pos_unpdate_func;
 	uint16_t activate_method;
 	pldm_act_func self_act_func;
 } pldm_fw_update_info_t;

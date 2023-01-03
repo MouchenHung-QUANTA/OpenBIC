@@ -19,7 +19,7 @@
 
 bool xdpe12284c_get_checksum(uint8_t bus, uint8_t target_addr, uint8_t *checksum);
 bool xdpe12284c_get_remaining_write(uint8_t bus, uint8_t target_addr, uint8_t *remain_write);
-bool xdpe12284c_pldm_fwupdate(uint8_t sensor_num, void *mctp_p, void *ext_params);
+uint8_t xdpe12284c_fwupdate(void *fw_update_param);
 
 enum INFINEON_PAGE {
 	INFINEON_STATUS_PAGE = 0x60,

@@ -19,6 +19,6 @@
 
 #include "stdint.h"
 
-bool mp2971_pldm_fwupdate(uint8_t sensor_num, void *mctp_p, void *ext_params);
+uint8_t mp2971_pldm_fwupdate(void *fw_update_param);
 
 #endif

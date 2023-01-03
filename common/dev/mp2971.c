@@ -17,11 +17,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <logging/log.h>
 #include "sensor.h"
 #include "hal_i2c.h"
 #include "pmbus.h"
 #include "pldm_firmware_update.h"
-#include <logging/log.h>
+#include "mp2971.h"
 
 LOG_MODULE_REGISTER(mp2971);
 
@@ -248,23 +249,12 @@ static bool mp2856_unlock_write_protect_mode(uint8_t bus, uint8_t addr)
 	return true;
 }
 
-static bool loading_image(struct mp2856_config *dev_cfg, void *mctp_p, void *ext_params)
+static bool parsing_image(uint8_t *hex_buff, struct mp2856_config *dev_cfg)
 {
+	CHECK_NULL_ARG_WITH_RETURN(hex_buff, false);
 	CHECK_NULL_ARG_WITH_RETURN(dev_cfg, false);
-	CHECK_NULL_ARG_WITH_RETURN(mctp_p, false);
-	CHECK_NULL_ARG_WITH_RETURN(ext_params, false);
 
 	bool ret = false;
-	uint8_t *hex_buff = malloc(fw_update_cfg.image_size);
-	if (!hex_buff) {
-		LOG_ERR("malloc hex_buff failed!");
-		return false;
-	}
-
-	/* Collect image */
-	if (pal_request_complete_fw_data(hex_buff, fw_update_cfg.image_size, mctp_p, ext_params)) {
-		goto exit;
-	}
 
 	/* Parsing image */
 	int max_line = MAX_CMD_LINE;
@@ -280,6 +270,12 @@ static bool loading_image(struct mp2856_config *dev_cfg, void *mctp_p, void *ext
 	uint8_t data_idx = 0;
 	dev_cfg->wr_cnt = 0;
 	for (int i = 0; i < fw_update_cfg.image_size; i++) {
+		/* check valid */
+		if (!hex_buff[i]) {
+			LOG_ERR("Get invalid buffer data at index %d", i);
+			goto exit;
+		}
+
 		if (cur_ele_idx == ATE_CONF_ID && i + 2 < fw_update_cfg.image_size) {
 			if (!strncmp(&hex_buff[i], "END", 3)) {
 				break;
@@ -352,34 +348,65 @@ static bool loading_image(struct mp2856_config *dev_cfg, void *mctp_p, void *ext
 	ret = true;
 
 exit:
-	SAFE_FREE(hex_buff);
 	if (ret == false)
 		SAFE_FREE(dev_cfg->pdata);
 
 	return ret;
 }
 
-bool mp2971_pldm_fwupdate(uint8_t sensor_num, void *mctp_p, void *ext_params)
+uint8_t mp2971_fwupdate(void *fw_update_param)
 {
-	CHECK_NULL_ARG_WITH_RETURN(mctp_p, false);
-	CHECK_NULL_ARG_WITH_RETURN(ext_params, false);
+	CHECK_NULL_ARG_WITH_RETURN(fw_update_param, 1);
 
-	int page2_start = 0;
+	pldm_fw_update_param_t *p = (pldm_fw_update_param_t *)fw_update_param;
 
-	bool ret = false;
-	/* Get bus and target address by sensor number in sensor configuration */
-	uint8_t dev_i2c_bus = sensor_config[sensor_config_index_map[sensor_num]].port;
-	uint8_t dev_i2c_addr = sensor_config[sensor_config_index_map[sensor_num]].target_addr;
+	CHECK_NULL_ARG_WITH_RETURN(p->data, 1);
+
+	uint8_t ret = 1;
+
+	uint8_t dev_i2c_bus = p->bus;
+	uint8_t dev_i2c_addr = p->addr;
 
 	struct mp2856_config dev_cfg = { 0 };
 
-	/* Load image */
-	if (loading_image(&dev_cfg, mctp_p, ext_params) == false) {
-		LOG_ERR("Failed to load image!");
-		goto exit;
+	/* Step1. Before update */
+	// none
+
+	/* Step2. Image collect */
+	static uint8_t *hex_buff = NULL;
+	if (p->data_ofs == 0) {
+		if (hex_buff) {
+			LOG_ERR("previous hex_buff doesn't clean up!");
+			return 1;
+		}
+		hex_buff = malloc(fw_update_cfg.image_size);
+		if (!hex_buff) {
+			LOG_ERR("Failed to malloc hex_buff");
+			return 1;
+		}
 	}
 
-	/* Update image */
+	memcpy(hex_buff + (int)p->data_ofs, p->data, p->data_len);
+
+	p->next_ofs = p->data_ofs + p->data_len;
+	p->next_len = fw_update_cfg.max_buff_size;
+
+	if (p->next_ofs < fw_update_cfg.image_size) {
+		if (p->next_ofs + p->next_len > fw_update_cfg.image_size)
+			p->next_len = fw_update_cfg.image_size - p->next_ofs;
+		return 0;
+	} else {
+		p->next_len = 0;
+	}
+
+	/* Step3. Image parsing */
+	if (parsing_image(hex_buff, &dev_cfg) == false) {
+		LOG_ERR("Failed to parsing image!");
+		goto exit;
+	}
+	SAFE_FREE(hex_buff);
+
+	/* Step4. FW Update */
 	if (mp2856_is_pwd_unlock(dev_i2c_bus, dev_i2c_addr) == false) {
 		LOG_ERR("Failed to PWD UNLOCK");
 		goto exit;
@@ -395,6 +422,7 @@ bool mp2971_pldm_fwupdate(uint8_t sensor_num, void *mctp_p, void *ext_params)
 	}
 
 	uint8_t page = 0;
+	int page2_start = 0;
 	struct mp2856_data *cur_data;
 	uint16_t line_idx = 0;
 
@@ -415,8 +443,8 @@ bool mp2971_pldm_fwupdate(uint8_t sensor_num, void *mctp_p, void *ext_params)
 
 		uint8_t percent = ((line_idx + 1) * 100) / dev_cfg.wr_cnt;
 		if (percent % 10 == 0)
-			LOG_INF("component(#%xh) line(%d/%d) page%d updated: %d%%", sensor_num,
-				line_idx + 1, dev_cfg.wr_cnt, cur_data->page, percent);
+			LOG_INF("updated: %d%% (line: %d/%d page: %d)", percent, line_idx + 1,
+				dev_cfg.wr_cnt, cur_data->page);
 	}
 
 	//Store Page0/1 reggisters to MTP
@@ -472,17 +500,20 @@ bool mp2971_pldm_fwupdate(uint8_t sensor_num, void *mctp_p, void *ext_params)
 
 		uint8_t percent = ((line_idx + 1) * 100) / dev_cfg.wr_cnt;
 		if (percent % 10 == 0)
-			LOG_INF("component(#%xh) line(%d/%d) page%d updated: %d%%", sensor_num,
-				line_idx + 1, dev_cfg.wr_cnt, cur_data->page, percent);
+			LOG_INF("updated: %d%% (line: %d/%d page: %d)", percent, line_idx + 1,
+				dev_cfg.wr_cnt, cur_data->page);
 	}
 
 	if (mp2856_set_page(dev_i2c_bus, dev_i2c_addr, VR_MPS_PAGE_1) == false) {
 		goto exit;
 	}
 
-	ret = true;
+	/* Step5. FW verify */
+	// TODO
 
+	ret = 0;
 exit:
+	SAFE_FREE(hex_buff);
 	SAFE_FREE(dev_cfg.pdata);
 	return ret;
 }

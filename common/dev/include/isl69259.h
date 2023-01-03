@@ -22,6 +22,6 @@
 #define TWO_COMPLEMENT_NEGATIVE_BIT BIT(15)
 #define ADJUST_IOUT_RANGE 2
 
-bool isl69259_pldm_fwupdate(uint8_t sensor_num, void *mctp_p, void *ext_params);
+uint8_t isl69259_fwupdate(void *fw_update_param);
 
 #endif
