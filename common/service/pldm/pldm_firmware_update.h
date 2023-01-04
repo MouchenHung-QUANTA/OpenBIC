@@ -27,6 +27,10 @@ extern "C" {
 #define MAX_FWUPDATE_RSP_BUF_SIZE 256
 #define MAX_IMAGE_MALLOC_SIZE (1024 * 64)
 
+#define KEYWORD_VR_ISL69259 "isl69259"
+#define KEYWORD_VR_XDPE12284C "xdpe12284c"
+#define KEYWORD_VR_MP2971 "mp2971"
+
 /** 
  * PLDM Firmware update commands
  */
@@ -199,6 +203,7 @@ typedef uint8_t (*pldm_act_func)(void *arg);
 
 typedef struct pldm_fw_update_param {
 	uint16_t comp_id;
+	char *comp_version_str;
 	uint8_t *data;
 	uint32_t data_ofs;
 	uint32_t data_len;
@@ -346,9 +351,8 @@ struct pldm_apply_complete_req {
 uint8_t pldm_fw_update_handler_query(uint8_t code, void **ret_fn);
 uint16_t pldm_fw_update_read(void *mctp_p, enum pldm_firmware_update_commands cmd, uint8_t *req,
 			     uint16_t req_len, uint8_t *rbuf, uint16_t rbuf_len, void *ext_params);
-uint8_t pal_request_complete_fw_data(uint8_t *buff, uint32_t buff_len, void *mctp_p,
-				     void *ext_params);
 uint8_t pldm_bic_update(void *fw_update_param);
+uint8_t pldm_vr_update(void *fw_update_param);
 uint8_t pldm_bic_activate(void *arg);
 
 #ifdef __cplusplus

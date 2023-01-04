@@ -384,75 +384,38 @@ static bool check_dev_support(uint8_t bus, uint8_t addr, raa_config_t *raa_info)
 	return true;
 }
 
-uint8_t isl69259_fwupdate(void *fw_update_param)
+bool isl69259_fwupdate(uint8_t bus, uint8_t addr, uint8_t *hex_buff)
 {
-	CHECK_NULL_ARG_WITH_RETURN(fw_update_param, 1);
+	CHECK_NULL_ARG_WITH_RETURN(hex_buff, 1);
 
-	pldm_fw_update_param_t *p = (pldm_fw_update_param_t *)fw_update_param;
-
-	CHECK_NULL_ARG_WITH_RETURN(p->data, 1);
-
-	uint8_t ret = 1;
-
-	uint8_t dev_i2c_bus = p->bus;
-	uint8_t dev_i2c_addr = p->addr;
-
-	static raa_config_t dev_info;
+	uint8_t ret = false;
 
 	/* Step1. Before update */
-	if (p->data_ofs == 0) {
-		memset(&dev_info, 0, sizeof(raa_config_t));
-		if (check_dev_support(dev_i2c_bus, dev_i2c_addr, &dev_info) == false) {
-			return 1;
-		}
+	static raa_config_t dev_info;
+	memset(&dev_info, 0, sizeof(raa_config_t));
+	if (check_dev_support(bus, addr, &dev_info) == false) {
+		return false;
 	}
 
-	/* Step2. Image collect */
-	static uint8_t *hex_buff = NULL;
-	if (p->data_ofs == 0) {
-		if (hex_buff) {
-			LOG_ERR("previous hex_buff doesn't clean up!");
-			return 1;
-		}
-		hex_buff = malloc(fw_update_cfg.image_size);
-		if (!hex_buff) {
-			LOG_ERR("Failed to malloc hex_buff");
-			return 1;
-		}
-	}
-
-	memcpy(hex_buff + (int)p->data_ofs, p->data, p->data_len);
-
-	p->next_ofs = p->data_ofs + p->data_len;
-	p->next_len = fw_update_cfg.max_buff_size;
-
-	if (p->next_ofs < fw_update_cfg.image_size) {
-		if (p->next_ofs + p->next_len > fw_update_cfg.image_size)
-			p->next_len = fw_update_cfg.image_size - p->next_ofs;
-		return 0;
-	} else {
-		p->next_len = 0;
-	}
-
-	/* Step3. Image parsing */
+	/* Step2. Image parsing */
 	uint8_t *img_buff = malloc(fw_update_cfg.image_size / 2);
 	if (!img_buff) {
 		LOG_ERR("Failed to malloc img_buff");
-		goto exit;
+		return false;
 	}
+
 	if (parsing_image(hex_buff, img_buff) == false) {
 		LOG_ERR("Failed to parsing image!");
 		goto exit;
 	}
-	SAFE_FREE(hex_buff);
 
-	/* Step4. FW Update */
+	/* Step3. FW Update */
 	uint8_t img_mode = 0;
 	uint8_t mode_check_flag = 0;
 	struct raa_data cmd_line;
 	uint8_t *cur_data = img_buff;
-	uint32_t imb_bin_len = fw_update_cfg.image_size / 2;
-	uint32_t remain_buf_len = imb_bin_len;
+	uint32_t img_bin_len = fw_update_cfg.image_size / 2;
+	uint32_t remain_buf_len = img_bin_len;
 
 	while (1) {
 		if (remain_buf_len == 0)
@@ -507,8 +470,8 @@ uint8_t isl69259_fwupdate(void *fw_update_param)
 			}
 
 			I2C_MSG i2c_msg = { 0 };
-			i2c_msg.bus = dev_i2c_bus;
-			i2c_msg.target_addr = dev_i2c_addr;
+			i2c_msg.bus = bus;
+			i2c_msg.target_addr = addr;
 
 			i2c_msg.tx_len = cmd_line.len - 2; // avoid address and pec bytes
 			i2c_msg.data[0] = cmd_line.cmd;
@@ -528,23 +491,22 @@ uint8_t isl69259_fwupdate(void *fw_update_param)
 		cur_data += (2 + cmd_line.len);
 		remain_buf_len -= (2 + cmd_line.len);
 
-		uint8_t percent = ((imb_bin_len - remain_buf_len) * 100) / imb_bin_len;
+		uint8_t percent = ((img_bin_len - remain_buf_len) * 100) / img_bin_len;
 		if (percent % 10 == 0)
 			LOG_INF("updated: %d%% (bytes: %d/%d)", percent,
-				imb_bin_len - remain_buf_len, imb_bin_len);
+				img_bin_len - remain_buf_len, img_bin_len);
 	}
 
-	if (get_raa_polling_status(dev_i2c_bus, dev_i2c_addr, img_mode) == false) {
+	if (get_raa_polling_status(bus, addr, img_mode) == false) {
 		LOG_ERR("VR polling status check failed, update abort!");
 		goto exit;
 	}
 
-	/* Step5. FW verify */
+	/* Step4. FW verify */
 	// TODO
 
-	ret = 0;
+	ret = true;
 exit:
-	SAFE_FREE(hex_buff);
 	SAFE_FREE(img_buff);
 	return ret;
 }

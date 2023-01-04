@@ -354,70 +354,34 @@ exit:
 	return ret;
 }
 
-uint8_t mp2971_fwupdate(void *fw_update_param)
+bool mp2971_fwupdate(uint8_t bus, uint8_t addr, uint8_t *hex_buff)
 {
-	CHECK_NULL_ARG_WITH_RETURN(fw_update_param, 1);
+	CHECK_NULL_ARG_WITH_RETURN(hex_buff, false);
 
-	pldm_fw_update_param_t *p = (pldm_fw_update_param_t *)fw_update_param;
-
-	CHECK_NULL_ARG_WITH_RETURN(p->data, 1);
-
-	uint8_t ret = 1;
-
-	uint8_t dev_i2c_bus = p->bus;
-	uint8_t dev_i2c_addr = p->addr;
-
-	struct mp2856_config dev_cfg = { 0 };
+	uint8_t ret = false;
 
 	/* Step1. Before update */
 	// none
 
-	/* Step2. Image collect */
-	static uint8_t *hex_buff = NULL;
-	if (p->data_ofs == 0) {
-		if (hex_buff) {
-			LOG_ERR("previous hex_buff doesn't clean up!");
-			return 1;
-		}
-		hex_buff = malloc(fw_update_cfg.image_size);
-		if (!hex_buff) {
-			LOG_ERR("Failed to malloc hex_buff");
-			return 1;
-		}
-	}
-
-	memcpy(hex_buff + (int)p->data_ofs, p->data, p->data_len);
-
-	p->next_ofs = p->data_ofs + p->data_len;
-	p->next_len = fw_update_cfg.max_buff_size;
-
-	if (p->next_ofs < fw_update_cfg.image_size) {
-		if (p->next_ofs + p->next_len > fw_update_cfg.image_size)
-			p->next_len = fw_update_cfg.image_size - p->next_ofs;
-		return 0;
-	} else {
-		p->next_len = 0;
-	}
-
-	/* Step3. Image parsing */
+	/* Step2. Image parsing */
+	struct mp2856_config dev_cfg = { 0 };
 	if (parsing_image(hex_buff, &dev_cfg) == false) {
 		LOG_ERR("Failed to parsing image!");
 		goto exit;
 	}
-	SAFE_FREE(hex_buff);
 
-	/* Step4. FW Update */
-	if (mp2856_is_pwd_unlock(dev_i2c_bus, dev_i2c_addr) == false) {
+	/* Step3. FW Update */
+	if (mp2856_is_pwd_unlock(bus, addr) == false) {
 		LOG_ERR("Failed to PWD UNLOCK");
 		goto exit;
 	}
 
-	if (mp2856_unlock_write_protect_mode(dev_i2c_bus, dev_i2c_addr) == false) {
+	if (mp2856_unlock_write_protect_mode(bus, addr) == false) {
 		LOG_ERR("Failed to unlock MTP Write protection");
 		goto exit;
 	}
 
-	if (mp2856_set_page(dev_i2c_bus, dev_i2c_addr, VR_MPS_PAGE_0) == false) {
+	if (mp2856_set_page(bus, addr, VR_MPS_PAGE_0) == false) {
 		goto exit;
 	}
 
@@ -434,12 +398,12 @@ uint8_t mp2971_fwupdate(void *fw_update_param)
 			break;
 		}
 		if (page != cur_data->page) {
-			if (mp2856_set_page(dev_i2c_bus, dev_i2c_addr, cur_data->page) == false) {
+			if (mp2856_set_page(bus, addr, cur_data->page) == false) {
 				goto exit;
 			}
 			page = cur_data->page;
 		}
-		mp2856_write_data(dev_i2c_bus, dev_i2c_addr, cur_data);
+		mp2856_write_data(bus, addr, cur_data);
 
 		uint8_t percent = ((line_idx + 1) * 100) / dev_cfg.wr_cnt;
 		if (percent % 10 == 0)
@@ -448,15 +412,15 @@ uint8_t mp2971_fwupdate(void *fw_update_param)
 	}
 
 	//Store Page0/1 reggisters to MTP
-	if (mp2856_set_page(dev_i2c_bus, dev_i2c_addr, VR_MPS_PAGE_0) == false) {
+	if (mp2856_set_page(bus, addr, VR_MPS_PAGE_0) == false) {
 		goto exit;
 	}
 
 	I2C_MSG i2c_msg = { 0 };
 	uint8_t retry = 3;
 
-	i2c_msg.bus = dev_i2c_bus;
-	i2c_msg.target_addr = dev_i2c_addr;
+	i2c_msg.bus = bus;
+	i2c_msg.target_addr = addr;
 
 	i2c_msg.tx_len = 1;
 	i2c_msg.data[0] = VR_MPS_CMD_STORE_NORMAL_CODE;
@@ -467,13 +431,13 @@ uint8_t mp2971_fwupdate(void *fw_update_param)
 	}
 	k_msleep(500); //wait command finish
 
-	if (mp2856_enable_mtp_page_rw(dev_i2c_bus, dev_i2c_addr) == false) {
+	if (mp2856_enable_mtp_page_rw(bus, addr) == false) {
 		printf("ERROR: Enable MTP PAGE RW FAILED!\n");
 		goto exit;
 	}
 
 	//Enable STORE_MULTI_CODE
-	if (mp2856_set_page(dev_i2c_bus, dev_i2c_addr, VR_MPS_PAGE_2) == false) {
+	if (mp2856_set_page(bus, addr, VR_MPS_PAGE_2) == false) {
 		goto exit;
 	}
 
@@ -484,7 +448,7 @@ uint8_t mp2971_fwupdate(void *fw_update_param)
 		goto exit;
 	}
 
-	if (mp2856_set_page(dev_i2c_bus, dev_i2c_addr, VR_MPS_PAGE_2A) == false) {
+	if (mp2856_set_page(bus, addr, VR_MPS_PAGE_2A) == false) {
 		goto exit;
 	}
 	k_msleep(2); //wait command finish
@@ -495,7 +459,7 @@ uint8_t mp2971_fwupdate(void *fw_update_param)
 		if (cur_data->page != 2) {
 			break;
 		}
-		mp2856_write_data(dev_i2c_bus, dev_i2c_addr, cur_data);
+		mp2856_write_data(bus, addr, cur_data);
 		k_msleep(2);
 
 		uint8_t percent = ((line_idx + 1) * 100) / dev_cfg.wr_cnt;
@@ -504,16 +468,15 @@ uint8_t mp2971_fwupdate(void *fw_update_param)
 				dev_cfg.wr_cnt, cur_data->page);
 	}
 
-	if (mp2856_set_page(dev_i2c_bus, dev_i2c_addr, VR_MPS_PAGE_1) == false) {
+	if (mp2856_set_page(bus, addr, VR_MPS_PAGE_1) == false) {
 		goto exit;
 	}
 
-	/* Step5. FW verify */
+	/* Step4. FW verify */
 	// TODO
 
-	ret = 0;
+	ret = true;
 exit:
-	SAFE_FREE(hex_buff);
 	SAFE_FREE(dev_cfg.pdata);
 	return ret;
 }

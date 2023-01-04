@@ -22,6 +22,6 @@
 #define TWO_COMPLEMENT_NEGATIVE_BIT BIT(15)
 #define ADJUST_IOUT_RANGE 2
 
-uint8_t isl69259_fwupdate(void *fw_update_param);
+bool isl69259_fwupdate(uint8_t bus, uint8_t addr, uint8_t *hex_buff);
 
 #endif

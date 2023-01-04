@@ -26,7 +26,6 @@
 #include "plat_sensor_table.h"
 #include "plat_hook.h"
 #include "i2c-mux-tca9548.h"
-#include "xdpe12284c.h"
 
 LOG_MODULE_REGISTER(plat_fwupdate);
 
@@ -37,8 +36,8 @@ static uint8_t pldm_post_vr_update(void *fw_update_param);
 // clang-format off
 pldm_fw_update_info_t PLDMUPDATE_FW_CONFIG_TABLE[] = {
 	{ ENABLE, COMP_CLASS_TYPE_DOWNSTREAM, COMP_ID_BIC, 0x00, NULL, pldm_bic_update, NULL, COMP_ACT_SELF, pldm_bic_activate },
-	{ ENABLE, COMP_CLASS_TYPE_DOWNSTREAM, COMP_ID_VR0, 0x00, pldm_pre_vr_update, xdpe12284c_fwupdate, pldm_post_vr_update, COMP_ACT_AC_PWR_CYCLE, NULL },
-	{ ENABLE, COMP_CLASS_TYPE_DOWNSTREAM, COMP_ID_VR1, 0x00, pldm_pre_vr_update, xdpe12284c_fwupdate, pldm_post_vr_update, COMP_ACT_AC_PWR_CYCLE, NULL },
+	{ ENABLE, COMP_CLASS_TYPE_DOWNSTREAM, COMP_ID_VR0, 0x00, pldm_pre_vr_update, pldm_vr_update, pldm_post_vr_update, COMP_ACT_AC_PWR_CYCLE, NULL },
+	{ ENABLE, COMP_CLASS_TYPE_DOWNSTREAM, COMP_ID_VR1, 0x00, pldm_pre_vr_update, pldm_vr_update, pldm_post_vr_update, COMP_ACT_AC_PWR_CYCLE, NULL },
 	{ ENABLE, COMP_CLASS_TYPE_DOWNSTREAM, COMP_ID_PEX0, 0x00, NULL, NULL, NULL, COMP_ACT_AC_PWR_CYCLE, NULL },
 	{ ENABLE, COMP_CLASS_TYPE_DOWNSTREAM, COMP_ID_PEX1, 0x00, NULL, NULL, NULL, COMP_ACT_AC_PWR_CYCLE, NULL },
 	{ ENABLE, COMP_CLASS_TYPE_DOWNSTREAM, COMP_ID_PEX2, 0x00, NULL, NULL, NULL, COMP_ACT_AC_PWR_CYCLE, NULL },

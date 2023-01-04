@@ -382,84 +382,48 @@ exit:
 	return ret;
 }
 
-uint8_t xdpe12284c_fwupdate(void *fw_update_param)
+bool xdpe12284c_fwupdate(uint8_t bus, uint8_t addr, uint8_t *hex_buff)
 {
-	CHECK_NULL_ARG_WITH_RETURN(fw_update_param, 1);
+	CHECK_NULL_ARG_WITH_RETURN(hex_buff, false);
 
-	pldm_fw_update_param_t *p = (pldm_fw_update_param_t *)fw_update_param;
+	uint8_t ret = false;
 
-	CHECK_NULL_ARG_WITH_RETURN(p->data, 1);
+	uint8_t dev_i2c_bus = bus;
+	uint8_t dev_i2c_addr = addr;
 
-	uint8_t ret = 1;
-
-	uint8_t dev_i2c_bus = p->bus;
-	uint8_t dev_i2c_addr = p->addr;
-
-	static uint8_t crc[4];
-	static uint8_t remain;
+	uint8_t crc[4] = { 0 };
+	uint8_t remain = 0;
 
 	/* Step1. Before update */
-	if (p->data_ofs == 0) {
-		memset(crc, 0, ARRAY_SIZE(crc));
-		if (xdpe12284c_get_checksum(dev_i2c_bus, dev_i2c_addr, crc) == false) {
-			return 1;
-		}
-
-		remain = 0;
-		if (xdpe12284c_get_remaining_write(dev_i2c_bus, dev_i2c_addr, &remain) == false) {
-			return 1;
-		}
-
-		if (!remain) {
-			LOG_ERR("No remaining writes");
-			return 1;
-		} else if (remain <= VR_WARN_REMAIN_WR) {
-			LOG_WRN("The remaining writes %d is below the threshold value %d!\n",
-				remain, VR_WARN_REMAIN_WR);
-		}
+	if (xdpe12284c_get_checksum(dev_i2c_bus, dev_i2c_addr, crc) == false) {
+		return false;
 	}
 
-	/* Step2. Image collect */
-	static uint8_t *hex_buff = NULL;
-	if (p->data_ofs == 0) {
-		if (hex_buff) {
-			LOG_ERR("previous hex_buff doesn't clean up!");
-			return 1;
-		}
-		hex_buff = malloc(fw_update_cfg.image_size);
-		if (!hex_buff) {
-			LOG_ERR("Failed to malloc hex_buff");
-			return 1;
-		}
+	if (xdpe12284c_get_remaining_write(dev_i2c_bus, dev_i2c_addr, &remain) == false) {
+		return false;
 	}
 
-	memcpy(hex_buff + (int)p->data_ofs, p->data, p->data_len);
-
-	p->next_ofs = p->data_ofs + p->data_len;
-	p->next_len = fw_update_cfg.max_buff_size;
-
-	if (p->next_ofs < fw_update_cfg.image_size) {
-		if (p->next_ofs + p->next_len > fw_update_cfg.image_size)
-			p->next_len = fw_update_cfg.image_size - p->next_ofs;
-		return 0;
-	} else {
-		p->next_len = 0;
+	if (!remain) {
+		LOG_ERR("No remaining writes");
+		return false;
+	} else if (remain <= VR_WARN_REMAIN_WR) {
+		LOG_WRN("The remaining writes %d is below the threshold value %d!\n", remain,
+			VR_WARN_REMAIN_WR);
 	}
 
-	/* Step3. Image parsing */
+	/* Step2. Image parsing */
 	struct xdpe_config dev_cfg = { 0 };
 	if (parsing_image(hex_buff, &dev_cfg) == false) {
 		LOG_ERR("Failed to parsing image!");
 		goto exit;
 	}
-	SAFE_FREE(hex_buff);
 
 	LOG_INF("XDPE12284c device(bus: %d addr: 0x%x) info:", dev_i2c_bus, dev_i2c_addr);
 	LOG_INF("* crc:              0x%02x%02x%02x%02x", crc[0], crc[1], crc[2], crc[3]);
 	LOG_INF("* image crc:        0x%x", dev_cfg.crc_exp);
 	LOG_INF("* remaining writes: %d", remain);
 
-	/* Step4. FW Update */
+	/* Step3. FW Update */
 	bool rc = false;
 	uint8_t page = 0;
 	float dsize = 0, next_prog = 0;
@@ -605,12 +569,11 @@ uint8_t xdpe12284c_fwupdate(void *fw_update_param)
 		}
 	} while (0);
 
-	/* Step5. FW verify */
+	/* Step4. FW verify */
 	// TODO
 
-	ret = 0;
+	ret = true;
 exit:
-	SAFE_FREE(hex_buff);
 	SAFE_FREE(dev_cfg.data);
 	return ret;
 }
