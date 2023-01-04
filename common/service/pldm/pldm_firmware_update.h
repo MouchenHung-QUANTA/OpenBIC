@@ -206,6 +206,7 @@ typedef struct pldm_fw_update_param {
 	uint32_t next_len;
 	uint8_t bus; // i2c/jtag
 	uint8_t addr; // i2c
+	void *extra_parm; // extra custom data
 } pldm_fw_update_param_t;
 
 typedef struct pldm_fw_update_info {
