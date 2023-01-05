@@ -197,6 +197,13 @@ enum comp_act_mdthod {
 	COMP_ACT_SUPP_PEND_COMP_IMG_SET = 0x0080,
 };
 
+typedef enum fd_update_interface {
+	COMP_UPDATE_VIA_UNKNOWN,
+	COMP_UPDATE_VIA_I2C,
+	COMP_UPDATE_VIA_SPI,
+	COMP_UPDATE_VIA_JTAG,
+} fd_update_interface_t;
+
 // typedef uint8_t (*pldm_fwupdate_func)(uint16_t comp_id, void *mctp_p, void *ext_params);
 typedef uint8_t (*pldm_fwupdate_func)(void *fw_update_param);
 typedef uint8_t (*pldm_act_func)(void *arg);
@@ -209,8 +216,9 @@ typedef struct pldm_fw_update_param {
 	uint32_t data_len;
 	uint32_t next_ofs;
 	uint32_t next_len;
-	uint8_t bus; // i2c/jtag
-	uint8_t addr; // i2c
+	fd_update_interface_t inf;
+	uint8_t bus; //i2c/jtag
+	uint8_t addr; //i2c
 } pldm_fw_update_param_t;
 
 typedef struct pldm_fw_update_info {
@@ -221,6 +229,7 @@ typedef struct pldm_fw_update_info {
 	pldm_fwupdate_func pre_update_func;
 	pldm_fwupdate_func update_func;
 	pldm_fwupdate_func pos_update_func;
+	fd_update_interface_t inf;
 	uint16_t activate_method;
 	pldm_act_func self_act_func;
 } pldm_fw_update_info_t;
