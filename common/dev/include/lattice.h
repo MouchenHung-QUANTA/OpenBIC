@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef lcmx0203_H
-#define lcmx0203_H
+#ifndef LATTICE_H
+#define LATTICE_H
 
 #include "stdint.h"
 
@@ -30,32 +30,16 @@ typedef enum lattice_dev_type {
 	LATTICE_UNKNOWN,
 } lattice_dev_type_t;
 
+enum sector_type {
+	CFG0 = 0,
+	CFG1,
+	UFM0,
+	UFM1,
+	UFM2,
+};
+
 enum { CPLD_TAR_I2C = 0x01,
        CPLD_TAR_JTAG = 0x02,
-};
-
-struct source_config {
-	uint8_t select_src_protocol; //IPMB or PLDM
-	/* for pldm update */
-	void *mctp_p;
-	void *ext_params;
-	/* for ipmb update */
-	ipmi_msg *ipmb_cfg;
-};
-
-struct cpld_i2c_cfg {
-	uint8_t i2c_bus;
-	uint8_t i2c_addr;
-};
-
-struct cpld_jtag_cfg {
-	uint8_t jtag_bus;
-	// TODO
-};
-
-struct target_config {
-	lattice_dev_type_t type;
-	uint8_t select_tar_inf; //i2c or jtag
 };
 
 struct lattice_img_config {
@@ -70,17 +54,20 @@ struct lattice_img_config {
 	uint32_t FeatureRow;
 };
 
-struct lattice_dev_config;
+typedef struct lattice_update_config {
+	lattice_dev_type_t type;
+	uint8_t interface; //i2c or jtag
+	uint8_t bus; //i2c/jtag
+	uint8_t addr; //i2c
+	uint8_t *data; //received data
+	uint32_t data_ofs; //received data's ofset
+	uint32_t data_len; //received data's length
+	uint32_t next_ofs; //next request data's ofset
+	uint32_t next_len; //next request data's length
+} lattice_update_config_t;
 
-/* routing in platform code */
-typedef struct lattice_usr_config {
-	struct target_config tar_cfg; //get from user
-	struct lattice_dev_config *dev_cfg; //get from platform table
-	struct lattice_img_config img_cfg; //get from source
-} lattice_usr_config_t;
-
-typedef bool (*cpld_i2C_update_func)(void *fw_update_param);
-typedef bool (*cpld_jtag_update_func)(void *fw_update_param);
+typedef bool (*cpld_i2C_update_func)(lattice_update_config_t *config);
+typedef bool (*cpld_jtag_update_func)(lattice_update_config_t *config);
 
 struct lattice_dev_config {
 	char name[20];
@@ -89,9 +76,10 @@ struct lattice_dev_config {
 	cpld_jtag_update_func cpld_jtag_update;
 };
 
-uint8_t lattice_fwupdate(void *fw_update_param);
-
-bool cpld_program_i2c(uint8_t bus, uint8_t addr, uint32_t *buff, lattice_dev_type_t type, bool first_flag);
-bool program_user_code(uint8_t bus, uint8_t addr, uint8_t buff, lattice_dev_type_t type);
+bool lattice_fwupdate(lattice_update_config_t *config);
+bool cpld_i2c_get_id(uint8_t bus, uint8_t addr, uint32_t *dev_id);
+bool cpld_program_i2c(uint8_t bus, uint8_t addr, uint8_t *buff, lattice_dev_type_t type,
+		      uint8_t sector, bool first_flag);
+bool program_user_code(uint8_t bus, uint8_t addr, uint32_t usrcode, lattice_dev_type_t type);
 
 #endif

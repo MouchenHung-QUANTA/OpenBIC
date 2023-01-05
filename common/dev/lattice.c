@@ -25,16 +25,17 @@
 
 LOG_MODULE_REGISTER(lattice);
 
-#define CMD_LINE_BYTE_CNT 16
-#define MAX_CF_SIZE_PER_SECTION (CMD_LINE_BYTE_CNT * 64) //1k
-
-#define KEYWORD_CF_START "L000"
-#define KEYWORD_USR_CODE "NOTE User Electronic"
-
+#define CHECK_STATUS_RETRY 100
 #define IDCODE_PUB 0xE0
+#define LSC_INIT_ADDRESS 0x46
+#define LSC_INIT_ADDR_UFM 0x47
+#define LSC_CHECK_BUSY 0xF0
+#define USERCODE 0xC0
+#define ISC_PROGRAM_USERCODE 0xC2
+#define LSC_PROG_INCR_NV 0x70
 
-static bool x02x03_i2c_update(void *fw_update_param);
-static bool x02x03_jtag_update(void *fw_update_param);
+static bool x02x03_i2c_update(lattice_update_config_t *config);
+static bool x02x03_jtag_update(lattice_update_config_t *config);
 
 struct lattice_dev_config LATTICE_CFG_TABLE[] = {
 	/* Family LCMX02 */
@@ -91,7 +92,91 @@ struct lattice_dev_config LATTICE_CFG_TABLE[] = {
 		},
 };
 
-static bool cpld_i2c_get_id(uint8_t bus, uint8_t addr, uint32_t *dev_id)
+static uint8_t bit_swap(uint8_t input)
+{
+	uint8_t output = 0;
+
+	for (int bit = 0; bit < 8; bit++) {
+		output |= (((input & (1 << bit)) >> bit) << (7 - bit));
+	}
+
+	return output;
+}
+
+static bool read_cpld_busy_flag(uint8_t bus, uint8_t addr, uint16_t sleep_ms)
+{
+	//support XO2, XO3, NX
+	for (int retry = 0; retry < CHECK_STATUS_RETRY; retry++) {
+		I2C_MSG i2c_msg = { 0 };
+		uint8_t retry = 3;
+		i2c_msg.bus = bus;
+		i2c_msg.target_addr = addr;
+
+		i2c_msg.tx_len = 4;
+		i2c_msg.rx_len = 1;
+		memset(i2c_msg.data, 0, i2c_msg.tx_len);
+		i2c_msg.data[0] = LSC_CHECK_BUSY;
+		if (i2c_master_read(&i2c_msg, retry)) {
+			LOG_ERR("Failed to send read_cpld_busy_flag cmd");
+			return false;
+		}
+
+		if (((i2c_msg.data[0] & 0x80) >> 7) == 0x0) {
+			return true;
+		}
+		k_msleep(sleep_ms);
+	}
+
+	LOG_ERR("CPLD is still busy after retry %d times", CHECK_STATUS_RETRY);
+	return false;
+}
+
+static bool reset_addr(uint8_t bus, uint8_t addr, lattice_dev_type_t type, uint8_t sector)
+{
+	if (type >= LATTICE_UNKNOWN) {
+		LOG_ERR("Invalid lattice device type detect");
+		return false;
+	}
+
+	I2C_MSG i2c_msg = { 0 };
+	uint8_t retry = 3;
+	i2c_msg.bus = bus;
+	i2c_msg.target_addr = addr;
+
+	i2c_msg.tx_len = 4;
+	memset(i2c_msg.data, 0, i2c_msg.tx_len);
+
+	if (type != LATTICE_LFMNX_50) {
+		switch (sector) {
+		case CFG0:
+			i2c_msg.data[0] = LSC_INIT_ADDRESS;
+			break;
+		case UFM0:
+			i2c_msg.data[0] = LSC_INIT_ADDR_UFM;
+			break;
+		}
+	} else {
+		switch (sector) {
+		case CFG0:
+			i2c_msg.data[0] = LSC_INIT_ADDRESS;
+			i2c_msg.data[2] |= 1 << 0; //bit8
+			break;
+		case UFM0:
+			i2c_msg.data[0] = LSC_INIT_ADDRESS;
+			i2c_msg.data[2] |= 1 << 6; //bit14
+			break;
+		}
+	}
+
+	if (i2c_master_write(&i2c_msg, retry)) {
+		LOG_ERR("Failed to reset the flash pointer");
+		return false;
+	}
+
+	return true;
+}
+
+bool cpld_i2c_get_id(uint8_t bus, uint8_t addr, uint32_t *dev_id)
 {
 	I2C_MSG i2c_msg = { 0 };
 	uint8_t retry = 3;
@@ -100,8 +185,9 @@ static bool cpld_i2c_get_id(uint8_t bus, uint8_t addr, uint32_t *dev_id)
 
 	i2c_msg.tx_len = 4;
 	i2c_msg.rx_len = 4;
+	memset(i2c_msg.data, 0, i2c_msg.tx_len);
 	i2c_msg.data[0] = IDCODE_PUB;
-	memset(&i2c_msg.data[1], 0, 3);
+
 	if (i2c_master_read(&i2c_msg, retry)) {
 		LOG_ERR("Failed to read id register");
 		return false;
@@ -112,154 +198,157 @@ static bool cpld_i2c_get_id(uint8_t bus, uint8_t addr, uint32_t *dev_id)
 	return true;
 }
 
-static bool parsing_image(void *fw_update_param)
+bool program_user_code(uint8_t bus, uint8_t addr, uint32_t usrcode, lattice_dev_type_t type)
 {
-	bool ret = false;
+	if (reset_addr(bus, addr, type, CFG0) == false) {
+		return false;
+	}
 
-	LOG_WRN("Currently not support fw update via ipmb portocol");
-	ret = true;
-	//exit:
-	return ret;
+	I2C_MSG i2c_msg = { 0 };
+	uint8_t retry = 3;
+	i2c_msg.bus = bus;
+	i2c_msg.target_addr = addr;
+
+	i2c_msg.tx_len = 8;
+	memset(i2c_msg.data, 0, i2c_msg.tx_len);
+	i2c_msg.data[0] = ISC_PROGRAM_USERCODE;
+	for (int i = 0; i < 4; i++) {
+		i2c_msg.data[4 + i] = (usrcode >> 8 * (3 - i)) & 0xFF;
+	}
+	if (i2c_master_write(&i2c_msg, retry)) {
+		LOG_ERR("Failed to read id register");
+		return false;
+	}
+
+	if (read_cpld_busy_flag(bus, addr, 10) == false) {
+		return false;
+	}
+
+	if (reset_addr(bus, addr, type, CFG0) == false) {
+		return false;
+	}
+
+	i2c_msg.tx_len = 4;
+	i2c_msg.rx_len = 4;
+	memset(i2c_msg.data, 0, i2c_msg.tx_len);
+	i2c_msg.data[0] = USERCODE;
+	if (i2c_master_read(&i2c_msg, retry)) {
+		LOG_ERR("Failed to read user code");
+		return false;
+	}
+
+	uint32_t read_usrcode = 0;
+	for (int i = 0; i < 4; i++)
+		read_usrcode |= (i2c_msg.data[i] << 8 * (3 - i));
+
+	return (memcmp(&read_usrcode, &usrcode, i2c_msg.rx_len) == 0) ? true : false;
 }
 
-static bool x02x03_i2c_update(void *fw_update_param)
+bool cpld_program_i2c(uint8_t bus, uint8_t addr, uint8_t *buff, lattice_dev_type_t type,
+		      uint8_t sector, bool first_flag)
 {
-	CHECK_NULL_ARG_WITH_RETURN(fw_update_param, false);
+	CHECK_NULL_ARG_WITH_RETURN(buff, false);
 
-	pldm_fw_update_param_t *p = (pldm_fw_update_param_t *)fw_update_param;
+	if (first_flag == true) {
+		if (reset_addr(bus, addr, type, sector) == false) {
+			return false;
+		}
+	}
 
-	CHECK_NULL_ARG_WITH_RETURN(p->data, false);
-	CHECK_NULL_ARG_WITH_RETURN(p->extra_parm, false);
+	I2C_MSG i2c_msg = { 0 };
+	uint8_t retry = 3;
+	i2c_msg.bus = bus;
+	i2c_msg.target_addr = addr;
 
-	lattice_usr_config_t *ext = (lattice_usr_config_t *)p->extra_parm;
+	i2c_msg.tx_len = 4 + 16;
+	memset(i2c_msg.data, 0, i2c_msg.tx_len);
+	i2c_msg.data[0] = LSC_PROG_INCR_NV;
+	i2c_msg.data[3] = 0x01;
+
+	for (int index = 0; index < 16; index++) {
+		if (!buff[index]) {
+			LOG_ERR("Get invalid data buffer");
+			return false;
+		}
+		i2c_msg.data[index + 4] = bit_swap(buff[index]);
+	}
+
+	if (i2c_master_write(&i2c_msg, retry)) {
+		LOG_ERR("Failed to send program page command");
+		return false;
+	}
+
+	if (read_cpld_busy_flag(bus, addr, 10)) {
+		return false;
+	}
+
+	return true;
+}
+
+static bool x02x03_i2c_update(lattice_update_config_t *config)
+{
+	CHECK_NULL_ARG_WITH_RETURN(config, false);
 
 	bool ret = false;
 
-	/* Step1. Before update */
+	if (config->type >= ARRAY_SIZE(LATTICE_CFG_TABLE)) {
+		LOG_ERR("Non-support type %d of lattice device detect", config->type);
+		return false;
+	}
+
+	/* check local device id mach with given cpld type */
 	uint32_t dev_id;
-	if (cpld_i2c_get_id(p->bus, p->addr, &dev_id)) {
+	if (cpld_i2c_get_id(config->bus, config->addr, &dev_id)) {
 		LOG_ERR("Can't get cpld device id");
 		return false;
 	}
-	if (ext->dev_cfg->id != dev_id) {
-		LOG_ERR("Given cpld type not match with local cpld device");
+	if (dev_id != LATTICE_CFG_TABLE[config->type].id) {
+		LOG_ERR("Given cpld type not match with local cpld device's type");
 		return false;
 	}
 
-	/* Step2. Image collect */
-	static uint8_t *hex_buff = NULL;
-	static uint32_t hex_idx = 0;
-	static bool cf_find = false;
-	static uint8_t cf_keyword_box[4];
-	static uint8_t usrcode_keyword_box[20];
-
-	if (p->data_ofs == 0) {
-		ext->img_cfg.CF_Line = 0;
-		if (hex_buff) {
-			LOG_ERR("previous hex_buff doesn't clean up!");
-			return 1;
-		}
-		if (ext->img_cfg.CF) {
-			LOG_ERR("previous CF doesn't clean up!");
-			return 1;
-		}
-		hex_buff = malloc(MAX_CF_SIZE_PER_SECTION * 8);
-		if (!hex_buff) {
-			LOG_ERR("Failed to malloc hex_buff");
-			return 1;
-		}
-		ext->img_cfg.CF = malloc(MAX_CF_SIZE_PER_SECTION);
-		if (!ext->img_cfg.CF) {
-			LOG_ERR("Failed to malloc CF");
-			return 1;
-		}
-		memset(cf_keyword_box, 0, ARRAY_SIZE(cf_keyword_box));
-		memset(usrcode_keyword_box, 0, ARRAY_SIZE(usrcode_keyword_box));
-		cf_find = false;
-	}
-
-	memcpy(hex_buff + (int)p->data_ofs, p->data, p->data_len);
-
-	p->next_ofs = p->data_ofs + p->data_len;
-	p->next_len = fw_update_cfg.max_buff_size;
-
-	if (cf_find == false) {
-		if (p->next_ofs < fw_update_cfg.image_size) {
-			if (p->next_ofs + p->next_len > fw_update_cfg.image_size)
-				p->next_len = fw_update_cfg.image_size - p->next_ofs;
-			return 0;
-		} else {
-			p->next_len = 0;
-		}
-	} else {
-
-	}
-
-	/* Step3. Image parsing */
-	struct xdpe_config dev_cfg = { 0 };
-	if (parsing_image(hex_buff, &dev_cfg) == false) {
-		LOG_ERR("Failed to parsing image!");
-		goto exit;
-	}
-	SAFE_FREE(hex_buff);
-
-	/* Step4. FW update */
-
-	/* Step5. FW verify */
+	/* TODO - Add parsing and return next offset and length */
+	goto exit;
 
 	ret = true;
 exit:
 	return ret;
 }
 
-static bool x02x03_jtag_update(void *fw_update_param)
+static bool x02x03_jtag_update(lattice_update_config_t *config)
 {
-	CHECK_NULL_ARG_WITH_RETURN(fw_update_param, false);
-
 	bool ret = false;
 
 	LOG_WRN("Currently not support update cpld via jtag");
 
-	ret = true;
-	//exit:
 	return ret;
 }
 
-uint8_t lattice_fwupdate(void *fw_update_param)
+bool lattice_fwupdate(lattice_update_config_t *config)
 {
-	CHECK_NULL_ARG_WITH_RETURN(fw_update_param, 1);
+	CHECK_NULL_ARG_WITH_RETURN(config, false);
 
-	pldm_fw_update_param_t *p = (pldm_fw_update_param_t *)fw_update_param;
-
-	CHECK_NULL_ARG_WITH_RETURN(p->data, 1);
-	CHECK_NULL_ARG_WITH_RETURN(p->extra_parm, 1);
-
-	lattice_usr_config_t *ext = (lattice_usr_config_t *)p->extra_parm;
-
-	if (ext->tar_cfg.type >= LATTICE_UNKNOWN) {
-		LOG_ERR("Invalid type %d of LATTICE cpld chip detect", ext->tar_cfg.type);
-		return 1;
+	if (config->type >= LATTICE_UNKNOWN) {
+		LOG_ERR("Invalid type %d of LATTICE cpld chip detect", config->type);
+		return false;
 	}
 
-	/* paste info table to config */
-	memcpy(ext->dev_cfg, &LATTICE_CFG_TABLE[ext->tar_cfg.type], sizeof(struct lattice_dev_config));
-
-	if (ext->tar_cfg.select_tar_inf == CPLD_TAR_I2C) {
-		if (LATTICE_CFG_TABLE[ext->tar_cfg.type].cpld_i2C_update) {
-			if (LATTICE_CFG_TABLE[ext->tar_cfg.type].cpld_i2C_update(fw_update_param) == false) {
-				return 1;
+	if (config->interface == CPLD_TAR_I2C) {
+		if (LATTICE_CFG_TABLE[config->type].cpld_i2C_update) {
+			if (LATTICE_CFG_TABLE[config->type].cpld_i2C_update(config) == false) {
+				return false;
 			}
 		}
-	} else if (ext->tar_cfg.select_tar_inf == CPLD_TAR_JTAG) {
-		if (LATTICE_CFG_TABLE[ext->tar_cfg.type].cpld_jtag_update) {
-			if (LATTICE_CFG_TABLE[ext->tar_cfg.type].cpld_jtag_update(fw_update_param) == false) {
-				return 1;
+	} else if (config->interface == CPLD_TAR_JTAG) {
+		if (LATTICE_CFG_TABLE[config->type].cpld_jtag_update) {
+			if (LATTICE_CFG_TABLE[config->type].cpld_jtag_update(config) == false) {
+				return false;
 			}
 		}
 	} else {
 		LOG_ERR("Given empty or invalid target interface");
-		return 1;
+		return false;
 	}
 
-	return 0;
+	return true;
 }
