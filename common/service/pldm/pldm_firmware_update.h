@@ -31,6 +31,8 @@ extern "C" {
 #define KEYWORD_VR_XDPE12284C "xdpe12284c"
 #define KEYWORD_VR_MP2971 "mp2971"
 
+#define KEYWORD_CPLD_LATTICE "lattice"
+
 /** 
  * PLDM Firmware update commands
  */
@@ -362,6 +364,7 @@ uint16_t pldm_fw_update_read(void *mctp_p, enum pldm_firmware_update_commands cm
 			     uint16_t req_len, uint8_t *rbuf, uint16_t rbuf_len, void *ext_params);
 uint8_t pldm_bic_update(void *fw_update_param);
 uint8_t pldm_vr_update(void *fw_update_param);
+uint8_t pldm_cpld_update(void *fw_update_param);
 uint8_t pldm_bic_activate(void *arg);
 
 #ifdef __cplusplus

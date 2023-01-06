@@ -471,8 +471,23 @@ static bool cpld_program_i2c(uint8_t bus, uint8_t addr, uint8_t *buff, lattice_d
 	return true;
 }
 
+lattice_dev_type_t find_type_by_str(char *str)
+{
+	CHECK_NULL_ARG_WITH_RETURN(str, LATTICE_UNKNOWN);
+
+	for (uint8_t i = 0; i < ARRAY_SIZE(LATTICE_CFG_TABLE); i++) {
+		if (strstr(str, LATTICE_CFG_TABLE[i].name)) {
+			return i;
+		}
+	}
+
+	return LATTICE_UNKNOWN;
+}
+
 bool cpld_i2c_get_id(uint8_t bus, uint8_t addr, uint32_t *dev_id)
 {
+	CHECK_NULL_ARG_WITH_RETURN(dev_id, false);
+
 	I2C_MSG i2c_msg = { 0 };
 	uint8_t retry = 3;
 	i2c_msg.bus = bus;
@@ -506,6 +521,8 @@ static bool x02x03_i2c_update(lattice_update_config_t *config)
 
 	/* Step1. Before update */
 	if (config->data_ofs == 0) {
+		LOG_INF("update lattice type %s", LATTICE_CFG_TABLE[config->type].name);
+
 		uint32_t dev_id;
 		if (cpld_i2c_get_id(config->bus, config->addr, &dev_id)) {
 			LOG_ERR("Can't get cpld device id");
@@ -552,6 +569,8 @@ exit:
 
 static bool x02x03_jtag_update(lattice_update_config_t *config)
 {
+	CHECK_NULL_ARG_WITH_RETURN(config, false);
+
 	bool ret = false;
 
 	LOG_WRN("Currently not support update cpld via jtag");

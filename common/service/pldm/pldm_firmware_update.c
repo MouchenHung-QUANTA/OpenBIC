@@ -25,6 +25,7 @@
 #include "xdpe12284c.h"
 #include "isl69259.h"
 #include "mp2971.h"
+#include "lattice.h"
 
 LOG_MODULE_DECLARE(pldm);
 
@@ -40,13 +41,12 @@ k_tid_t fw_update_tid;
 struct k_thread pldm_fw_update_thread;
 K_KERNEL_STACK_MEMBER(pldm_fw_update_stack, PLDM_FW_UPDATE_STACK_SIZE);
 
-static enum pldm_firmware_update_state current_state = STATE_IDLE;
-
 struct pldm_fw_update_cfg fw_update_cfg = { .image_size = 0,
 					    .max_buff_size = MIN_FW_UPDATE_BASELINE_TRANS_SIZE };
 
+static enum pldm_firmware_update_state current_state = STATE_IDLE;
 static uint16_t cur_update_comp_id = -1;
-static char *cur_update_comp_str = NULL;
+static char cur_update_comp_str[100] = "unknown";
 
 __weak void load_pldmupdate_comp_config(void)
 {
@@ -151,6 +151,36 @@ exit:
 	return ret;
 }
 
+uint8_t pldm_cpld_update(void *fw_update_param)
+{
+	CHECK_NULL_ARG_WITH_RETURN(fw_update_param, 1);
+
+	pldm_fw_update_param_t *p = (pldm_fw_update_param_t *)fw_update_param;
+
+	CHECK_NULL_ARG_WITH_RETURN(p->data, 1);
+
+	if (!strncmp(p->comp_version_str, KEYWORD_CPLD_LATTICE, strlen(KEYWORD_CPLD_LATTICE))) {
+		lattice_update_config_t cpld_update_cfg;
+		cpld_update_cfg.interface = p->inf;
+		cpld_update_cfg.type = find_type_by_str(p->comp_version_str);
+		cpld_update_cfg.bus = p->bus;
+		cpld_update_cfg.addr = p->addr;
+		cpld_update_cfg.data = p->data;
+		cpld_update_cfg.data_len = p->data_len;
+		cpld_update_cfg.data_ofs = p->data_ofs;
+
+		if (lattice_fwupdate(&cpld_update_cfg) == false) {
+			return 1;
+		}
+	} else {
+		LOG_ERR("Component version string %s not contains support device's keyword",
+			p->comp_version_str);
+		return 1;
+	}
+
+	return 0;
+}
+
 K_WORK_DELAYABLE_DEFINE(submit_warm_reset_work, submit_bic_warm_reset);
 uint8_t pldm_bic_activate(void *arg)
 {
@@ -200,6 +230,13 @@ static uint8_t do_self_activate(uint16_t comp_id)
 	}
 
 	return 0;
+}
+
+void pldm_status_reset()
+{
+	current_state = STATE_IDLE;
+	cur_update_comp_id = -1;
+	memcpy(cur_update_comp_str, "unknown", 8);
 }
 
 uint16_t pldm_fw_update_read(void *mctp_p, enum pldm_firmware_update_commands cmd, uint8_t *req,
@@ -710,8 +747,7 @@ static uint8_t activate_firmware(void *mctp_inst, uint8_t *buf, uint16_t len, ui
 	*resp_len = sizeof(struct pldm_activate_firmware_resp);
 
 	current_state = STATE_ACTIVATE;
-	cur_update_comp_id = -1;
-	cur_update_comp_str = NULL;
+	pldm_status_reset();
 
 exit:
 	return PLDM_SUCCESS;
