@@ -40,6 +40,21 @@ LOG_MODULE_REGISTER(lattice);
 #define ISC_ERASE 0x0E
 #define ISC_DISABLE 0x26
 
+#define TAG_CFG_START_STR "L000"
+#define TAG_CFG_END_STR "*"
+#define TAG_USER_CODE_STR "UH"
+#define TAG_NEW_LINE "\n"
+
+enum data_passing_state {
+	DATA_PASSING_FIRST,
+	DATA_PASSING_STARTED,
+	DATA_PASSING_CFG_STARTED,
+	DATA_PASSING_CFG_ENDED,
+	DATA_PASSING_UC_STARTED,
+	DATA_PASSING_UC_ENDED,
+	DATA_PASSING_ENDED,
+};
+
 static bool x02x03_i2c_update(lattice_update_config_t *config);
 static bool x02x03_jtag_update(lattice_update_config_t *config);
 
@@ -107,6 +122,77 @@ static uint8_t bit_swap(uint8_t input)
 	}
 
 	return output;
+}
+
+static uint8_t ascii_to_byte(char *data, unsigned int *result, int len)
+{
+	int i;
+	int ret = 0;
+	int result_index = 0, data_index = 0;
+	int bit_count = 0;
+	memset(result, 0, len);
+
+	for (i = 0; i < len; i++) {
+		data[i] = data[i] - 0x30;
+
+		result[result_index] |= ((unsigned char)data[i] << data_index);
+
+		// printf("[%x %d %08x\n",  data[i], data_index, result[result_index]);
+
+		data_index++;
+
+		bit_count++;
+
+		if (0 == ((i + 1) % 32)) {
+			// printf("%08x\n", result[result_index]);
+
+			data_index = 0;
+			result_index++;
+		}
+	}
+
+	if (bit_count != len) {
+		LOG_ERR("Expected Data Length is [%d] but not [%d]", bit_count, len);
+
+		ret = -1;
+	}
+
+	return ret;
+}
+
+// for user code
+static uint8_t ascii_to_byte_UC(char *data, uint32_t *result, int len)
+{
+	int i;
+	int ret = 0;
+	int result_index = 0, data_index = 8;
+	int bit_count = 0;
+	memset(result, 0, len);
+
+	for (i = 0; i < len; i++) {
+		data[i] = ascii_to_val(data[i]);
+
+		result[result_index] += ((unsigned char)data[i] << (4 * (data_index - 1)));
+
+		data_index--;
+
+		bit_count++;
+
+		if (0 == ((i + 1) % 8)) {
+			// printf("%08x\n", result[result_index]);
+
+			data_index = 8;
+			result_index++;
+		}
+	}
+
+	if (bit_count != len) {
+		LOG_ERR("Expected Data Length is [%d] but not [%d]", bit_count, len);
+
+		ret = -1;
+	}
+
+	return ret;
 }
 
 static bool read_cpld_busy_flag(uint8_t bus, uint8_t addr, uint16_t sleep_ms)
@@ -512,8 +598,6 @@ static bool x02x03_i2c_update(lattice_update_config_t *config)
 {
 	CHECK_NULL_ARG_WITH_RETURN(config, false);
 
-	bool ret = false;
-
 	if (config->type >= ARRAY_SIZE(LATTICE_CFG_TABLE)) {
 		LOG_ERR("Non-support type %d of lattice device detect", config->type);
 		return false;
@@ -534,37 +618,128 @@ static bool x02x03_i2c_update(lattice_update_config_t *config)
 		}
 
 		if (enter_transparent_mode(config->bus, config->addr) == false) {
-			goto exit;
+			return false;
 		}
 
 		if (erase_flash(config->bus, config->addr, config->type, CFG0) == false) {
-			goto exit;
+			return false;
 		}
 	}
 
 	/* Step2. Image parsing and update */
-	goto exit;
+	uint8_t data_buff[128];
+	memset(data_buff, 0, ARRAY_SIZE(data_buff));
+	uint32_t program_buff[4];
+	memset(program_buff, 0, ARRAY_SIZE(program_buff));
+	uint32_t user_code_buff[1];
+	memset(user_code_buff, 0, ARRAY_SIZE(user_code_buff));
+
+	static bool first_flag = false;
+
+	static uint8_t passing_state = DATA_PASSING_FIRST;
+
+	memcpy(data_buff, config->data, config->data_len);
+
+	switch (passing_state) {
+	case DATA_PASSING_FIRST:
+	case DATA_PASSING_STARTED:
+		for (int i = 0; i < (config->data_len - strlen(TAG_NEW_LINE)); i++) {
+			if (!memcmp(config->data, TAG_NEW_LINE, strlen(TAG_NEW_LINE))) {
+				//new line found
+				config->next_ofs = config->data_ofs + i + 1;
+				config->next_len = 130;
+				if (!memcmp(config->data, TAG_CFG_START_STR,
+					    strlen(TAG_CFG_START_STR))) {
+					//cfg start found
+					passing_state = DATA_PASSING_CFG_STARTED;
+					first_flag = true;
+					//printf("debug CFG_START at %d \n", config->next_ofs);
+				}
+
+				// printf("debug NEW_LINE at %d \n", data_next_line);
+				break;
+			}
+		}
+		break;
+
+	case DATA_PASSING_CFG_STARTED:
+		if (!memcmp(config->data, TAG_CFG_END_STR, strlen(TAG_CFG_END_STR))) {
+			passing_state = DATA_PASSING_CFG_ENDED;
+			config->next_ofs = config->data_ofs +
+					   3; // strlen(TAG_CFG_END_STR)+ strlen(TAG_NEW_LINE)
+			config->next_len = 130;
+			//printf("debug CFG_END at %d \n", config->data_ofs);
+		} else {
+			ascii_to_byte(data_buff, program_buff, 128);
+
+			for (int idx = 0; idx < 16; idx += 4) {
+				if (cpld_program_i2c(config->bus, config->addr,
+						     (uint8_t *)&program_buff[idx], config->type,
+						     CFG0, first_flag) == false) {
+					return false;
+				}
+			}
+			config->next_ofs = config->data_ofs + 130;
+			config->next_len = 130;
+			first_flag = false;
+		}
+		break;
+
+	case DATA_PASSING_CFG_ENDED:
+		for (int i = 0; i < (config->data_len - strlen(TAG_NEW_LINE)); i++) {
+			if (!memcmp(config->data, TAG_NEW_LINE, strlen(TAG_NEW_LINE))) {
+				//new line found
+				config->next_ofs = config->data_ofs + i + 1;
+				config->next_len = 130;
+				//user code found
+				if (!memcmp(config->data, TAG_USER_CODE_STR,
+					    strlen(TAG_USER_CODE_STR))) {
+					ascii_to_byte_UC(data_buff + strlen(TAG_USER_CODE_STR),
+							 user_code_buff, 8);
+
+					uint32_t user_code = user_code_buff[0];
+
+					program_user_code(config->bus, config->addr, user_code,
+							  config->type);
+
+					config->next_len = 0;
+					//printf("debug UC_START at %d \n", config->ofs);
+
+					passing_state = DATA_PASSING_FIRST;
+				}
+
+				// printf("debug NEW_LINE at %d \n", data_next_line);
+				break;
+			}
+		}
+		break;
+
+	default:
+		LOG_ERR("Unexpected passing state");
+		return false;
+	}
 
 	/* Step3. After update*/
 	if (config->next_len != 0) {
+		if (config->next_ofs + config->next_len >= fw_update_cfg.image_size) {
+			config->next_len = fw_update_cfg.image_size - config->next_ofs;
+		}
 		return true;
 	}
 
 	if (program_done(config->bus, config->addr, config->type) == false) {
-		goto exit;
+		return false;
 	}
 
 	if (exit_program_mode(config->bus, config->addr) == false) {
-		goto exit;
+		return false;
 	}
 
 	if (bypass_instruction(config->bus, config->addr) == false) {
-		goto exit;
+		return false;
 	}
 
-	ret = true;
-exit:
-	return ret;
+	return true;
 }
 
 static bool x02x03_jtag_update(lattice_update_config_t *config)
