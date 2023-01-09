@@ -172,6 +172,9 @@ uint8_t pldm_cpld_update(void *fw_update_param)
 		if (lattice_fwupdate(&cpld_update_cfg) == false) {
 			return 1;
 		}
+
+		p->next_len = cpld_update_cfg.next_len;
+		p->next_ofs = cpld_update_cfg.next_ofs;
 	} else {
 		LOG_ERR("Component version string %s not contains support device's keyword",
 			p->comp_version_str);
@@ -412,7 +415,11 @@ void req_fw_update_handler(void *mctp_p, void *ext_params, void *arg)
 
 		uint8_t percent = ((update_param.data_ofs + update_param.data_len) * 100) /
 				  fw_update_cfg.image_size;
-		LOG_INF("package loaded: %d%%", percent);
+
+		static uint8_t previous_percent = 0;
+		if (previous_percent != percent)
+			LOG_INF("package loaded: %d%%", percent);
+		previous_percent = percent;
 
 		if (fw_info->update_func(&update_param)) {
 			LOG_ERR("Component %d update failed!", cur_update_comp_id);

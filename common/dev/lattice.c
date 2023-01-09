@@ -40,10 +40,13 @@ LOG_MODULE_REGISTER(lattice);
 #define ISC_ERASE 0x0E
 #define ISC_DISABLE 0x26
 
+uint8_t new_line[] = { 0x0d, 0x0a };
 #define TAG_CFG_START_STR "L000"
 #define TAG_CFG_END_STR "*"
 #define TAG_USER_CODE_STR "UH"
-#define TAG_NEW_LINE "\n"
+#define CFG_BYTE_PER_LINE 128
+#define MAX_TRANS_LEN (CFG_BYTE_PER_LINE + 2) //add new line ascii bytes
+#define CPLD_FW_BOTTOM_PART_LENGTH 260
 
 enum data_passing_state {
 	DATA_PASSING_FIRST,
@@ -124,28 +127,25 @@ static uint8_t bit_swap(uint8_t input)
 	return output;
 }
 
-static uint8_t ascii_to_byte(char *data, unsigned int *result, int len)
+static bool cfg_data_parsing(char *data, uint32_t *result, int len)
 {
-	int i;
-	int ret = 0;
+	CHECK_NULL_ARG_WITH_RETURN(data, false);
+	CHECK_NULL_ARG_WITH_RETURN(result, false);
+
 	int result_index = 0, data_index = 0;
 	int bit_count = 0;
 	memset(result, 0, len);
 
-	for (i = 0; i < len; i++) {
+	for (int i = 0; i < len; i++) {
 		data[i] = data[i] - 0x30;
 
 		result[result_index] |= ((unsigned char)data[i] << data_index);
-
-		// printf("[%x %d %08x\n",  data[i], data_index, result[result_index]);
 
 		data_index++;
 
 		bit_count++;
 
 		if (0 == ((i + 1) % 32)) {
-			// printf("%08x\n", result[result_index]);
-
 			data_index = 0;
 			result_index++;
 		}
@@ -153,46 +153,31 @@ static uint8_t ascii_to_byte(char *data, unsigned int *result, int len)
 
 	if (bit_count != len) {
 		LOG_ERR("Expected Data Length is [%d] but not [%d]", bit_count, len);
-
-		ret = -1;
+		return false;
 	}
 
-	return ret;
+	return true;
 }
 
-// for user code
-static uint8_t ascii_to_byte_UC(char *data, uint32_t *result, int len)
+static bool user_code_parsing(char *data, uint32_t *result, int len)
 {
-	int i;
-	int ret = 0;
+	CHECK_NULL_ARG_WITH_RETURN(data, false);
+	CHECK_NULL_ARG_WITH_RETURN(result, false);
+
 	int result_index = 0, data_index = 8;
 	int bit_count = 0;
 	memset(result, 0, len);
 
-	for (i = 0; i < len; i++) {
+	for (int i = 0; i < len; i++) {
 		data[i] = ascii_to_val(data[i]);
 
 		result[result_index] += ((unsigned char)data[i] << (4 * (data_index - 1)));
 
 		data_index--;
-
 		bit_count++;
-
-		if (0 == ((i + 1) % 8)) {
-			// printf("%08x\n", result[result_index]);
-
-			data_index = 8;
-			result_index++;
-		}
 	}
 
-	if (bit_count != len) {
-		LOG_ERR("Expected Data Length is [%d] but not [%d]", bit_count, len);
-
-		ret = -1;
-	}
-
-	return ret;
+	return true;
 }
 
 static bool read_cpld_busy_flag(uint8_t bus, uint8_t addr, uint16_t sleep_ms)
@@ -538,10 +523,6 @@ static bool cpld_program_i2c(uint8_t bus, uint8_t addr, uint8_t *buff, lattice_d
 	i2c_msg.data[3] = 0x01;
 
 	for (int index = 0; index < 16; index++) {
-		if (!buff[index]) {
-			LOG_ERR("Get invalid data buffer");
-			return false;
-		}
 		i2c_msg.data[index + 4] = bit_swap(buff[index]);
 	}
 
@@ -550,7 +531,7 @@ static bool cpld_program_i2c(uint8_t bus, uint8_t addr, uint8_t *buff, lattice_d
 		return false;
 	}
 
-	if (read_cpld_busy_flag(bus, addr, 10)) {
+	if (read_cpld_busy_flag(bus, addr, 10) == false) {
 		return false;
 	}
 
@@ -591,12 +572,22 @@ bool cpld_i2c_get_id(uint8_t bus, uint8_t addr, uint32_t *dev_id)
 
 	memcpy(dev_id, i2c_msg.data, i2c_msg.rx_len);
 
+	uint32_t ret_id = 0;
+
+	for (int i = 0; i < 4; i++) {
+		ret_id |= (i2c_msg.data[i] << (8 * (3 - i)));
+	}
+
+	memcpy(dev_id, &ret_id, i2c_msg.rx_len);
+
 	return true;
 }
 
 static bool x02x03_i2c_update(lattice_update_config_t *config)
 {
 	CHECK_NULL_ARG_WITH_RETURN(config, false);
+
+	config->next_ofs = 0;
 
 	if (config->type >= ARRAY_SIZE(LATTICE_CFG_TABLE)) {
 		LOG_ERR("Non-support type %d of lattice device detect", config->type);
@@ -608,115 +599,116 @@ static bool x02x03_i2c_update(lattice_update_config_t *config)
 		LOG_INF("update lattice type %s", LATTICE_CFG_TABLE[config->type].name);
 
 		uint32_t dev_id;
-		if (cpld_i2c_get_id(config->bus, config->addr, &dev_id)) {
+		if (cpld_i2c_get_id(config->bus, config->addr, &dev_id) == false) {
 			LOG_ERR("Can't get cpld device id");
 			return false;
 		}
 		if (dev_id != LATTICE_CFG_TABLE[config->type].id) {
-			LOG_ERR("Given cpld type not match with local cpld device's type");
+			LOG_ERR("Given cpld type not match with local cpld device's type, dev_id = %x ,config_type_id = %x",
+				dev_id, LATTICE_CFG_TABLE[config->type].id);
 			return false;
 		}
 
 		if (enter_transparent_mode(config->bus, config->addr) == false) {
+			LOG_ERR("Failed to enter transparent mode");
 			return false;
 		}
 
 		if (erase_flash(config->bus, config->addr, config->type, CFG0) == false) {
+			LOG_ERR("Failed to erase flash");
 			return false;
 		}
 	}
 
 	/* Step2. Image parsing and update */
-	uint8_t data_buff[128];
-	memset(data_buff, 0, ARRAY_SIZE(data_buff));
+	uint8_t data_buff[CFG_BYTE_PER_LINE];
+	memset(data_buff, 0, sizeof(data_buff));
 	uint32_t program_buff[4];
-	memset(program_buff, 0, ARRAY_SIZE(program_buff));
+	memset(program_buff, 0, sizeof(program_buff));
 	uint32_t user_code_buff[1];
-	memset(user_code_buff, 0, ARRAY_SIZE(user_code_buff));
+	memset(user_code_buff, 0, sizeof(user_code_buff));
 
 	static bool first_flag = false;
-
 	static uint8_t passing_state = DATA_PASSING_FIRST;
 
 	memcpy(data_buff, config->data, config->data_len);
 
+	int idx = 0;
+	for (idx = 0; idx < (config->data_len - sizeof(new_line) + 1); idx++) {
+		if (!memcmp(config->data + idx, new_line, sizeof(new_line))) {
+			config->next_ofs = config->data_ofs + idx + 2;
+			config->next_len = MAX_TRANS_LEN;
+			break;
+		}
+	}
+
+	// if '\n' not found
+	if (idx == (config->data_len - sizeof(new_line) + 1)) {
+		LOG_ERR("Failed to find new line ascii bytes in received data");
+		return false;
+	}
+
 	switch (passing_state) {
 	case DATA_PASSING_FIRST:
 	case DATA_PASSING_STARTED:
-		for (int i = 0; i < (config->data_len - strlen(TAG_NEW_LINE)); i++) {
-			if (!memcmp(config->data, TAG_NEW_LINE, strlen(TAG_NEW_LINE))) {
-				//new line found
-				config->next_ofs = config->data_ofs + i + 1;
-				config->next_len = 130;
-				if (!memcmp(config->data, TAG_CFG_START_STR,
-					    strlen(TAG_CFG_START_STR))) {
-					//cfg start found
-					passing_state = DATA_PASSING_CFG_STARTED;
-					first_flag = true;
-					//printf("debug CFG_START at %d \n", config->next_ofs);
-				}
-
-				// printf("debug NEW_LINE at %d \n", data_next_line);
-				break;
-			}
+		if (!memcmp(config->data, TAG_CFG_START_STR, strlen(TAG_CFG_START_STR))) {
+			passing_state = DATA_PASSING_CFG_STARTED;
+			first_flag = true;
 		}
 		break;
 
 	case DATA_PASSING_CFG_STARTED:
 		if (!memcmp(config->data, TAG_CFG_END_STR, strlen(TAG_CFG_END_STR))) {
 			passing_state = DATA_PASSING_CFG_ENDED;
-			config->next_ofs = config->data_ofs +
-					   3; // strlen(TAG_CFG_END_STR)+ strlen(TAG_NEW_LINE)
-			config->next_len = 130;
-			//printf("debug CFG_END at %d \n", config->data_ofs);
-		} else {
-			ascii_to_byte(data_buff, program_buff, 128);
 
-			for (int idx = 0; idx < 16; idx += 4) {
-				if (cpld_program_i2c(config->bus, config->addr,
-						     (uint8_t *)&program_buff[idx], config->type,
-						     CFG0, first_flag) == false) {
-					return false;
-				}
+			/*To reduce update time, jump offset to the bottom part of the image after 
+			config data transfered, the offset must be in front of the user code*/
+			config->next_ofs = fw_update_cfg.image_size - CPLD_FW_BOTTOM_PART_LENGTH;
+		} else {
+			if (cfg_data_parsing(config->data, program_buff, CFG_BYTE_PER_LINE) ==
+			    false) {
+				return false;
 			}
-			config->next_ofs = config->data_ofs + 130;
-			config->next_len = 130;
+
+			if (cpld_program_i2c(config->bus, config->addr, (uint8_t *)&program_buff,
+					     config->type, CFG0, first_flag) == false) {
+				LOG_ERR("Failed to program cpld via i2c");
+				return false;
+			}
+
 			first_flag = false;
 		}
 		break;
 
 	case DATA_PASSING_CFG_ENDED:
-		for (int i = 0; i < (config->data_len - strlen(TAG_NEW_LINE)); i++) {
-			if (!memcmp(config->data, TAG_NEW_LINE, strlen(TAG_NEW_LINE))) {
-				//new line found
-				config->next_ofs = config->data_ofs + i + 1;
-				config->next_len = 130;
-				//user code found
-				if (!memcmp(config->data, TAG_USER_CODE_STR,
-					    strlen(TAG_USER_CODE_STR))) {
-					ascii_to_byte_UC(data_buff + strlen(TAG_USER_CODE_STR),
-							 user_code_buff, 8);
-
-					uint32_t user_code = user_code_buff[0];
-
-					program_user_code(config->bus, config->addr, user_code,
-							  config->type);
-
-					config->next_len = 0;
-					//printf("debug UC_START at %d \n", config->ofs);
-
-					passing_state = DATA_PASSING_FIRST;
-				}
-
-				// printf("debug NEW_LINE at %d \n", data_next_line);
-				break;
+		if (!memcmp(config->data, TAG_USER_CODE_STR, strlen(TAG_USER_CODE_STR))) {
+			if (user_code_parsing(data_buff + strlen(TAG_USER_CODE_STR) + 2,
+					      user_code_buff, 8) == false) {
+				LOG_ERR("Failed to parsing user code");
+				return false;
 			}
+
+			uint32_t user_code = user_code_buff[0];
+			if (program_user_code(config->bus, config->addr, user_code, config->type) ==
+			    false) {
+				return false;
+			}
+
+			config->next_len = 0;
+			passing_state = DATA_PASSING_FIRST;
 		}
 		break;
 
 	default:
-		LOG_ERR("Unexpected passing state");
+		LOG_ERR("Unexpected passing state %d", passing_state);
 		return false;
+	}
+
+	// if next_ofs not set
+	if (config->next_ofs == 0) {
+		LOG_INF("next_ofs = data_ofs");
+		config->next_ofs = config->data_ofs + MAX_TRANS_LEN;
+		config->next_len = MAX_TRANS_LEN;
 	}
 
 	/* Step3. After update*/
@@ -728,6 +720,7 @@ static bool x02x03_i2c_update(lattice_update_config_t *config)
 	}
 
 	if (program_done(config->bus, config->addr, config->type) == false) {
+		LOG_ERR("Failed to send program done command");
 		return false;
 	}
 
