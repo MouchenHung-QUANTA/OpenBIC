@@ -204,6 +204,24 @@ uint8_t pldm_bic_activate(void *arg)
 	return 0;
 }
 
+static fd_update_interface_t get_update_interface(uint16_t comp_id)
+{
+	if (comp_config_count == 0) {
+		LOG_ERR("comp_config not loaded yet");
+		return COMP_UPDATE_VIA_UNKNOWN;
+	}
+
+	int tab_idx;
+	for (tab_idx = 0; tab_idx < comp_config_count; tab_idx++) {
+		if (comp_config[tab_idx].enable == DISABLE)
+			continue;
+		if (comp_id == comp_config[tab_idx].comp_identifier)
+			return comp_config[tab_idx].inf;
+	}
+
+	return COMP_UPDATE_VIA_UNKNOWN;
+}
+
 static uint8_t verify_comp(uint16_t comp_class, uint16_t comp_id, uint8_t comp_class_idx)
 {
 	if (comp_config_count == 0) {
@@ -394,7 +412,7 @@ void req_fw_update_handler(void *mctp_p, void *ext_params, void *arg)
 	update_param.comp_id = cur_update_comp_id;
 	update_param.comp_version_str = cur_update_comp_str;
 	if (cur_update_comp_id < comp_config_count)
-		update_param.inf = comp_config[cur_update_comp_id].inf;
+		update_param.inf = get_update_interface(cur_update_comp_id);
 	else {
 		LOG_ERR("Given component id %d doesn't exist in config table", cur_update_comp_id);
 		return;

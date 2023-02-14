@@ -23,13 +23,13 @@
 #include "pldm_firmware_update.h"
 
 enum { COMP_ID_BIC = GLOBAL_COMP_ID_BIC,
-       COMP_ID_VR0,
-       COMP_ID_VR1,
-       COMP_ID_PEX0,
-       COMP_ID_PEX1,
-       COMP_ID_PEX2,
-       COMP_ID_PEX3,
-       COMP_ID_CPLD,
+       COMP_ID_VR0 = GT_COMPNT_VR0,
+       COMP_ID_VR1 = GT_COMPNT_VR1,
+       COMP_ID_PEX0 = GT_COMPNT_PEX0,
+       COMP_ID_PEX1 = GT_COMPNT_PEX1,
+       COMP_ID_PEX2 = GT_COMPNT_PEX2,
+       COMP_ID_PEX3 = GT_COMPNT_PEX3,
+       COMP_ID_CPLD = GT_COMPNT_CPLD,
        COMP_ID_MAX,
 };
 

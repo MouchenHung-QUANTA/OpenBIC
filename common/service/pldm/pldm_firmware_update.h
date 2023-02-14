@@ -23,7 +23,7 @@ extern "C" {
 
 #include "pldm.h"
 
-#define GLOBAL_COMP_ID_BIC 0x0000
+#define GLOBAL_COMP_ID_BIC 0x0002
 #define MAX_FWUPDATE_RSP_BUF_SIZE 256
 #define MAX_IMAGE_MALLOC_SIZE (1024 * 64)
 
