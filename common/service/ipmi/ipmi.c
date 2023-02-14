@@ -38,6 +38,7 @@
 #include "mctp.h"
 #include "pldm.h"
 #include "plat_ipmb.h"
+#include "ssif.h"
 
 LOG_MODULE_REGISTER(ipmi);
 
@@ -353,6 +354,30 @@ void IPMI_handler(void *arug0, void *arug1, void *arug2)
 			break;
 		}
 #endif
+		case HOST_SSIF_1:
+		case HOST_SSIF_2: {
+			uint8_t ssif_buff[SSIF_BUFF_SIZE];
+			ssif_buff[0] = (msg_cfg.buffer.netfn + 1);
+			ssif_buff[1] = msg_cfg.buffer.cmd;
+			ssif_buff[2] = msg_cfg.buffer.completion_code;
+			if (msg_cfg.buffer.data_len) {
+				if (msg_cfg.buffer.data_len <= (SSIF_BUFF_SIZE - 3))
+					memcpy(&ssif_buff[3], msg_cfg.buffer.data,
+					       msg_cfg.buffer.data_len);
+				else
+					memcpy(&ssif_buff[3], msg_cfg.buffer.data,
+					       (SSIF_BUFF_SIZE - 3));
+			}
+
+			LOG_DBG("ssif from ipmi netfn %x, cmd %x, length %d, cc %x", ssif_buff[0],
+				ssif_buff[1], msg_cfg.buffer.data_len, ssif_buff[2]);
+
+			if (ssif_set_data(msg_cfg.buffer.InF_source - HOST_SSIF_1, ssif_buff, msg_cfg.buffer.data_len + 3) == false) {
+				LOG_ERR("Failed to write ssif response data");
+				continue;
+			}
+		}
+
 		case PLDM:
 			/* the message should be passed to source by pldm format */
 			send_msg_by_pldm(&msg_cfg);

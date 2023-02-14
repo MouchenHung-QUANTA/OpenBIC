@@ -25,6 +25,8 @@
 #define I2C_DEVICE_PREFIX "I2C_"
 #define I2C_CONTROLLER_NAME_GET(inst) I2C_DEVICE_PREFIX #inst
 
+extern struct k_sem temp_sem;
+
 struct __attribute__((__packed__)) i2c_msg_package {
 	uint16_t msg_length;
 	uint8_t msg[MAX_I2C_TARGET_BUFF];
@@ -37,7 +39,10 @@ struct i2c_target_data {
 	uint16_t max_msg_count; /* max message count that target could handle */
 	uint32_t buffer_idx; /* index point to array that store message */
 	struct i2c_msg_package current_msg; /* store message relative stuff */
-	struct k_msgq z_msgq_id; /* message queue of Zephyr api */
+	struct k_msgq target_wr_msgq_id; /* target write message queue of Zephyr api */
+	uint32_t rd_buffer_idx; /* index point to array that store message */
+	struct i2c_msg_package target_rd_msg; /* target read message buffer */
+	uint32_t rd_remain_byte; /* remain buffer count while target read */
 };
 
 struct _i2c_target_config {
@@ -86,6 +91,7 @@ uint8_t i2c_target_status_get(uint8_t bus_num);
 uint8_t i2c_target_status_print(uint8_t bus_num);
 uint8_t i2c_target_cfg_get(uint8_t bus_num, struct _i2c_target_config *cfg);
 uint8_t i2c_target_read(uint8_t bus_num, uint8_t *buff, uint16_t buff_len, uint16_t *msg_len);
+uint8_t i2c_target_write(uint8_t bus_num, uint8_t *buff, uint16_t buff_len);
 int i2c_target_control(uint8_t bus_num, struct _i2c_target_config *cfg,
 		       enum i2c_target_api_control_mode mode);
 
