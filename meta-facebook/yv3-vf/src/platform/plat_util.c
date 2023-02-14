@@ -192,7 +192,7 @@ void add_sel(uint8_t sensor_type, uint8_t event_type, uint8_t sensor_number, uin
 	sel_msg.event_data2 = event_data2;
 	sel_msg.event_data3 = event_data3;
 
-	common_add_sel_evt_record(&sel_msg);
+	//common_add_sel_evt_record(&sel_msg);
 
 	return;
 }
