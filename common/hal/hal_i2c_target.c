@@ -69,20 +69,13 @@ static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg);
 static int do_i2c_target_register(uint8_t bus_num);
 static int do_i2c_target_unregister(uint8_t bus_num);
 
-static void pending_for_data()
-{
-	
-}
+uint32_t irq_key;
 
 static int i2c_target_write_requested(struct i2c_slave_config *config)
 {
+	CHECK_NULL_ARG_WITH_RETURN(config, 1);
+
 	struct i2c_target_data *data;
-
-	if (!config) {
-		LOG_ERR("Get empty config!");
-		return 1;
-	}
-
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
 	data->current_msg.msg_length = 0;
@@ -94,14 +87,14 @@ static int i2c_target_write_requested(struct i2c_slave_config *config)
 
 static int i2c_target_write_received(struct i2c_slave_config *config, uint8_t val)
 {
+	CHECK_NULL_ARG_WITH_RETURN(config, 1);
+
 	struct i2c_target_data *data;
-
-	if (!config) {
-		LOG_ERR("Get empty config!");
-		return 1;
-	}
-
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
+
+	/* for SSIF */
+	if (data->buffer_idx == 0)
+		ssif_collect_data(val, data);
 
 	if (data->buffer_idx >= MAX_I2C_TARGET_BUFF) {
 		LOG_ERR("Buffer_idx over limit!");
@@ -120,9 +113,10 @@ static int i2c_target_read_requested(struct i2c_slave_config *config, uint8_t *v
 	struct i2c_target_data *data;
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
-	if (k_sem_take(&temp_sem, K_MSEC(500))) {
-			return 1;
-		}
+	if (!data->target_rd_msg.msg_length) {
+		LOG_WRN("Data not ready");
+		return 1;
+	}
 
 	if (data->rd_remain_byte) {
 		LOG_WRN("Previous buffer doesn't read complete");
@@ -146,7 +140,7 @@ static int i2c_target_read_processed(struct i2c_slave_config *config, uint8_t *v
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
 	if (!data->rd_remain_byte) {
-		LOG_WRN("No remain buffer to read!");
+		LOG_DBG("No remain buffer to read!");
 		return 1;
 	}
 
@@ -163,13 +157,9 @@ static int i2c_target_read_processed(struct i2c_slave_config *config, uint8_t *v
 
 static int i2c_target_stop(struct i2c_slave_config *config)
 {
+	CHECK_NULL_ARG_WITH_RETURN(config, 1);
+
 	struct i2c_target_data *data;
-
-	if (!config) {
-		LOG_ERR("Get empty config!");
-		return 1;
-	}
-
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
 	if (data->buffer_idx) {
@@ -401,8 +391,6 @@ uint8_t i2c_target_write(uint8_t bus_num, uint8_t *buff, uint16_t buff_len)
 
 	memcpy(data->target_rd_msg.msg, buff, buff_len);
 	data->target_rd_msg.msg_length = buff_len;
-
-	k_sem_give(&temp_sem);
 
 	return I2C_TARGET_API_NO_ERR;
 }

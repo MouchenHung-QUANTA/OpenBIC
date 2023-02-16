@@ -23,17 +23,15 @@
 #include <stdlib.h>
 #include <logging/log.h>
 #include <drivers/i2c.h>
+#include <sys/crc.h>
 #include "ipmi.h"
 #include "ssif.h"
 #include "pldm.h"
 #include "libutil.h"
-#include "hal_i2c_target.h"
 #include "plat_def.h"
 #include "plat_i2c.h"
 
 LOG_MODULE_REGISTER(ssif);
-
-struct k_sem temp_sem;
 
 ssif_dev *ssif;
 static uint8_t ssif_channel_cnt = 0;
@@ -86,6 +84,17 @@ bool ssif_set_data(uint8_t channel, uint8_t *buff, uint16_t len)
 	return true;
 }
 
+static ssif_dev *ssif_inst_get_by_bus(uint8_t bus)
+{
+	for (int i=0; i<ssif_channel_cnt; i++) {
+		if (ssif[i].i2c_bus == bus) {
+			return &ssif[i];
+		}
+	}
+
+	return NULL;
+}
+
 static void ssif_status_change(ssif_status_t status)
 {
 	pre_status = cur_status;
@@ -99,27 +108,62 @@ static void ssif_reset(ssif_dev *ssif_inst)
 	ssif_status_change(SSIF_STATUS_IDLE);
 	cur_action = SSIF_DO_NOTHING;
 	cur_rd_cnt = 0;
-	//cur_rd_blck = 0;
 	memset(&current_ipmi_msg, 0, sizeof(current_ipmi_msg));
-
-	//ssif_inst->rd_len = 0;
-	//memset(ssif_inst->rd_buff, 0, SSIF_BUFF_SIZE);
 }
 
-static bool ssif_pec_check(uint8_t *data, uint16_t len)
+/**
+ * @brief SSIF pec check function
+ *
+ * Check CRC 8 from received message with pec.
+ *
+ * @param addr Target address(BIC itself)
+ * @param data Data to be calculted, should include pec at last byte
+ *             and exclude target address
+ * @param len Length of the data in bytes
+ *
+ * @return true, if match 
+ */
+static bool ssif_pec_check(uint8_t addr, uint8_t *data, uint16_t len)
 {
 	CHECK_NULL_ARG_WITH_RETURN(data, false);
 
-	/* TODO: check PEC */
+	uint8_t pec_buf[len];
+	pec_buf[0] = (addr << 1); // wr:0
+	memcpy(pec_buf + 1, data, len - 1);
+
+	/** pec byte use 7-degree polynomial with 0 init value and false reverse **/
+	uint8_t cal_pec = crc8(pec_buf, sizeof(pec_buf), 0x07, 0x00, false);
+
+	if (data[len-1] != cal_pec)
+		return false;
+
 	return true;
 }
 
-static uint8_t ssif_pec_get(uint8_t *data, uint16_t len)
+/**
+ * @brief SSIF pec get function
+ *
+ * Compute CRC 8 of send out message by passing address, smbus command, data.
+ *
+ * @param addr Target address(BIC itself)
+ * @param smb_cmd SMBus command previously received
+ * @param data Data to be calculted, should exclude target address
+ * @param len Length of the data in bytes
+ *
+ * @return pec(crc8)
+ */
+static uint8_t ssif_pec_get(uint8_t addr, uint8_t smb_cmd, uint8_t *data, uint16_t len)
 {
 	CHECK_NULL_ARG_WITH_RETURN(data, 0);
 
-	/* TODO: calculate PEC */
-	return 0xff;
+	uint8_t pec_buf[len + 3]; // addr + smb_cmd + addr + data
+	pec_buf[0] = (addr << 1); // wr:0
+	pec_buf[1] = smb_cmd;
+	pec_buf[2] = (addr << 1) + 1; // rd:1
+	memcpy(pec_buf + 3, data, len);
+
+	/** pec byte use 7-degree polynomial with 0 init value and false reverse **/
+	return crc8(pec_buf, sizeof(pec_buf), 0x07, 0x00, false);
 }
 
 static bool ssif_status_check(uint8_t smb_cmd)
@@ -178,17 +222,27 @@ exit:
 	return ret;
 }
 
-static bool ssif_do_action(ssif_action_t action, ssif_dev *ssif_inst)
+static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif_inst)
 {
 	CHECK_NULL_ARG_WITH_RETURN(ssif_inst, false);
 
 	static uint16_t remain_data_len = 0;
 
 	switch (action) {
+	case SSIF_DO_NOTHING:
+		break;
+
 	case SSIF_SEND_IPMI:
-		while (k_msgq_put(&ipmi_msgq, &current_ipmi_msg, K_NO_WAIT) != 0) {
-			k_msgq_purge(&ipmi_msgq);
-			LOG_WRN("SSIF retrying put ipmi msgq");
+		if (pal_request_msg_to_BIC_from_KCS(current_ipmi_msg.buffer.netfn, current_ipmi_msg.buffer.cmd)) {
+			while (k_msgq_put(&ipmi_msgq, &current_ipmi_msg, K_NO_WAIT) != 0) {
+				k_msgq_purge(&ipmi_msgq);
+				LOG_WRN("SSIF retrying put ipmi msgq");
+				return false;
+			}
+		} else {
+			/* TODO: Send command to BMC */
+			LOG_WRN("Commands to BMC not ready yet, skip it");
+			return false;
 		}
 
 		int retry = 0;
@@ -198,8 +252,8 @@ static bool ssif_do_action(ssif_action_t action, ssif_dev *ssif_inst)
 				continue;
 			}
 
-			//LOG_INF("rsp: netfn %xh cmd %xh cc %xh", ssif_inst->rd_buff[0], ssif_inst->rd_buff[1], ssif_inst->rd_buff[2]);
-			//LOG_HEXDUMP_INF(&ssif_inst->rd_buff[3], ssif_inst->rd_len - 3, "rsp: data ");
+			LOG_DBG("rsp: netfn %xh cmd %xh cc %xh", ssif_inst->rd_buff[0], ssif_inst->rd_buff[1], ssif_inst->rd_buff[2]);
+			LOG_HEXDUMP_DBG(&ssif_inst->rd_buff[3], ssif_inst->rd_len - 3, "rsp: data ");
 			break;
 		}
 
@@ -207,6 +261,8 @@ static bool ssif_do_action(ssif_action_t action, ssif_dev *ssif_inst)
 			LOG_WRN("Get ipmi message retry over limit");
 			return false;
 		}
+
+		/* TODO: Should let HOST to know data ready */
 		break;
 
 	case SSIF_COLLECT_DATA: {
@@ -250,10 +306,10 @@ static bool ssif_do_action(ssif_action_t action, ssif_dev *ssif_inst)
 				return false;
 			}
 
-			rd_buff[0] = rd_buff_len + 1; // include pec
-			rd_buff[rd_buff_len + 1] = ssif_pec_get(rd_buff, rd_buff_len + 1);
+			rd_buff[0] = rd_buff_len;
+			rd_buff[rd_buff_len + 1] = ssif_pec_get(ssif_inst->addr, smb_cmd, rd_buff, rd_buff_len + 1);
 
-			//LOG_HEXDUMP_INF(rd_buff, rd_buff_len + 2, "host SSIF write RESP data:");
+			LOG_HEXDUMP_INF(rd_buff, rd_buff_len + 2, "host SSIF write RESP data:");
 
 			uint8_t rc = i2c_target_write(ssif_inst->i2c_bus, rd_buff, rd_buff_len + 2);
 			if (rc) {
@@ -261,7 +317,6 @@ static bool ssif_do_action(ssif_action_t action, ssif_dev *ssif_inst)
 				return false;
 			}
 
-			/* TODO: Should let HOST to know data ready */
 		} else {
 			LOG_WRN("Data not ready");
 			return false;
@@ -282,10 +337,46 @@ ssif_err_status_t ssif_get_error_status()
 	return cur_err_status;
 }
 
+void ssif_collect_data(uint8_t smb_cmd, struct i2c_target_data *data)
+{
+	CHECK_NULL_ARG(data);
+
+	if (smb_cmd != SSIF_RD_SINGLE && smb_cmd != SSIF_RD_MULTI_MIDDLE && smb_cmd != SSIF_RD_MULTI_RETRY) {
+		return;
+	}
+
+	if (ssif_status_check(smb_cmd) == false) {
+		return;
+	}
+
+	switch (cur_status) {
+	case SSIF_STATUS_RD_SINGLE:
+	case SSIF_STATUS_RD_MULTI_START:
+	case SSIF_STATUS_RD_MULTI_MIDDLE: {
+		ssif_dev *ssif_inst = ssif_inst_get_by_bus(data->i2c_bus);
+		if (!ssif_inst) {
+			LOG_WRN("Failed to get ssif inst by i2c bus %d", data->i2c_bus);
+			return;
+		}
+
+		if (ssif_do_action(SSIF_COLLECT_DATA, smb_cmd, ssif_inst) == false) {
+			cur_err_status = SSIF_STATUS_UNKNOWN_ERR;
+			return;
+		}
+		break;
+	}
+
+	default:
+		break;
+	}
+
+	return;
+}
+
 static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 {
 	int rc = 0;
-	uint8_t first_byte = 0;
+	uint8_t cur_smb_cmd = 0;
 
 	ARG_UNUSED(arvg1);
 	ARG_UNUSED(arvg2);
@@ -298,8 +389,6 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 	memset(&current_ipmi_msg, 0, sizeof(current_ipmi_msg));
 
 	while (1) {
-		k_msleep(SSIF_POLLING_INTERVAL);
-
 		uint8_t rdata[SSIF_BUFF_SIZE] = { 0 };
 		uint16_t rlen = 0;
 		rc = i2c_target_read(ssif_inst->i2c_bus, rdata, ARRAY_SIZE(rdata), &rlen);
@@ -310,40 +399,51 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 		}
 
 		if (rlen == 0) {
-			LOG_WRN("Invalid length of SSIF message received");
+			LOG_ERR("Invalid length of SSIF message received");
 			cur_err_status = SSIF_STATUS_INVALID_LEN;
 			goto reset;
 		}
 
-		LOG_HEXDUMP_INF(rdata, rlen, "host SSIF read REQ data:");
+		/* Should ignore READ command, cause already been handle in lower level */
+		if (cur_status & 0xF0) {
+			if (cur_status == SSIF_STATUS_RD_MULTI_END || cur_status == SSIF_STATUS_RD_SINGLE) {
+				cur_err_status = SSIF_STATUS_NO_ERR;
+				goto reset;
+			} else {
+				continue;
+			}
+		}
 
-		first_byte = rdata[0];
+		LOG_HEXDUMP_DBG(rdata, rlen, "host SSIF read REQ data:");
 
-		if (ssif_pec_check(rdata, rlen) == false) {
+		cur_smb_cmd = rdata[0];
+
+		if (ssif_pec_check(ssif_inst->addr, rdata, rlen) == false) {
 			LOG_ERR("ssif pec check failed");
 			cur_err_status = SSIF_STATUS_INVALID_PEC;
 			goto reset;
 		}
 
-		if (ssif_status_check(first_byte) == false) {
+		if (ssif_status_check(cur_smb_cmd) == false) {
 			LOG_ERR("ssif status check failed");
 			goto reset;
 		}
 
+		/* This part should only handle WRITE command */
 		switch (cur_status) {
 		case SSIF_STATUS_WR_SINGLE:
 		case SSIF_STATUS_WR_MULTI_START: {
 			struct ssif_wr_start wr_start_msg;
 			memset(&wr_start_msg, 0, sizeof(wr_start_msg));
 			if (rlen - 2 > sizeof(wr_start_msg)) { // exclude smb_cmd, pec
-				LOG_WRN("Invalid message length for smb command %d", first_byte);
+				LOG_WRN("Invalid message length for smb command %d", cur_smb_cmd);
 				cur_err_status = SSIF_STATUS_INVALID_LEN;
 				goto reset;
 			}
 			memcpy(&wr_start_msg, rdata + 1, rlen - 2); // exclude smb_cmd, pec
 
 			if (wr_start_msg.len != (rlen - 3)) { // exclude netfn, cmd, pec
-				LOG_WRN("Invalid length byte for smb command %d", first_byte);
+				LOG_WRN("Invalid length byte for smb command %d", cur_smb_cmd);
 				cur_err_status = SSIF_STATUS_INVALID_LEN;
 				goto reset;
 			}
@@ -375,14 +475,14 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 			memset(&wr_middle_msg, 0, sizeof(wr_middle_msg));
 
 			if (rlen - 2 > sizeof(wr_middle_msg)) { // exclude smb_cmd, pec
-				LOG_WRN("Invalid message length for smb command %d", first_byte);
+				LOG_WRN("Invalid message length for smb command %d", cur_smb_cmd);
 				cur_err_status = SSIF_STATUS_INVALID_LEN;
 				goto reset;
 			}
 			memcpy(&wr_middle_msg, rdata + 1, rlen - 2); // exclude smb_cmd, pec
 
 			if (wr_middle_msg.len != (rlen - 1)) { // exclude pec
-				LOG_WRN("Invalid length byte for smb command %d", first_byte);
+				LOG_WRN("Invalid length byte for smb command %d", cur_smb_cmd);
 				cur_err_status = SSIF_STATUS_INVALID_LEN;
 				goto reset;
 			}
@@ -410,24 +510,14 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 			}
 		}
 
-		case SSIF_STATUS_RD_SINGLE:
-		case SSIF_STATUS_RD_MULTI_START:
-		case SSIF_STATUS_RD_MULTI_MIDDLE:
-			cur_action = SSIF_COLLECT_DATA;
-			break;
-
 		default:
 			LOG_ERR("Invalid status %d detect", cur_status);
 			goto reset;
 		}
 
-		if (ssif_do_action(cur_action, ssif_inst) == false) {
+		if (ssif_do_action(cur_action, cur_smb_cmd, ssif_inst) == false) {
 			cur_err_status = SSIF_STATUS_UNKNOWN_ERR;
 			goto reset;
-		}
-
-		if (cur_action == SSIF_COLLECT_DATA && (cur_status != SSIF_STATUS_RD_MULTI_END && cur_status != SSIF_STATUS_RD_SINGLE) ) {
-			continue;
 		}
 
 		cur_err_status = SSIF_STATUS_NO_ERR;
@@ -463,12 +553,16 @@ void ssif_device_init(uint8_t *config, uint8_t size)
 			continue;
 		}
 
-		if (k_sem_init(&temp_sem, 0, 1)) {
-			LOG_ERR("ssif %d temp semaphore initial failed", i);
+		struct _i2c_target_config cfg;
+		uint8_t ret = i2c_target_cfg_get(config[i], &cfg);
+		if (ret) {
+			LOG_ERR("Failed to get i2c %d target config cause of %d", config[i], ret);
 			continue;
 		}
 
 		ssif[i].i2c_bus = config[i];
+		ssif[i].addr = cfg.address;
+
 		snprintf(ssif[i].task_name, sizeof(ssif[i].task_name), "ssif%d_polling", config[i]);
 
 		ssif[i].ssif_task_tid = k_thread_create(&ssif[i].task_thread, ssif[i].ssif_task_stack,

@@ -24,6 +24,8 @@
 #include <stdint.h>
 #include <zephyr.h>
 
+#include "hal_i2c_target.h"
+
 #define SSIF_THREAD_STACK_SIZE 3072
 #define SSIF_POLLING_INTERVAL 100
 #define SSIF_MAX_IPMI_DATA_SIZE 32
@@ -36,17 +38,15 @@
 typedef enum ssif_status {
 	SSIF_STATUS_IDLE,
 
-	SSIF_STATUS_WR_SINGLE,
-	SSIF_STATUS_WR_MULTI_START,
-	SSIF_STATUS_WR_MULTI_MIDDLE,
-	SSIF_STATUS_WR_MULTI_END,
+	SSIF_STATUS_WR_SINGLE = 0x01,
+	SSIF_STATUS_WR_MULTI_START = 0x02,
+	SSIF_STATUS_WR_MULTI_MIDDLE = 0x04,
+	SSIF_STATUS_WR_MULTI_END = 0x08,
 
-	SSIF_STATUS_RD_SINGLE,
-	SSIF_STATUS_RD_MULTI_START,
-	SSIF_STATUS_RD_MULTI_MIDDLE,
-	SSIF_STATUS_RD_MULTI_END,
-
-	SSIF_STATUS_RD_COLLECT,
+	SSIF_STATUS_RD_SINGLE = 0x10,
+	SSIF_STATUS_RD_MULTI_START = 0x20,
+	SSIF_STATUS_RD_MULTI_MIDDLE = 0x40,
+	SSIF_STATUS_RD_MULTI_END = 0x80,
 } ssif_status_t;
 
 typedef enum ssif_err_status {
@@ -78,6 +78,7 @@ typedef enum ssif_action {
 typedef struct _ssif_dev {
 	uint8_t index;
 	uint8_t i2c_bus;
+	uint8_t addr; // bic itself, 7bit
 	k_tid_t ssif_task_tid;
 	K_KERNEL_STACK_MEMBER(ssif_task_stack, SSIF_THREAD_STACK_SIZE);
 	uint8_t task_name[SSIF_TASK_NAME_LEN];
@@ -126,6 +127,7 @@ struct ssif_rd_middle {
 void ssif_device_init(uint8_t *config, uint8_t size);
 ssif_err_status_t ssif_get_error_status();
 bool ssif_set_data(uint8_t channel, uint8_t *buff, uint16_t len);
+void ssif_collect_data(uint8_t smb_cmd, struct i2c_target_data *data);
 
 #endif
 
