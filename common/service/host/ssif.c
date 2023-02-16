@@ -74,6 +74,7 @@ bool ssif_set_data(uint8_t channel, uint8_t *buff, uint16_t len)
 	}
 
 	ssif[channel].rd_len = len;
+	buff[0] <<= 2; // netfn + lun(0)
 	memcpy(&ssif[channel].rd_buff, buff, len);
 
 	k_sem_give(&ssif[channel].rd_buff_sem);
@@ -251,16 +252,16 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 				retry++;
 				continue;
 			}
-
-			LOG_DBG("rsp: netfn %xh cmd %xh cc %xh", ssif_inst->rd_buff[0], ssif_inst->rd_buff[1], ssif_inst->rd_buff[2]);
-			LOG_HEXDUMP_DBG(&ssif_inst->rd_buff[3], ssif_inst->rd_len - 3, "rsp: data ");
 			break;
 		}
 
 		if (retry == 3) {
-			LOG_WRN("Get ipmi message retry over limit");
+			LOG_ERR("Get ipmi message retry over limit");
 			return false;
 		}
+
+		LOG_DBG("ipmi rsp netfn 0x%x, cmd 0x%x, cc 0x%x, data length %d:", ssif_inst->rd_buff[0], ssif_inst->rd_buff[1], ssif_inst->rd_buff[2], ssif_inst->rd_len-3);
+		LOG_HEXDUMP_DBG(ssif_inst->rd_buff + 3, ssif_inst->rd_len - 3, "");
 
 		/* TODO: Should let HOST to know data ready */
 		break;
@@ -278,29 +279,28 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 					rd_buff[1] = (SSIF_MULTI_RD_KEY >> 8) & 0xFF;
 					rd_buff[2] = SSIF_MULTI_RD_KEY & 0xFF;
 					memcpy(rd_buff + 3, ssif_inst->rd_buff, SSIF_MAX_IPMI_DATA_SIZE - 2);
-					remain_data_len -= (SSIF_MAX_IPMI_DATA_SIZE - 2);
 					rd_buff_len = SSIF_MAX_IPMI_DATA_SIZE;
-					ssif_status_change(SSIF_STATUS_RD_MULTI_START);
+					ssif_status_change(SSIF_STATUS_RD_MULTI_MIDDLE);
+					remain_data_len -= (SSIF_MAX_IPMI_DATA_SIZE - 2);
 				} else {
 					memcpy(rd_buff + 1, ssif_inst->rd_buff, ssif_inst->rd_len);
-					remain_data_len = 0;
 					rd_buff_len = ssif_inst->rd_len;
 					ssif_status_change(SSIF_STATUS_RD_SINGLE);
+					remain_data_len = 0;
 				}
 			} else if (cur_status == SSIF_STATUS_RD_MULTI_MIDDLE || cur_status == SSIF_STATUS_RD_MULTI_END) {
 				if (remain_data_len > (SSIF_MAX_IPMI_DATA_SIZE - 1)) {
 					rd_buff[1] = cur_rd_blck;
-					remain_data_len -= (SSIF_MAX_IPMI_DATA_SIZE - 1);
 					rd_buff_len = SSIF_MAX_IPMI_DATA_SIZE;
-					ssif_status_change(SSIF_STATUS_RD_MULTI_START);
+					ssif_status_change(SSIF_STATUS_RD_MULTI_MIDDLE);
 				} else {
 					rd_buff[1] = 0xFF;
-					remain_data_len = 0;
 					rd_buff_len = remain_data_len + 1;
 					ssif_status_change(SSIF_STATUS_RD_MULTI_END);
 				}
-				cur_rd_blck++;
 				memcpy(rd_buff + 2, ssif_inst->rd_buff + (ssif_inst->rd_len - remain_data_len), rd_buff_len - 1);
+				remain_data_len -= (rd_buff_len - 1);
+				cur_rd_blck++;
 			} else {
 				LOG_WRN("Current status not supposed to do this action");
 				return false;
@@ -414,18 +414,18 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 			}
 		}
 
-		LOG_HEXDUMP_DBG(rdata, rlen, "host SSIF read REQ data:");
+		LOG_HEXDUMP_INF(rdata, rlen, "host SSIF read REQ data:");
 
 		cur_smb_cmd = rdata[0];
+
+		if (ssif_status_check(cur_smb_cmd) == false) {
+			LOG_ERR("ssif status check failed");
+			goto reset;
+		}
 
 		if (ssif_pec_check(ssif_inst->addr, rdata, rlen) == false) {
 			LOG_ERR("ssif pec check failed");
 			cur_err_status = SSIF_STATUS_INVALID_PEC;
-			goto reset;
-		}
-
-		if (ssif_status_check(cur_smb_cmd) == false) {
-			LOG_ERR("ssif status check failed");
 			goto reset;
 		}
 
@@ -442,24 +442,20 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 			}
 			memcpy(&wr_start_msg, rdata + 1, rlen - 2); // exclude smb_cmd, pec
 
-			if (wr_start_msg.len != (rlen - 3)) { // exclude netfn, cmd, pec
+			if (wr_start_msg.len != (rlen - 3)) { // exclude smb_cmd, len, pec
 				LOG_WRN("Invalid length byte for smb command %d", cur_smb_cmd);
 				cur_err_status = SSIF_STATUS_INVALID_LEN;
 				goto reset;
 			}
 
 			current_ipmi_msg.buffer.InF_source = HOST_SSIF_1 + ssif_inst->index;
-			current_ipmi_msg.buffer.netfn = wr_start_msg.netfn;
+			current_ipmi_msg.buffer.netfn = wr_start_msg.netfn >> 2;
 			current_ipmi_msg.buffer.cmd = wr_start_msg.cmd;
 			current_ipmi_msg.buffer.data_len = wr_start_msg.len - 2; // exclude netfn, cmd
 			if (current_ipmi_msg.buffer.data_len != 0) {
 				memcpy(current_ipmi_msg.buffer.data, wr_start_msg.data,
 				       current_ipmi_msg.buffer.data_len);
 			}
-
-			LOG_INF("SSIF to ipmi netfn 0x%x, cmd 0x%x, length %d",
-				current_ipmi_msg.buffer.netfn, current_ipmi_msg.buffer.cmd,
-				current_ipmi_msg.buffer.data_len);
 
 			if (cur_status == SSIF_STATUS_WR_MULTI_START)
 				continue;
@@ -481,7 +477,7 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 			}
 			memcpy(&wr_middle_msg, rdata + 1, rlen - 2); // exclude smb_cmd, pec
 
-			if (wr_middle_msg.len != (rlen - 1)) { // exclude pec
+			if (wr_middle_msg.len != (rlen - 3)) { // exclude smb_cmd, len, pec
 				LOG_WRN("Invalid length byte for smb command %d", cur_smb_cmd);
 				cur_err_status = SSIF_STATUS_INVALID_LEN;
 				goto reset;
@@ -514,6 +510,11 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 			LOG_ERR("Invalid status %d detect", cur_status);
 			goto reset;
 		}
+
+		LOG_DBG("ipmi req netfn 0x%x, cmd 0x%x, data length %d:",
+				current_ipmi_msg.buffer.netfn, current_ipmi_msg.buffer.cmd,
+				current_ipmi_msg.buffer.data_len);
+		LOG_HEXDUMP_DBG(current_ipmi_msg.buffer.data, current_ipmi_msg.buffer.data_len, "");
 
 		if (ssif_do_action(cur_action, cur_smb_cmd, ssif_inst) == false) {
 			cur_err_status = SSIF_STATUS_UNKNOWN_ERR;

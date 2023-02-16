@@ -126,7 +126,7 @@ __weak bool pal_request_msg_to_BIC_from_KCS(uint8_t netfn, uint8_t cmd)
 		if ((cmd == CMD_OEM_1S_FW_UPDATE) || (cmd == CMD_OEM_1S_RESET_BMC) ||
 		    (cmd == CMD_OEM_1S_GET_BIC_STATUS) || (cmd == CMD_OEM_1S_RESET_BIC) ||
 		    (cmd == CMD_OEM_1S_GET_BIC_FW_INFO) ||
-		    (cmd == CMD_OEM_1S_GET_DIMM_I3C_MUX_SELECTION))
+		    (cmd == CMD_OEM_1S_GET_DIMM_I3C_MUX_SELECTION) || (cmd == CMD_OEM_1S_TEST_MULTI_READ_SSIF) || (cmd == CMD_OEM_1S_TEST_MULTI_WRITE_SSIF))
 			return true;
 	}
 
