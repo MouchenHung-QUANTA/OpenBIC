@@ -258,15 +258,12 @@ out:
 */
 uint8_t i2c_target_cfg_get(uint8_t bus_num, struct _i2c_target_config *cfg)
 {
-	uint8_t status;
-
-	if (!cfg)
-		return I2C_TARGET_API_INPUT_ERR;
+	CHECK_NULL_ARG_WITH_RETURN(cfg, I2C_TARGET_API_INPUT_ERR);
 
 	/* check input */
-	status = i2c_target_status_get(bus_num);
-	if (status & (I2C_TARGET_BUS_INVALID | I2C_TARGET_CONTROLLER_ERR | I2C_TARGET_NOT_INIT)) {
-		LOG_ERR("Bus[%d] check status failed with error status 0x%x!", bus_num, status);
+	uint8_t target_status = i2c_target_status_get(bus_num);
+	if (target_status & (I2C_TARGET_BUS_INVALID | I2C_TARGET_CONTROLLER_ERR | I2C_TARGET_NOT_INIT)) {
+		LOG_ERR("Bus[%d] check status failed with error status 0x%x!", bus_num, target_status);
 		return I2C_TARGET_API_BUS_GET_FAIL;
 	}
 
@@ -289,12 +286,10 @@ uint8_t i2c_target_cfg_get(uint8_t bus_num, struct _i2c_target_config *cfg)
 */
 uint8_t i2c_target_status_print(uint8_t bus_num)
 {
-	uint8_t status;
-
 	/* check input */
-	status = i2c_target_status_get(bus_num);
-	if (status & (I2C_TARGET_BUS_INVALID | I2C_TARGET_CONTROLLER_ERR)) {
-		LOG_ERR("Bus[%d] check status failed with error status 0x%x!", bus_num, status);
+	uint8_t target_status = i2c_target_status_get(bus_num);
+	if (target_status & (I2C_TARGET_BUS_INVALID | I2C_TARGET_CONTROLLER_ERR)) {
+		LOG_ERR("Bus[%d] check status failed with error status 0x%x!", bus_num, target_status);
 		return I2C_TARGET_API_BUS_GET_FAIL;
 	}
 
@@ -326,15 +321,13 @@ uint8_t i2c_target_status_print(uint8_t bus_num)
 */
 uint8_t i2c_target_read(uint8_t bus_num, uint8_t *buff, uint16_t buff_len, uint16_t *msg_len)
 {
-	uint8_t status;
-
-	if (!buff || !msg_len)
-		return I2C_TARGET_API_INPUT_ERR;
+	CHECK_NULL_ARG_WITH_RETURN(buff, I2C_TARGET_API_INPUT_ERR);
+	CHECK_NULL_ARG_WITH_RETURN(msg_len, I2C_TARGET_API_INPUT_ERR);
 
 	/* check input, support while bus target is unregistered */
-	status = i2c_target_status_get(bus_num);
-	if (status & (I2C_TARGET_BUS_INVALID | I2C_TARGET_CONTROLLER_ERR | I2C_TARGET_NOT_INIT)) {
-		LOG_ERR("Bus[%d] check status failed with error status 0x%x!", bus_num, status);
+	uint8_t target_status = i2c_target_status_get(bus_num);
+	if (target_status & (I2C_TARGET_BUS_INVALID | I2C_TARGET_CONTROLLER_ERR | I2C_TARGET_NOT_INIT)) {
+		LOG_ERR("Bus[%d] check status failed with error status 0x%x!", bus_num, target_status);
 		return I2C_TARGET_API_BUS_GET_FAIL;
 	}
 
@@ -383,13 +376,12 @@ uint8_t i2c_target_read(uint8_t bus_num, uint8_t *buff, uint16_t buff_len, uint1
 */
 uint8_t i2c_target_write(uint8_t bus_num, uint8_t *buff, uint16_t buff_len)
 {
-	if (!buff)
-		return I2C_TARGET_API_INPUT_ERR;
+	CHECK_NULL_ARG_WITH_RETURN(buff, I2C_TARGET_API_INPUT_ERR);
 
 	/* check input, support while bus target is unregistered */
-	uint8_t status = i2c_target_status_get(bus_num);
-	if (status & (I2C_TARGET_BUS_INVALID | I2C_TARGET_CONTROLLER_ERR | I2C_TARGET_NOT_INIT)) {
-		LOG_ERR("Bus[%d] check status failed with error status 0x%x!", bus_num, status);
+	uint8_t target_status = i2c_target_status_get(bus_num);
+	if (target_status & (I2C_TARGET_BUS_INVALID | I2C_TARGET_CONTROLLER_ERR | I2C_TARGET_NOT_INIT)) {
+		LOG_ERR("Bus[%d] check status failed with error status 0x%x!", bus_num, target_status);
 		return I2C_TARGET_API_BUS_GET_FAIL;
 	}
 
@@ -420,8 +412,6 @@ uint8_t i2c_target_write(uint8_t bus_num, uint8_t *buff, uint16_t buff_len)
 int i2c_target_control(uint8_t bus_num, struct _i2c_target_config *cfg,
 		       enum i2c_target_api_control_mode mode)
 {
-	int status;
-
 	/* Check input and target status */
 	uint8_t target_status = i2c_target_status_get(bus_num);
 	if (target_status & (I2C_TARGET_BUS_INVALID | I2C_TARGET_CONTROLLER_ERR)) {
@@ -430,33 +420,33 @@ int i2c_target_control(uint8_t bus_num, struct _i2c_target_config *cfg,
 		return I2C_TARGET_API_BUS_GET_FAIL;
 	}
 
+	int ret;
+
 	switch (mode) {
 	/* Case1: do config then register (if already config before, then modify config set) */
 	case I2C_CONTROL_REGISTER:
-		if (!cfg) {
-			return I2C_TARGET_API_INPUT_ERR;
+		CHECK_NULL_ARG_WITH_RETURN(cfg, I2C_TARGET_API_INPUT_ERR);
+
+		ret = do_i2c_target_cfg(bus_num, cfg);
+		if (ret) {
+			LOG_ERR("Bus[%d] config failed with errorcode %d!", bus_num, ret);
+			return ret;
 		}
 
-		status = do_i2c_target_cfg(bus_num, cfg);
-		if (status) {
-			LOG_ERR("Bus[%d] config failed with errorcode %d!", bus_num, status);
-			return status;
-		}
-
-		status = do_i2c_target_register(bus_num);
-		if (status) {
-			LOG_ERR("Bus[%d] register failed with errorcode %d!", bus_num, status);
-			return status;
+		ret = do_i2c_target_register(bus_num);
+		if (ret) {
+			LOG_ERR("Bus[%d] register failed with errorcode %d!", bus_num, ret);
+			return ret;
 		}
 
 		break;
 
 	/* Case2: do unregister only, config not affected */
 	case I2C_CONTROL_UNREGISTER:
-		status = do_i2c_target_unregister(bus_num);
-		if (status) {
-			LOG_ERR("Bus[%d] unregister failed with errorcode %d!", bus_num, status);
-			return status;
+		ret = do_i2c_target_unregister(bus_num);
+		if (ret) {
+			LOG_ERR("Bus[%d] unregister failed with errorcode %d!", bus_num, ret);
+			return ret;
 		}
 
 		break;
@@ -482,15 +472,12 @@ int i2c_target_control(uint8_t bus_num, struct _i2c_target_config *cfg,
 */
 static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg)
 {
-	if (!cfg)
-		return I2C_TARGET_API_INPUT_ERR;
+	CHECK_NULL_ARG_WITH_RETURN(cfg, I2C_TARGET_API_INPUT_ERR);
 
-	int status;
-	uint8_t target_status = I2C_TARGET_HAS_NO_ERR;
 	int ret = I2C_TARGET_API_NO_ERR;
 
 	/* check input, support while bus target is unregistered */
-	target_status = i2c_target_status_get(bus_num);
+	uint8_t target_status = i2c_target_status_get(bus_num);
 	if (target_status & (I2C_TARGET_BUS_INVALID | I2C_TARGET_CONTROLLER_ERR)) {
 		LOG_ERR("Bus[%d] check status failed with error status 0x%x!", bus_num,
 			target_status);
@@ -499,9 +486,9 @@ static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg)
 
 	/* need unregister first */
 	if (!(target_status & I2C_TARGET_NOT_REGISTER)) {
-		status = do_i2c_target_unregister(bus_num);
+		int status = do_i2c_target_unregister(bus_num);
 		if (status) {
-			LOG_ERR("Target bus[%d] mutex lock failed!", bus_num);
+			LOG_ERR("Target bus[%d] unregister failed cause of %d!", bus_num, status);
 			return I2C_TARGET_API_BUS_GET_FAIL;
 		}
 	}
@@ -597,8 +584,6 @@ unlock:
 */
 static int do_i2c_target_register(uint8_t bus_num)
 {
-	int ret = 0;
-
 	/* Check input and target status */
 	uint8_t target_status = i2c_target_status_get(bus_num);
 	if (target_status &
@@ -623,7 +608,7 @@ static int do_i2c_target_register(uint8_t bus_num)
 		return I2C_TARGET_API_MSGQ_ERR;
 	}
 
-	ret = i2c_slave_register(data->i2c_controller, &data->config);
+	int ret = i2c_slave_register(data->i2c_controller, &data->config);
 	if (ret)
 		return ret;
 
@@ -644,8 +629,6 @@ static int do_i2c_target_register(uint8_t bus_num)
 */
 static int do_i2c_target_unregister(uint8_t bus_num)
 {
-	int ret = 0;
-
 	/* Check input and target status */
 	uint8_t target_status = i2c_target_status_get(bus_num);
 	if (target_status &
@@ -663,7 +646,7 @@ static int do_i2c_target_unregister(uint8_t bus_num)
 
 	struct i2c_target_data *data = &i2c_target_device_global[bus_num].data;
 
-	ret = i2c_slave_unregister(data->i2c_controller, &data->config);
+	int ret = i2c_slave_unregister(data->i2c_controller, &data->config);
 	if (ret)
 		return ret;
 
