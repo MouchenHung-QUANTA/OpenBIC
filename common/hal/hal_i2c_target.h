@@ -32,22 +32,29 @@ struct __attribute__((__packed__)) i2c_msg_package {
 	uint8_t msg[MAX_I2C_TARGET_BUFF];
 };
 
+typedef void (*rd_data_gen_func)(void *arg);
+
 struct i2c_target_data {
-	uint8_t i2c_bus; /* i2c bus number */
-	const struct device *i2c_controller; /* i2c controller for one target bus */
-	struct i2c_slave_config config; /* i2c target relative config */
-	uint16_t max_msg_count; /* max message count that target could handle */
-	uint32_t buffer_idx; /* index point to array that store message */
-	struct i2c_msg_package current_msg; /* store message relative stuff */
-	struct k_msgq target_wr_msgq_id; /* target write message queue of Zephyr api */
-	uint32_t rd_buffer_idx; /* index point to array that store message */
-	struct i2c_msg_package target_rd_msg; /* target read message buffer */
-	uint32_t rd_remain_byte; /* remain buffer count while target read */
+	uint8_t i2c_bus; // i2c bus number
+	const struct device *i2c_controller; // i2c controller for one target bus
+	struct i2c_slave_config config; // i2c target relative config
+
+	/* TARGET WRITE - Support message queue for massive pending messages storage */
+	uint16_t wr_buffer_idx; // message buffer index
+	struct i2c_msg_package target_wr_msg; // message's buffer and length
+	struct k_msgq target_wr_msgq_id; // target write message queue of Zephyr api
+	uint16_t max_msg_count; // max message count for target write message queue
+
+	/* TARGET READ - Not support pending messages storage */
+	uint32_t rd_buffer_idx; // message buffer index
+	struct i2c_msg_package target_rd_msg; // message's buffer and length
+	rd_data_gen_func data_collect_func; // prepare message for target read
 };
 
 struct _i2c_target_config {
 	uint8_t address;
 	uint32_t i2c_msg_count;
+	rd_data_gen_func data_collect_func;
 };
 
 struct i2c_target_device {

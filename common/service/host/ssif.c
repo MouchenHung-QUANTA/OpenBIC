@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-//#ifdef CONFIG_IPMI_SSIF_ASPEED
+#include "plat_def.h"
+#ifdef ENABLE_SSIF
 
 #include <zephyr.h>
 #include <string.h>
@@ -28,14 +29,12 @@
 #include "ssif.h"
 #include "pldm.h"
 #include "libutil.h"
-#include "plat_def.h"
 #include "plat_i2c.h"
 
 LOG_MODULE_REGISTER(ssif);
 
 ssif_dev *ssif;
 static uint8_t ssif_channel_cnt = 0;
-static bool ssif_ready = false;
 
 ssif_status_t pre_status = SSIF_STATUS_IDLE;
 ssif_status_t cur_status = SSIF_STATUS_IDLE;
@@ -50,11 +49,6 @@ ipmi_msg_cfg current_ipmi_msg; // for ipmi request data
 bool ssif_set_data(uint8_t channel, uint8_t *buff, uint16_t len)
 {
 	CHECK_NULL_ARG_WITH_RETURN(buff, false);
-
-	if (ssif_ready == false) {
-		LOG_WRN("SSIF hasn't init yet");
-		return false;
-	}
 
 	if (channel >= ssif_channel_cnt) {
 		LOG_WRN("Invalid SSIF channel %d", channel);
@@ -337,10 +331,8 @@ ssif_err_status_t ssif_get_error_status()
 	return cur_err_status;
 }
 
-void ssif_collect_data(uint8_t smb_cmd, struct i2c_target_data *data)
+void ssif_collect_data(uint8_t smb_cmd, uint8_t bus)
 {
-	CHECK_NULL_ARG(data);
-
 	if (smb_cmd != SSIF_RD_SINGLE && smb_cmd != SSIF_RD_MULTI_MIDDLE && smb_cmd != SSIF_RD_MULTI_RETRY) {
 		return;
 	}
@@ -353,9 +345,9 @@ void ssif_collect_data(uint8_t smb_cmd, struct i2c_target_data *data)
 	case SSIF_STATUS_RD_SINGLE:
 	case SSIF_STATUS_RD_MULTI_START:
 	case SSIF_STATUS_RD_MULTI_MIDDLE: {
-		ssif_dev *ssif_inst = ssif_inst_get_by_bus(data->i2c_bus);
+		ssif_dev *ssif_inst = ssif_inst_get_by_bus(bus);
 		if (!ssif_inst) {
-			LOG_WRN("Failed to get ssif inst by i2c bus %d", data->i2c_bus);
+			LOG_WRN("Failed to get ssif inst by i2c bus %d", bus);
 			return;
 		}
 
@@ -575,9 +567,7 @@ void ssif_device_init(uint8_t *config, uint8_t size)
 		LOG_INF("SSIF %d created", config[i]);
 	}
 
-	ssif_ready = true;
-
 	return;
 }
 
-//#endif
+#endif

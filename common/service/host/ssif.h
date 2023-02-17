@@ -17,8 +17,8 @@
 #ifndef SSIF_H
 #define SSIF_H
 
-//#ifdef CONFIG_IPMI_SSIF_ASPEED
-#if 1
+#include "plat_def.h"
+#ifdef ENABLE_SSIF
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -127,8 +127,8 @@ struct ssif_rd_middle {
 void ssif_device_init(uint8_t *config, uint8_t size);
 ssif_err_status_t ssif_get_error_status();
 bool ssif_set_data(uint8_t channel, uint8_t *buff, uint16_t len);
-void ssif_collect_data(uint8_t smb_cmd, struct i2c_target_data *data);
+void ssif_collect_data(uint8_t smb_cmd, uint8_t bus);
 
-#endif
+#endif /* ENABLE_SSIF */
 
-#endif
+#endif /* SSIF_H */

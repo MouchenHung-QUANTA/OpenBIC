@@ -69,7 +69,20 @@ static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg);
 static int do_i2c_target_register(uint8_t bus_num);
 static int do_i2c_target_unregister(uint8_t bus_num);
 
-uint32_t irq_key;
+__weak void pal_do_something_before_read(void *arg)
+{
+	CHECK_NULL_ARG(arg);
+
+	struct i2c_target_data *data = (struct i2c_target_data *)arg;
+
+#ifdef ENABLE_SSIF
+	if (data->wr_buffer_idx == 0) {
+		ssif_collect_data(*(data->target_wr_msg.msg + data->wr_buffer_idx - 1), data->i2c_bus);
+	}
+#endif
+
+	return;
+}
 
 static int i2c_target_write_requested(struct i2c_slave_config *config)
 {
@@ -78,9 +91,9 @@ static int i2c_target_write_requested(struct i2c_slave_config *config)
 	struct i2c_target_data *data;
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
-	data->current_msg.msg_length = 0;
-	memset(data->current_msg.msg, 0x0, MAX_I2C_TARGET_BUFF);
-	data->buffer_idx = 0;
+	data->target_wr_msg.msg_length = 0;
+	memset(data->target_wr_msg.msg, 0x0, MAX_I2C_TARGET_BUFF);
+	data->wr_buffer_idx = 0;
 
 	return 0;
 }
@@ -92,15 +105,14 @@ static int i2c_target_write_received(struct i2c_slave_config *config, uint8_t va
 	struct i2c_target_data *data;
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
-	/* for SSIF */
-	if (data->buffer_idx == 0)
-		ssif_collect_data(val, data);
-
-	if (data->buffer_idx >= MAX_I2C_TARGET_BUFF) {
+	if (data->wr_buffer_idx >= MAX_I2C_TARGET_BUFF) {
 		LOG_ERR("Buffer_idx over limit!");
 		return 1;
 	}
-	data->current_msg.msg[data->buffer_idx++] = val;
+	data->target_wr_msg.msg[data->wr_buffer_idx++] = val;
+
+	if (data->data_collect_func)
+		data->data_collect_func(data);
 
 	return 0;
 }
@@ -118,15 +130,8 @@ static int i2c_target_read_requested(struct i2c_slave_config *config, uint8_t *v
 		return 1;
 	}
 
-	if (data->rd_remain_byte) {
-		LOG_WRN("Previous buffer doesn't read complete");
-	}
-
 	data->rd_buffer_idx = 0;
-	data->rd_remain_byte = data->target_rd_msg.msg_length;
-
 	*val = data->target_rd_msg.msg[data->rd_buffer_idx++];
-	data->rd_remain_byte--;
 
 	return 0;
 }
@@ -139,7 +144,7 @@ static int i2c_target_read_processed(struct i2c_slave_config *config, uint8_t *v
 	struct i2c_target_data *data;
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
-	if (!data->rd_remain_byte) {
+	if (data->target_rd_msg.msg_length - data->rd_buffer_idx == 0) {
 		LOG_DBG("No remain buffer to read!");
 		return 1;
 	}
@@ -150,7 +155,6 @@ static int i2c_target_read_processed(struct i2c_slave_config *config, uint8_t *v
 	}
 
 	*val = data->target_rd_msg.msg[data->rd_buffer_idx++];
-	data->rd_remain_byte--;
 
 	return 0;
 }
@@ -162,11 +166,11 @@ static int i2c_target_stop(struct i2c_slave_config *config)
 	struct i2c_target_data *data;
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
-	if (data->buffer_idx) {
-		data->current_msg.msg_length = data->buffer_idx;
+	if (data->wr_buffer_idx) {
+		data->target_wr_msg.msg_length = data->wr_buffer_idx;
 
 		/* try to put new node to message queue */
-		uint8_t ret = k_msgq_put(&data->target_wr_msgq_id, &data->current_msg, K_NO_WAIT);
+		uint8_t ret = k_msgq_put(&data->target_wr_msgq_id, &data->target_wr_msg, K_NO_WAIT);
 		if (ret) {
 			LOG_ERR("Can't put new node to message queue on bus[%d], cause of %d",
 				data->i2c_bus, ret);
@@ -179,6 +183,13 @@ static int i2c_target_stop(struct i2c_slave_config *config)
 			do_i2c_target_unregister(data->i2c_bus);
 		}
 	}
+
+	if (data->rd_buffer_idx) {
+		if (data->target_rd_msg.msg_length - data->rd_buffer_idx) {
+			LOG_WRN("Read buffer doesn't read complete");
+		}
+	}
+	data->rd_buffer_idx = 0;
 
 	return 0;
 }
@@ -509,9 +520,6 @@ static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg)
 		return I2C_TARGET_API_LOCK_ERR;
 	}
 
-	uint8_t target_address = cfg->address;
-	uint16_t _max_msg_count = cfg->i2c_msg_count;
-
 	struct i2c_target_data *data = &i2c_target_device_global[bus_num].data;
 	char *i2C_target_queue_buffer;
 
@@ -547,8 +555,13 @@ static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg)
 		SAFE_FREE(data->target_wr_msgq_id.buffer_start);
 	}
 
-	data->max_msg_count = _max_msg_count;
-	data->config.address = target_address >> 1; // to 7-bit target address
+	data->max_msg_count = cfg->i2c_msg_count;
+	data->config.address = cfg->address >> 1; // to 7-bit target address
+
+	if (cfg->data_collect_func)
+		data->data_collect_func = cfg->data_collect_func;
+	else
+		data->data_collect_func = pal_do_something_before_read;
 
 	i2C_target_queue_buffer = malloc(data->max_msg_count * sizeof(struct i2c_msg_package));
 	if (!i2C_target_queue_buffer) {
