@@ -41,8 +41,9 @@ ssif_status_t cur_status = SSIF_STATUS_IDLE;
 ssif_err_status_t cur_err_status = SSIF_STATUS_NO_ERR;
 ssif_action_t cur_action = SSIF_DO_NOTHING;
 
-static uint16_t cur_rd_cnt = 0;
 static uint16_t cur_rd_blck = 0; // for multi-read middle/end
+
+static uint8_t is_pec_exist = 1; // should only assign 0 or 1
 
 ipmi_msg_cfg current_ipmi_msg; // for ipmi request data
 
@@ -102,7 +103,6 @@ static void ssif_reset(ssif_dev *ssif_inst)
 
 	ssif_status_change(SSIF_STATUS_IDLE);
 	cur_action = SSIF_DO_NOTHING;
-	cur_rd_cnt = 0;
 	memset(&current_ipmi_msg, 0, sizeof(current_ipmi_msg));
 }
 
@@ -121,6 +121,19 @@ static void ssif_reset(ssif_dev *ssif_inst)
 static bool ssif_pec_check(uint8_t addr, uint8_t *data, uint16_t len)
 {
 	CHECK_NULL_ARG_WITH_RETURN(data, false);
+
+	if (len < 2) {
+		LOG_ERR("SSIF request data should at last contain smb_cmd and length");
+		return false;
+	}
+
+	/* skip if pec not exist */
+	if ( (len - data[1] - 2) == 0 ) {
+		is_pec_exist = 0;
+		return true;
+	} else {
+		is_pec_exist = 1;
+	}
 
 	uint8_t pec_buf[len];
 	pec_buf[0] = (addr << 1); // wr:0
@@ -427,14 +440,14 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 		case SSIF_STATUS_WR_MULTI_START: {
 			struct ssif_wr_start wr_start_msg;
 			memset(&wr_start_msg, 0, sizeof(wr_start_msg));
-			if (rlen - 2 > sizeof(wr_start_msg)) { // exclude smb_cmd, pec
+			if (rlen - 1 - is_pec_exist > sizeof(wr_start_msg)) { // exclude smb_cmd, pec
 				LOG_WRN("Invalid message length for smb command %d", cur_smb_cmd);
 				cur_err_status = SSIF_STATUS_INVALID_LEN;
 				goto reset;
 			}
-			memcpy(&wr_start_msg, rdata + 1, rlen - 2); // exclude smb_cmd, pec
+			memcpy(&wr_start_msg, rdata + 1, rlen - 1 - is_pec_exist); // exclude smb_cmd, pec
 
-			if (wr_start_msg.len != (rlen - 3)) { // exclude smb_cmd, len, pec
+			if (wr_start_msg.len != (rlen - 2 - is_pec_exist)) { // exclude smb_cmd, len, pec
 				LOG_WRN("Invalid length byte for smb command %d", cur_smb_cmd);
 				cur_err_status = SSIF_STATUS_INVALID_LEN;
 				goto reset;
@@ -462,14 +475,14 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 			struct ssif_wr_middle wr_middle_msg;
 			memset(&wr_middle_msg, 0, sizeof(wr_middle_msg));
 
-			if (rlen - 2 > sizeof(wr_middle_msg)) { // exclude smb_cmd, pec
+			if (rlen - 1 - is_pec_exist > sizeof(wr_middle_msg)) { // exclude smb_cmd, pec
 				LOG_WRN("Invalid message length for smb command %d", cur_smb_cmd);
 				cur_err_status = SSIF_STATUS_INVALID_LEN;
 				goto reset;
 			}
-			memcpy(&wr_middle_msg, rdata + 1, rlen - 2); // exclude smb_cmd, pec
+			memcpy(&wr_middle_msg, rdata + 1, rlen - 1 - is_pec_exist); // exclude smb_cmd, pec
 
-			if (wr_middle_msg.len != (rlen - 3)) { // exclude smb_cmd, len, pec
+			if (wr_middle_msg.len != (rlen - 2 - is_pec_exist)) { // exclude smb_cmd, len, pec
 				LOG_WRN("Invalid length byte for smb command %d", cur_smb_cmd);
 				cur_err_status = SSIF_STATUS_INVALID_LEN;
 				goto reset;
@@ -570,4 +583,4 @@ void ssif_device_init(uint8_t *config, uint8_t size)
 	return;
 }
 
-#endif
+#endif /* ENABLE_SSIF */
