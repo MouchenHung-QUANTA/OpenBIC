@@ -76,9 +76,8 @@ __weak void pal_do_something_before_read(void *arg)
 	struct i2c_target_data *data = (struct i2c_target_data *)arg;
 
 #ifdef ENABLE_SSIF
-	if (data->wr_buffer_idx == 0) {
-		ssif_collect_data(*(data->target_wr_msg.msg + data->wr_buffer_idx - 1), data->i2c_bus);
-	}
+	if (data->wr_buffer_idx == 1)
+		ssif_collect_data(data->target_wr_msg.msg[0], data->i2c_bus);
 #endif
 
 	return;
@@ -666,6 +665,7 @@ void cmd_target_register(const struct shell *shell, size_t argc, char **argv)
 	uint8_t flag = strtol(argv[2], NULL, 10);
 
 	struct _i2c_target_config cfg;
+	memset(&cfg, 0, sizeof(cfg));
 	cfg.address = 0x40;
 	cfg.i2c_msg_count = 0x0A;
 
