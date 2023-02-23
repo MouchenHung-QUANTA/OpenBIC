@@ -18,7 +18,7 @@
 #define SSIF_H
 
 #include "plat_def.h"
-#ifdef ENABLE_SSIF
+//#ifdef ENABLE_SSIF
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -34,6 +34,8 @@
 #define SSIF_TASK_NAME_LEN 32
 
 #define SSIF_MULTI_RD_KEY 0x0001
+
+#define CMD_SYS_INFO_FW_VERSION 0x01
 
 typedef enum ssif_status {
 	SSIF_STATUS_IDLE,
@@ -126,9 +128,9 @@ struct ssif_rd_middle {
 
 void ssif_device_init(uint8_t *config, uint8_t size);
 ssif_err_status_t ssif_get_error_status();
-bool ssif_set_data(uint8_t channel, uint8_t *buff, uint16_t len);
+bool ssif_set_data(uint8_t channel, ipmi_msg_cfg *msg_cfg);
 void ssif_collect_data(uint8_t smb_cmd, uint8_t bus);
 
-#endif /* ENABLE_SSIF */
+//#endif /* ENABLE_SSIF */
 
 #endif /* SSIF_H */

@@ -15,7 +15,7 @@
  */
 
 #include "plat_def.h"
-#ifdef ENABLE_SSIF
+//#ifdef ENABLE_SSIF
 
 #include <zephyr.h>
 #include <string.h>
@@ -47,17 +47,12 @@ static uint8_t is_pec_exist = 1; // should only assign 0 or 1
 
 ipmi_msg_cfg current_ipmi_msg; // for ipmi request data
 
-bool ssif_set_data(uint8_t channel, uint8_t *buff, uint16_t len)
+bool ssif_set_data(uint8_t channel, ipmi_msg_cfg *msg_cfg)
 {
-	CHECK_NULL_ARG_WITH_RETURN(buff, false);
+	CHECK_NULL_ARG_WITH_RETURN(msg_cfg, false);
 
 	if (channel >= ssif_channel_cnt) {
 		LOG_WRN("Invalid SSIF channel %d", channel);
-		return false;
-	}
-
-	if (len > SSIF_BUFF_SIZE) {
-		LOG_WRN("SSIF given buff length over limit");
 		return false;
 	}
 
@@ -68,9 +63,24 @@ bool ssif_set_data(uint8_t channel, uint8_t *buff, uint16_t len)
 		return false;
 	}
 
-	ssif[channel].rd_len = len;
-	buff[0] <<= 2; // netfn + lun(0)
-	memcpy(&ssif[channel].rd_buff, buff, len);
+	uint8_t ssif_buff[SSIF_BUFF_SIZE];
+	ssif_buff[0] = (msg_cfg->buffer.netfn + 1) << 2; // netfn + lun(0)
+	ssif_buff[1] = msg_cfg->buffer.cmd;
+	ssif_buff[2] = msg_cfg->buffer.completion_code;
+	if (msg_cfg->buffer.data_len) {
+		if (msg_cfg->buffer.data_len <= (SSIF_BUFF_SIZE - 3))
+			memcpy(&ssif_buff[3], msg_cfg->buffer.data,
+					msg_cfg->buffer.data_len);
+		else
+			memcpy(&ssif_buff[3], msg_cfg->buffer.data,
+					(SSIF_BUFF_SIZE - 3));
+	}
+
+	ssif[channel].rd_len = msg_cfg->buffer.data_len + 3;
+	memcpy(&ssif[channel].rd_buff, ssif_buff, msg_cfg->buffer.data_len + 3);
+
+	LOG_DBG("ssif from ipmi netfn %x, cmd %x, data length %d, cc %x", ssif[channel].rd_buff[0],
+		ssif[channel].rd_buff[1], msg_cfg->buffer.data_len, ssif[channel].rd_buff[2]);
 
 	k_sem_give(&ssif[channel].rd_buff_sem);
 
@@ -248,9 +258,33 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 				return false;
 			}
 		} else {
+			if (pal_immediate_respond_from_KCS(current_ipmi_msg.buffer.netfn, current_ipmi_msg.buffer.cmd)) {
+				current_ipmi_msg.buffer.data_len = 0;
+				current_ipmi_msg.buffer.completion_code = CC_SUCCESS;
+
+				if (((current_ipmi_msg.buffer.netfn == NETFN_STORAGE_REQ) &&
+						(current_ipmi_msg.buffer.cmd == CMD_STORAGE_ADD_SEL))) {
+					current_ipmi_msg.buffer.data_len += 2;
+					current_ipmi_msg.buffer.data[0] = 0x00;
+					current_ipmi_msg.buffer.data[1] = 0x00;
+				}
+
+				if (ssif_set_data(current_ipmi_msg.buffer.InF_source - HOST_SSIF_1, &current_ipmi_msg) == false) {
+					LOG_ERR("Failed to write ssif response data");
+				}
+			}
+/*
+			if ((current_ipmi_msg.buffer.netfn == NETFN_APP_REQ) &&
+			    (current_ipmi_msg.buffer.cmd == CMD_APP_SET_SYS_INFO_PARAMS) &&
+			    (current_ipmi_msg.buffer.data[0] == CMD_SYS_INFO_FW_VERSION)) {
+				int ret = pal_record_bios_fw_version(ibuf, rc);
+				if (ret == -1) {
+					LOG_ERR("Record bios fw version fail");
+				}
+			}
+*/
 			/* TODO: Send command to BMC */
 			LOG_WRN("Commands to BMC not ready yet, skip it");
-			return false;
 		}
 
 		int retry = 0;
@@ -583,4 +617,4 @@ void ssif_device_init(uint8_t *config, uint8_t size)
 	return;
 }
 
-#endif /* ENABLE_SSIF */
+//#endif /* ENABLE_SSIF */
