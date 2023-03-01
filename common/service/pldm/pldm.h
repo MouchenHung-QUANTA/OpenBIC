@@ -127,11 +127,11 @@ struct _pldm_ipmi_cmd_resp {
 uint8_t mctp_pldm_cmd_handler(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext_params ext_params);
 
 /* send the pldm command message through mctp */
-uint8_t mctp_pldm_send_msg(void *mctp_p, pldm_msg *msg);
+uint8_t mctp_pldm_send_msg(void *mctp_p, pldm_msg *msg, uint8_t *instid);
 int pldm_send_ipmi_response(uint8_t interface, ipmi_msg *msg);
 int pldm_send_ipmi_request(ipmi_msg *msg);
 
-uint16_t mctp_pldm_read(void *mctp_p, pldm_msg *msg, uint8_t *rbuf, uint16_t rbuf_len);
+uint16_t mctp_pldm_read(void *mctp_p, pldm_msg *msg, uint8_t *rbuf, uint16_t rbuf_len, bool flag, uint8_t *instido);
 
 pldm_t *pldm_init(void *interface, uint8_t user_idx);
 

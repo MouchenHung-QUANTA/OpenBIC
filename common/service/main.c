@@ -29,6 +29,7 @@
 #include "usb.h"
 #include <logging/log.h>
 #include <logging/log_ctrl.h>
+#include "plat_mctp.h"
 
 __weak void pal_pre_init()
 {
@@ -69,4 +70,7 @@ void main(void)
 	pal_device_init();
 	pal_set_sys_status();
 	pal_post_init();
+
+	k_msleep(2000);
+	start_i3c_stress();
 }

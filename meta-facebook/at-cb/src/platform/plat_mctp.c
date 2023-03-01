@@ -209,7 +209,8 @@ int pal_pldm_send_ipmi_request(ipmi_msg *msg, uint8_t eid)
 	pmsg.len = sizeof(struct _ipmi_cmd_req) - 1 + msg->data_len;
 
 	// Send request to PLDM/MCTP thread and get response
-	resp_len = mctp_pldm_read(mctp_inst, &pmsg, resp_buf, sizeof(resp_buf));
+	uint8_t instido;
+	resp_len = mctp_pldm_read(mctp_inst, &pmsg, resp_buf, sizeof(resp_buf), 0, &instido);
 	if (resp_len == 0) {
 		LOG_ERR("mctp_pldm_read fail");
 		return -1;

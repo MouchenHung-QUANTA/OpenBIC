@@ -72,6 +72,8 @@ int i3c_smq_read(I3C_MSG *msg)
 		return -1;
 	}
 
+	//LOG_INF("< i3c_smq_read > %xh %xh %xh %xh", msg->data[0], msg->data[1], msg->data[2], msg->data[3]);
+
 	msg->rx_len =
 		i3c_slave_mqueue_read(dev_i3c_smq[msg->bus], &msg->data[0], I3C_MAX_DATA_SIZE);
 	if (msg->rx_len == 0) {
@@ -105,6 +107,8 @@ int i3c_smq_write(I3C_MSG *msg)
 		k_mutex_unlock(&mutex_write[msg->bus]);
 		return -ENODEV;
 	}
+
+	//LOG_HEXDUMP_INF(msg->data, msg->tx_len, "< i3c_smq_write >");
 
 	ret = i3c_slave_mqueue_write(dev_i3c_smq[msg->bus], &msg->data[0], msg->tx_len);
 	if (ret < 0) {
@@ -163,6 +167,7 @@ int i3c_brocast_ccc(I3C_MSG *msg, uint8_t ccc_id, uint8_t ccc_addr)
 	ccc.payload.data = &msg->data;
 	ccc.payload.length = 0;
 
+LOG_INF("< i3c_brocast_ccc > send ccc");
 	ret = i3c_master_send_ccc(dev_i3c[msg->bus], &ccc);
 	if (ret != 0) {
 		LOG_ERR("Failed to broadcast ccc 0x%x to addresses 0x%x due to undefined bus%u",
@@ -200,6 +205,8 @@ int i3c_transfer(I3C_MSG *msg)
 	xfer_data[1].rnw = I3C_READ_CMD;
 	xfer_data[1].len = msg->rx_len;
 	xfer_data[1].data.in = &msg->data;
+
+	LOG_INF("< i3c_transfer >");
 
 	ret = i3c_master_priv_xfer(desc, xfer_data, 2);
 	if (ret != 0) {

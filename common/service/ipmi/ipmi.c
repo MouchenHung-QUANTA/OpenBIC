@@ -114,7 +114,8 @@ static uint8_t send_msg_by_pldm(ipmi_msg_cfg *msg_cfg)
 
 	memcpy(&resp.ext_params, msg_cfg->buffer.data + mctp_ext_params_ofs,
 	       sizeof(resp.ext_params));
-	mctp_pldm_send_msg(mctp_inst, &resp);
+	uint8_t instid;
+	mctp_pldm_send_msg(mctp_inst, &resp, &instid);
 
 	return 1;
 }

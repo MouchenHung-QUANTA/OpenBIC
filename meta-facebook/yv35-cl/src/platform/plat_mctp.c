@@ -30,18 +30,34 @@ LOG_MODULE_REGISTER(plat_mctp);
 #define MCTP_IC_MASK 0x80
 
 /* i3c 8-bit addr */
-#define I3C_STATIC_ADDR_BIC		0x40
-#define I3C_STATIC_ADDR_BMC		0x20
+#define I3C_STATIC_ADDR_BIC 0x40
+#define I3C_STATIC_ADDR_BMC 0x20
 
 /* i3c dev bus */
-#define I3C_BUS_BMC	0
+#define I3C_BUS_BMC 0
 
 /* mctp endpoint */
 #define MCTP_EID_BMC 0x01
 #define MCTP_EID_SELF 0x02
 
+uint8_t stop_flag = t1_en | t2_en | t3_en;
+
+K_THREAD_STACK_DEFINE(dev_id_thread, 1024);
+struct k_thread dev_id_thread_handler;
+k_tid_t dev_id_tid;
+
+K_THREAD_STACK_DEFINE(self_test_thread, 1024);
+struct k_thread self_test_thread_handler;
+k_tid_t self_test_tid;
+
+K_THREAD_STACK_DEFINE(dev_guid_thread, 1024);
+struct k_thread dev_guid_thread_handler;
+k_tid_t dev_guid_tid;
+
 K_TIMER_DEFINE(send_cmd_timer, send_cmd_to_dev, NULL);
 K_WORK_DEFINE(send_cmd_work, send_cmd_to_dev_handler);
+
+bool first_time_fail = true;
 
 typedef struct _mctp_smbus_port {
 	mctp *mctp_inst;
@@ -68,7 +84,7 @@ typedef struct _mctp_msg_handler {
 } mctp_msg_handler;
 
 static mctp_i3c_port i3c_port[] = {
-	{ .conf.i3c_conf.bus = I3C_BUS_BMC, .conf.i3c_conf.addr = I3C_STATIC_ADDR_BMC},
+	{ .conf.i3c_conf.bus = I3C_BUS_BMC, .conf.i3c_conf.addr = I3C_STATIC_ADDR_BMC },
 };
 
 mctp_route_entry mctp_route_tbl[] = {
@@ -238,7 +254,8 @@ bool mctp_add_sel_to_ipmi(common_addsel_msg_t *sel_msg)
 	uint8_t resp_len = sizeof(struct mctp_to_ipmi_sel_resp);
 	uint8_t rbuf[resp_len];
 
-	if (!mctp_pldm_read(find_mctp_by_i3c(I3C_BUS_BMC), &msg, rbuf, resp_len)) {
+	uint8_t instido;
+	if (!mctp_pldm_read(find_mctp_by_i3c(I3C_BUS_BMC), &msg, rbuf, resp_len, 0, &instido)) {
 		LOG_ERR("mctp_pldm_read fail");
 		return false;
 	}
@@ -247,24 +264,267 @@ bool mctp_add_sel_to_ipmi(common_addsel_msg_t *sel_msg)
 
 	if ((resp->header.completion_code != MCTP_SUCCESS) ||
 	    (resp->header.ipmi_comp_code != CC_SUCCESS)) {
-		LOG_ERR("Check reponse completion code fail %x %x", resp->header.completion_code, resp->header.ipmi_comp_code);
+		LOG_ERR("Check reponse completion code fail %x %x", resp->header.completion_code,
+			resp->header.ipmi_comp_code);
 		return false;
 	}
 
 	return true;
 }
 
+void send_unknow_request(uint8_t net_fn, uint8_t cmd)
+{
+	pldm_msg msg = { 0 };
+	struct mctp_to_ipmi_header_req req = { 0 };
+	memset(&req, 0, sizeof(struct mctp_to_ipmi_header_req));
+	msg.ext_params.type = MCTP_MEDIUM_TYPE_I3C;
+	msg.ext_params.i3c_ext_params.addr = I3C_BUS_BMC;
+
+	msg.hdr.pldm_type = PLDM_TYPE_OEM;
+	msg.hdr.cmd = PLDM_OEM_IPMI_BRIDGE;
+	msg.hdr.rq = 1;
+
+	msg.buf = (uint8_t *)&req;
+	msg.len = sizeof(struct mctp_to_ipmi_header_req);
+
+	if (set_iana(req.iana, sizeof(req.iana))) {
+		LOG_ERR("Set IANA fail");
+		return;
+	}
+
+	req.netfn_lun = (NETFN_OEM_1S_REQ << 2);
+	req.ipmi_cmd = 0xFF;
+
+	uint8_t rbuf[20];
+	memset(rbuf, 0, 20);
+
+	uint8_t instido;
+	mctp_pldm_read(find_mctp_by_i3c(I3C_BUS_BMC), &msg, rbuf, 20, 0, &instido);
+}
+
+void mctp_get_BMC_dev_id()
+{
+	pldm_msg msg = { 0 };
+	struct mctp_to_ipmi_header_req req = { 0 };
+	uint32_t count = 0;
+	while (1) {
+		k_msleep(1);
+		if (stop_flag & t1_en) {
+			continue;
+		}
+		count++;
+		memset(&req, 0, sizeof(struct mctp_to_ipmi_header_req));
+		msg.ext_params.type = MCTP_MEDIUM_TYPE_I3C;
+		msg.ext_params.i3c_ext_params.addr = I3C_BUS_BMC;
+
+		msg.hdr.pldm_type = PLDM_TYPE_OEM;
+		msg.hdr.cmd = PLDM_OEM_IPMI_BRIDGE;
+		msg.hdr.rq = 1;
+
+		msg.buf = (uint8_t *)&req;
+		msg.len = sizeof(struct mctp_to_ipmi_header_req);
+
+		if (set_iana(req.iana, sizeof(req.iana))) {
+			LOG_ERR("Set IANA fail");
+			continue;
+		}
+
+		req.netfn_lun = (NETFN_APP_REQ << 2);
+		req.ipmi_cmd = CMD_APP_GET_DEVICE_ID;
+
+		uint8_t rbuf[30];
+		memset(rbuf, 0, sizeof(rbuf));
+
+		uint8_t instido;
+		uint16_t ret_len = mctp_pldm_read(find_mctp_by_i3c(I3C_BUS_BMC), &msg, rbuf, sizeof(rbuf), 1, &instido);
+
+		pldm_hdr tmp = {0};
+		memcpy(&tmp, rbuf, sizeof(pldm_hdr));
+
+		memmove(rbuf, rbuf + sizeof(pldm_hdr), ret_len - sizeof(pldm_hdr));
+		ret_len -= sizeof(pldm_hdr);
+
+		if (!ret_len) {
+			LOG_ERR("mctp_pldm_read fail");
+			continue;
+		}
+
+		if ((rbuf[0] != MCTP_SUCCESS) || (rbuf[3] != CC_SUCCESS) ||
+		    (rbuf[1] != (NETFN_APP_RES << 2)) || (rbuf[2] != CMD_APP_GET_DEVICE_ID)) {
+			if (first_time_fail) {
+				LOG_ERR("!!!!!!!!!!!!!!!! first time error, send Netfn 0x38 Cmd 0xFF !!!!!!!!!!!!!!!!");
+				send_unknow_request((NETFN_APP_REQ << 2), CMD_APP_GET_DEVICE_ID);
+				first_time_fail = false;
+			}
+			LOG_ERR("{%d --> %d} GET_DEV_ID unexpect return value, count %d", instido, tmp.inst_id, count);
+			LOG_HEXDUMP_ERR(rbuf, ret_len, "BMC GET_DEV_ID");
+			continue;
+		}
+		if ((count % 100) == 0) {
+			LOG_INF("GET_DEV_ID, %d passed", count);
+		}
+	}
+}
+
+void mctp_get_BMC_self_test()
+{
+	pldm_msg msg = { 0 };
+	struct mctp_to_ipmi_header_req req = { 0 };
+	uint32_t count = 0;
+	while (1) {
+		k_msleep(1);
+		if (stop_flag & t2_en) {
+			continue;
+		}
+		count++;
+		memset(&req, 0, sizeof(struct mctp_to_ipmi_header_req));
+		msg.ext_params.type = MCTP_MEDIUM_TYPE_I3C;
+		msg.ext_params.i3c_ext_params.addr = I3C_BUS_BMC;
+
+		msg.hdr.pldm_type = PLDM_TYPE_OEM;
+		msg.hdr.cmd = PLDM_OEM_IPMI_BRIDGE;
+		msg.hdr.rq = 1;
+
+		msg.buf = (uint8_t *)&req;
+		msg.len = sizeof(struct mctp_to_ipmi_header_req);
+
+		if (set_iana(req.iana, sizeof(req.iana))) {
+			LOG_ERR("Set IANA fail");
+			continue;
+		}
+
+		req.netfn_lun = (NETFN_APP_REQ << 2);
+		req.ipmi_cmd = CMD_APP_GET_SELFTEST_RESULTS;
+
+		uint8_t rbuf[30];
+		memset(rbuf, 0, sizeof(rbuf));
+uint8_t instido;
+		uint16_t ret_len = mctp_pldm_read(find_mctp_by_i3c(I3C_BUS_BMC), &msg, rbuf, sizeof(rbuf), 1, &instido);
+
+		pldm_hdr tmp = {0};
+		memcpy(&tmp, rbuf, sizeof(pldm_hdr));
+
+		memmove(rbuf, rbuf + sizeof(pldm_hdr), ret_len - sizeof(pldm_hdr));
+		ret_len -= sizeof(pldm_hdr);
+
+		if (!ret_len) {
+			LOG_ERR("mctp_pldm_read fail");
+			continue;
+		}
+
+		if ((rbuf[0] != MCTP_SUCCESS) || (rbuf[3] != CC_SUCCESS) ||
+		    (rbuf[1] != (NETFN_APP_RES << 2)) ||
+		    (rbuf[2] != CMD_APP_GET_SELFTEST_RESULTS)) {
+			if (first_time_fail) {
+				LOG_ERR("!!!!!!!!!!!!!!!! first time error, send Netfn 0x38 Cmd 0xFF !!!!!!!!!!!!!!!!");
+				send_unknow_request((NETFN_APP_REQ << 2),
+						    CMD_APP_GET_SELFTEST_RESULTS);
+				first_time_fail = false;
+			}
+			LOG_ERR("{%d --> %d} GET_SELF_TEST unexpect return value, count %d", instido, tmp.inst_id, count);
+			LOG_HEXDUMP_ERR(rbuf, ret_len, "BMC GET_SELF_TEST");
+			continue;
+		}
+		if ((count % 100) == 0) {
+			LOG_INF("GET_SELF_TEST, %d passed", count);
+		}
+	}
+}
+
+void mctp_get_BMC_dev_guid()
+{
+	pldm_msg msg = { 0 };
+	struct mctp_to_ipmi_header_req req = { 0 };
+	uint32_t count = 0;
+	while (1) {
+		k_msleep(1);
+		if (stop_flag & t3_en) {
+			continue;
+		}
+		count++;
+		memset(&req, 0, sizeof(struct mctp_to_ipmi_header_req));
+		msg.ext_params.type = MCTP_MEDIUM_TYPE_I3C;
+		msg.ext_params.i3c_ext_params.addr = I3C_BUS_BMC;
+
+		msg.hdr.pldm_type = PLDM_TYPE_OEM;
+		msg.hdr.cmd = PLDM_OEM_IPMI_BRIDGE;
+		msg.hdr.rq = 1;
+
+		msg.buf = (uint8_t *)&req;
+		msg.len = sizeof(struct mctp_to_ipmi_header_req);
+
+		if (set_iana(req.iana, sizeof(req.iana))) {
+			LOG_ERR("Set IANA fail");
+			continue;
+		}
+
+		req.netfn_lun = (NETFN_APP_REQ << 2);
+		req.ipmi_cmd = CMD_APP_GET_SYSTEM_GUID;
+
+		uint8_t rbuf[30];
+		memset(rbuf, 0, sizeof(rbuf));
+uint8_t instido;
+		uint16_t ret_len = mctp_pldm_read(find_mctp_by_i3c(I3C_BUS_BMC), &msg, rbuf, sizeof(rbuf), 1, &instido);
+
+		pldm_hdr tmp = {0};
+		memcpy(&tmp, rbuf, sizeof(pldm_hdr));
+
+		memmove(rbuf, rbuf + sizeof(pldm_hdr), ret_len - sizeof(pldm_hdr));
+		ret_len -= sizeof(pldm_hdr);
+
+		if (!ret_len) {
+			LOG_ERR("mctp_pldm_read fail");
+			continue;
+		}
+
+		if ((rbuf[0] != MCTP_SUCCESS) || (rbuf[3] != CC_SUCCESS) ||
+		    (rbuf[1] != (NETFN_APP_RES << 2)) || (rbuf[2] != CMD_APP_GET_SYSTEM_GUID)) {
+			if (first_time_fail) {
+				LOG_ERR("!!!!!!!!!!!!!!!! first time error, send Netfn 0x38 Cmd 0xFF !!!!!!!!!!!!!!!!");
+				send_unknow_request((NETFN_APP_RES << 2), CMD_APP_GET_SYSTEM_GUID);
+				first_time_fail = false;
+			}
+			LOG_ERR("{%d --> %d} GET_DEV_GUID unexpect return value, count %d", instido, tmp.inst_id, count);
+			LOG_HEXDUMP_ERR(rbuf, ret_len, "BMC GET_DEV_GUID");
+			continue;
+		}
+		if ((count % 100) == 0) {
+			LOG_INF("GET_DEV_GUID, %d passed", count);
+		}
+	}
+}
+
+void start_i3c_stress()
+{
+	dev_id_tid = k_thread_create(&dev_id_thread_handler, dev_id_thread,
+				     K_THREAD_STACK_SIZEOF(dev_id_thread), mctp_get_BMC_dev_id,
+				     NULL, NULL, NULL, CONFIG_MAIN_THREAD_PRIORITY, 0, K_NO_WAIT);
+	k_thread_name_set(&dev_id_thread_handler, "dev_id_thread");
+
+	self_test_tid =
+		k_thread_create(&self_test_thread_handler, self_test_thread,
+				K_THREAD_STACK_SIZEOF(self_test_thread), mctp_get_BMC_self_test,
+				NULL, NULL, NULL, CONFIG_MAIN_THREAD_PRIORITY, 0, K_NO_WAIT);
+	k_thread_name_set(&self_test_thread_handler, "self_test_thread");
+
+	dev_guid_tid =
+		k_thread_create(&dev_guid_thread_handler, dev_guid_thread,
+				K_THREAD_STACK_SIZEOF(dev_guid_thread), mctp_get_BMC_dev_guid, NULL,
+				NULL, NULL, CONFIG_MAIN_THREAD_PRIORITY, 0, K_NO_WAIT);
+	k_thread_name_set(&dev_guid_thread_handler, "dev_guid_thread");
+}
+
 int pal_get_medium_type(uint8_t interface)
 {
 	int medium_type = -1;
 
-	switch(interface) {
-		case BMC_IPMB:
-		case MCTP:
-		case PLDM:
+	switch (interface) {
+	case BMC_IPMB:
+	case MCTP:
+	case PLDM:
 		medium_type = MCTP_MEDIUM_TYPE_I3C;
 		break;
-		default:
+	default:
 		medium_type = -1;
 		break;
 	}
@@ -272,18 +532,17 @@ int pal_get_medium_type(uint8_t interface)
 	return medium_type;
 }
 
-
 int pal_get_target(uint8_t interface)
 {
 	int target = -1;
 
-	switch(interface) {
-		case BMC_IPMB:
-		case MCTP:
-		case PLDM:
+	switch (interface) {
+	case BMC_IPMB:
+	case MCTP:
+	case PLDM:
 		target = I3C_BUS_BMC;
 		break;
-		default:
+	default:
 		target = -1;
 		break;
 	}
@@ -294,9 +553,9 @@ int pal_get_target(uint8_t interface)
 mctp *pal_get_mctp(uint8_t mctp_medium_type, uint8_t bus)
 {
 	switch (mctp_medium_type) {
-		case MCTP_MEDIUM_TYPE_I3C:
+	case MCTP_MEDIUM_TYPE_I3C:
 		return find_mctp_by_i3c(bus);
-		default:
+	default:
 		return NULL;
 	}
 }
@@ -327,4 +586,3 @@ void plat_mctp_init(void)
 		ret = mctp_start(p->mctp_inst);
 	}
 }
-
