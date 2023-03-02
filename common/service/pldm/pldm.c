@@ -99,7 +99,7 @@ static void pldm_read_timeout_handler(void *args)
 /*
  * The return value is the read length from PLDM device
  */
-uint16_t mctp_pldm_read(void *mctp_p, pldm_msg *msg, uint8_t *rbuf, uint16_t rbuf_len, bool flag, uint8_t *instido)
+uint16_t mctp_pldm_read(void *mctp_p, pldm_msg *msg, uint8_t *rbuf, uint16_t rbuf_len, bool flag, uint8_t *instido, uint8_t *msgtag)
 {
 	if (!mctp_p || !msg || !rbuf || !rbuf_len)
 		return 0;
@@ -133,6 +133,7 @@ uint16_t mctp_pldm_read(void *mctp_p, pldm_msg *msg, uint8_t *rbuf, uint16_t rbu
 		}
 		if (event == PLDM_READ_EVENT_SUCCESS) {
 			*instido = instid;
+			*msgtag = dbg_msgtag;
 			if (!flag) {
 				memmove(recv_arg.rbuf, recv_arg.rbuf + sizeof(pldm_hdr), recv_arg.return_len - sizeof(pldm_hdr));
 				recv_arg.return_len -= sizeof(pldm_hdr);
@@ -531,8 +532,9 @@ int pldm_send_ipmi_request(ipmi_msg *msg)
 	uint8_t rbuf[PLDM_MAX_DATA_SIZE];
 	// Send request to PLDM/MCTP thread and get response
 	uint8_t instido;
+	uint8_t msgtag;
 	uint8_t res_len =
-		mctp_pldm_read(pal_get_mctp(medium_type, target), &pmsg, rbuf, sizeof(rbuf), 0, &instido);
+		mctp_pldm_read(pal_get_mctp(medium_type, target), &pmsg, rbuf, sizeof(rbuf), 0, &instido, &msgtag);
 
 	if (!res_len) {
 		LOG_ERR("mctp_pldm_read fail");

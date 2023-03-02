@@ -288,7 +288,8 @@ uint16_t pldm_fw_update_read(void *mctp_p, enum pldm_firmware_update_commands cm
 	msg.buf = req;
 	msg.len = req_len;
 	uint8_t instido;
-	return mctp_pldm_read(mctp_p, &msg, rbuf, rbuf_len, 0, &instido);
+	uint8_t msgtag;
+	return mctp_pldm_read(mctp_p, &msg, rbuf, rbuf_len, 0, &instido, &msgtag);
 }
 
 static uint8_t report_tranfer(void *mctp_p, void *ext_params, uint8_t result_code)

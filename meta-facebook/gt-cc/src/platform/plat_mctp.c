@@ -289,7 +289,8 @@ bool mctp_add_sel_to_ipmi(common_addsel_msg_t *sel_msg)
 	uint8_t resp_len = sizeof(struct mctp_to_ipmi_sel_resp);
 	uint8_t rbuf[resp_len];
 uint8_t instido;
-	if (!mctp_pldm_read(find_mctp_by_smbus(I2C_BUS_BMC), &msg, rbuf, resp_len, 0, &instido)) {
+uint8_t msgtag;
+	if (!mctp_pldm_read(find_mctp_by_smbus(I2C_BUS_BMC), &msg, rbuf, resp_len, 0, &instido, &msgtag)) {
 		LOG_ERR("mctp_pldm_read fail");
 		return false;
 	}

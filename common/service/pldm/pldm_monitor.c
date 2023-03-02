@@ -166,7 +166,8 @@ uint16_t pldm_platform_monitor_read(void *mctp_inst, mctp_ext_params ext_params,
 
 	LOG_HEXDUMP_DBG(msg.buf, msg.len, "Buf: ");
 uint8_t instido;
-	return mctp_pldm_read(mctp_inst, &msg, rbuf, rbuf_len, 0, &instido);
+uint8_t msgtag;
+	return mctp_pldm_read(mctp_inst, &msg, rbuf, rbuf_len, 0, &instido, &msgtag);
 }
 
 static uint8_t pldm_encode_sensor_event_data(struct pldm_sensor_event_data *sensor_event,

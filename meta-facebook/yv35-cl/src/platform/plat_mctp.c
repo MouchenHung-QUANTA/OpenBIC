@@ -255,7 +255,8 @@ bool mctp_add_sel_to_ipmi(common_addsel_msg_t *sel_msg)
 	uint8_t rbuf[resp_len];
 
 	uint8_t instido;
-	if (!mctp_pldm_read(find_mctp_by_i3c(I3C_BUS_BMC), &msg, rbuf, resp_len, 0, &instido)) {
+	uint8_t msgtag;
+	if (!mctp_pldm_read(find_mctp_by_i3c(I3C_BUS_BMC), &msg, rbuf, resp_len, 0, &instido, &msgtag)) {
 		LOG_ERR("mctp_pldm_read fail");
 		return false;
 	}
@@ -299,7 +300,8 @@ void send_unknow_request(uint8_t net_fn, uint8_t cmd)
 	memset(rbuf, 0, 20);
 
 	uint8_t instido;
-	mctp_pldm_read(find_mctp_by_i3c(I3C_BUS_BMC), &msg, rbuf, 20, 0, &instido);
+	uint8_t msgtag;
+	mctp_pldm_read(find_mctp_by_i3c(I3C_BUS_BMC), &msg, rbuf, 20, 0, &instido, &msgtag);
 }
 
 void mctp_get_BMC_dev_id()
@@ -336,7 +338,8 @@ void mctp_get_BMC_dev_id()
 		memset(rbuf, 0, sizeof(rbuf));
 
 		uint8_t instido;
-		uint16_t ret_len = mctp_pldm_read(find_mctp_by_i3c(I3C_BUS_BMC), &msg, rbuf, sizeof(rbuf), 1, &instido);
+		uint8_t msgtag;
+		uint16_t ret_len = mctp_pldm_read(find_mctp_by_i3c(I3C_BUS_BMC), &msg, rbuf, sizeof(rbuf), 1, &instido, &msgtag);
 
 		pldm_hdr tmp = {0};
 		memcpy(&tmp, rbuf, sizeof(pldm_hdr));
@@ -356,7 +359,7 @@ void mctp_get_BMC_dev_id()
 				send_unknow_request((NETFN_APP_REQ << 2), CMD_APP_GET_DEVICE_ID);
 				first_time_fail = false;
 			}
-			LOG_ERR("{%d --> %d} GET_DEV_ID unexpect return value, count %d", instido, tmp.inst_id, count);
+			LOG_ERR("{%d --> %d --> %d} GET_DEV_ID unexpect return value, count %d", msgtag, instido, tmp.inst_id, count);
 			LOG_HEXDUMP_ERR(rbuf, ret_len, "BMC GET_DEV_ID");
 			continue;
 		}
@@ -399,7 +402,8 @@ void mctp_get_BMC_self_test()
 		uint8_t rbuf[30];
 		memset(rbuf, 0, sizeof(rbuf));
 uint8_t instido;
-		uint16_t ret_len = mctp_pldm_read(find_mctp_by_i3c(I3C_BUS_BMC), &msg, rbuf, sizeof(rbuf), 1, &instido);
+uint8_t msgtag;
+		uint16_t ret_len = mctp_pldm_read(find_mctp_by_i3c(I3C_BUS_BMC), &msg, rbuf, sizeof(rbuf), 1, &instido, &msgtag);
 
 		pldm_hdr tmp = {0};
 		memcpy(&tmp, rbuf, sizeof(pldm_hdr));
@@ -421,7 +425,7 @@ uint8_t instido;
 						    CMD_APP_GET_SELFTEST_RESULTS);
 				first_time_fail = false;
 			}
-			LOG_ERR("{%d --> %d} GET_SELF_TEST unexpect return value, count %d", instido, tmp.inst_id, count);
+			LOG_ERR("{%d --> %d --> %d} GET_SELF_TEST unexpect return value, count %d", msgtag, instido, tmp.inst_id, count);
 			LOG_HEXDUMP_ERR(rbuf, ret_len, "BMC GET_SELF_TEST");
 			continue;
 		}
@@ -464,7 +468,8 @@ void mctp_get_BMC_dev_guid()
 		uint8_t rbuf[30];
 		memset(rbuf, 0, sizeof(rbuf));
 uint8_t instido;
-		uint16_t ret_len = mctp_pldm_read(find_mctp_by_i3c(I3C_BUS_BMC), &msg, rbuf, sizeof(rbuf), 1, &instido);
+uint8_t msgtag;
+		uint16_t ret_len = mctp_pldm_read(find_mctp_by_i3c(I3C_BUS_BMC), &msg, rbuf, sizeof(rbuf), 1, &instido, &msgtag);
 
 		pldm_hdr tmp = {0};
 		memcpy(&tmp, rbuf, sizeof(pldm_hdr));
@@ -484,7 +489,7 @@ uint8_t instido;
 				send_unknow_request((NETFN_APP_RES << 2), CMD_APP_GET_SYSTEM_GUID);
 				first_time_fail = false;
 			}
-			LOG_ERR("{%d --> %d} GET_DEV_GUID unexpect return value, count %d", instido, tmp.inst_id, count);
+			LOG_ERR("{%d --> %d --> %d} GET_DEV_GUID unexpect return value, count %d", msgtag, instido, tmp.inst_id, count);
 			LOG_HEXDUMP_ERR(rbuf, ret_len, "BMC GET_DEV_GUID");
 			continue;
 		}

@@ -25,6 +25,8 @@ extern "C" {
 #include <sys/printk.h>
 #include <zephyr.h>
 
+extern uint8_t dbg_msgtag;
+
 #define MCTP_DEBUG 1
 
 #define MCTP_SUCCESS 0

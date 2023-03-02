@@ -26,6 +26,8 @@
 
 LOG_MODULE_REGISTER(mctp);
 
+uint8_t dbg_msgtag = 0;
+
 typedef struct __attribute__((packed)) {
 	uint8_t hdr_ver;
 	uint8_t dest_ep;
@@ -361,6 +363,8 @@ static void mctp_tx_task(void *arg, void *dummy0, void *dummy1)
 */
 			hdr->msg_tag = (hdr->to) ? (msg_tag & MCTP_HDR_TAG_MASK) :
 							 mctp_msg.ext_params.msg_tag;
+
+			dbg_msgtag = hdr->msg_tag;
 
 			hdr->dest_ep = mctp_msg.ext_params.ep;
 			hdr->src_ep = mctp_inst->endpoint;
