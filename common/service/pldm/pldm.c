@@ -127,14 +127,16 @@ uint16_t mctp_pldm_read(void *mctp_p, pldm_msg *msg, uint8_t *rbuf, uint16_t rbu
 			LOG_WRN("Send msg failed!");
 			continue;
 		}
+		*msgtag = dbg_msgtag;
+		//LOG_INF("--> %d", *msgtag);
 		if (k_msgq_get(&event_msgq, &event, K_MSEC(PLDM_MSG_TIMEOUT_MS + 1000))) {
 			LOG_WRN("Failed to get status from msgq!");
 			continue;
 		}
 		if (event == PLDM_READ_EVENT_SUCCESS) {
 			*instido = instid;
-			*msgtag = dbg_msgtag;
 			if (!flag) {
+				// remove pldm hdr
 				memmove(recv_arg.rbuf, recv_arg.rbuf + sizeof(pldm_hdr), recv_arg.return_len - sizeof(pldm_hdr));
 				recv_arg.return_len -= sizeof(pldm_hdr);
 			}
@@ -199,6 +201,8 @@ static uint8_t pldm_resp_msg_process(mctp *mctp_inst, uint8_t *buf, uint32_t len
 {
 	if (!mctp_inst || !buf || !len)
 		return PLDM_ERROR;
+
+	//LOG_HEXDUMP_INF(buf - 4, 4, "<----- ");
 
 	pldm_hdr *hdr = (pldm_hdr *)buf;
 	sys_snode_t *node;
