@@ -75,12 +75,20 @@ int cmd_thread_ctl3(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
+int cmd_thread_status(const struct shell *shell, size_t argc, char **argv)
+{
+	shell_info(shell, "<< stop status: t1 %d t2 %d t3 %d >>", stop_flag&t1_en, (stop_flag&t2_en)>>1, (stop_flag&t3_en)>>2);
+
+	return 0;
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	sub_stress_cmds,
 	SHELL_CMD(t0, NULL, "Thread all", cmd_thread_ctl),
 	SHELL_CMD(t1, NULL, "Thread1", cmd_thread_ctl1),
 	SHELL_CMD(t2, NULL, "Thread2", cmd_thread_ctl2),
 	SHELL_CMD(t3, NULL, "Thread3", cmd_thread_ctl3),
+	SHELL_CMD(status, NULL, "Status", cmd_thread_status),
 	SHELL_SUBCMD_SET_END);
 
 /* MAIN command */

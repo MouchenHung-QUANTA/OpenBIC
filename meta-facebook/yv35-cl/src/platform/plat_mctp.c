@@ -58,6 +58,7 @@ K_TIMER_DEFINE(send_cmd_timer, send_cmd_to_dev, NULL);
 K_WORK_DEFINE(send_cmd_work, send_cmd_to_dev_handler);
 
 bool first_time_fail = true;
+uint16_t stress_limit = 5;
 
 typedef struct _mctp_smbus_port {
 	mctp *mctp_inst;
@@ -309,6 +310,7 @@ void mctp_get_BMC_dev_id()
 	pldm_msg msg = { 0 };
 	struct mctp_to_ipmi_header_req req = { 0 };
 	uint32_t count = 0;
+	uint16_t err_cnt = 0;
 	while (1) {
 		k_msleep(1);
 		if (stop_flag & t1_en) {
@@ -361,6 +363,11 @@ void mctp_get_BMC_dev_id()
 			}
 			LOG_ERR("{%d --> %d --> %d} GET_DEV_ID unexpect return value, count %d", msgtag, instido, tmp.inst_id, count);
 			LOG_HEXDUMP_ERR(rbuf, ret_len, "BMC GET_DEV_ID");
+			err_cnt++;
+			if (err_cnt == stress_limit) {
+				stop_flag |= t1_en;
+				err_cnt = 0;
+			}
 			continue;
 		}
 		if ((count % 100) == 0) {
@@ -374,6 +381,7 @@ void mctp_get_BMC_self_test()
 	pldm_msg msg = { 0 };
 	struct mctp_to_ipmi_header_req req = { 0 };
 	uint32_t count = 0;
+	uint16_t err_cnt = 0;
 	while (1) {
 		k_msleep(1);
 		if (stop_flag & t2_en) {
@@ -427,6 +435,11 @@ uint8_t msgtag;
 			}
 			LOG_ERR("{%d --> %d --> %d} GET_SELF_TEST unexpect return value, count %d", msgtag, instido, tmp.inst_id, count);
 			LOG_HEXDUMP_ERR(rbuf, ret_len, "BMC GET_SELF_TEST");
+			err_cnt++;
+			if (err_cnt == stress_limit) {
+				stop_flag |= t2_en;
+				err_cnt = 0;
+			}
 			continue;
 		}
 		if ((count % 100) == 0) {
@@ -440,6 +453,7 @@ void mctp_get_BMC_dev_guid()
 	pldm_msg msg = { 0 };
 	struct mctp_to_ipmi_header_req req = { 0 };
 	uint32_t count = 0;
+	uint16_t err_cnt = 0;
 	while (1) {
 		k_msleep(1);
 		if (stop_flag & t3_en) {
@@ -491,6 +505,11 @@ uint8_t msgtag;
 			}
 			LOG_ERR("{%d --> %d --> %d} GET_DEV_GUID unexpect return value, count %d", msgtag, instido, tmp.inst_id, count);
 			LOG_HEXDUMP_ERR(rbuf, ret_len, "BMC GET_DEV_GUID");
+			err_cnt++;
+			if (err_cnt == stress_limit) {
+				stop_flag |= t3_en;
+				err_cnt = 0;
+			}
 			continue;
 		}
 		if ((count % 100) == 0) {
