@@ -64,8 +64,10 @@ static void PROC_FAIL_handler(struct k_work *work)
 
 K_WORK_DELAYABLE_DEFINE(set_DC_on_5s_work, set_DC_on_delayed_status);
 K_WORK_DELAYABLE_DEFINE(PROC_FAIL_work, PROC_FAIL_handler);
+K_WORK_DELAYABLE_DEFINE(read_pmic_critical_work, read_pmic_error_when_dc_off);
 #define DC_ON_5_SECOND 5
 #define PROC_FAIL_START_DELAY_SECOND 10
+#define READ_PMIC_CRITICAL_ERROR_MS 100
 void ISR_DC_ON()
 {
 	set_DC_status(PWRGD_CPU_LVC3);
@@ -100,7 +102,7 @@ void ISR_DC_ON()
 				LOG_ERR("Failed to add system PWROK failure sel");
 			}
 		}
-		pmic_error_check();
+		k_work_schedule(&read_pmic_critical_work, K_MSEC(READ_PMIC_CRITICAL_ERROR_MS));
 	}
 }
 
@@ -225,7 +227,7 @@ void ISR_MB_THROTTLE()
 void ISR_SOC_THMALTRIP()
 {
 	common_addsel_msg_t sel_msg;
-	if (gpio_get(RST_PLTRST_BIC_N) == GPIO_HIGH) {
+	if (gpio_get(RST_CPU_RESET_BIC_N) == GPIO_HIGH) {
 		sel_msg.InF_target = BMC_IPMB;
 		sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
 		sel_msg.sensor_type = IPMI_OEM_SENSOR_TYPE_SYS_STA;
@@ -246,7 +248,8 @@ void ISR_SYS_THROTTLE()
 	 */
 	static bool is_sys_throttle_assert = false;
 	common_addsel_msg_t sel_msg;
-	if ((gpio_get(RST_PLTRST_BIC_N) == GPIO_HIGH) && (gpio_get(PWRGD_CPU_LVC3) == GPIO_HIGH)) {
+	if ((gpio_get(RST_CPU_RESET_BIC_N) == GPIO_HIGH) &&
+	    (gpio_get(PWRGD_CPU_LVC3) == GPIO_HIGH)) {
 		if ((gpio_get(FM_CPU_BIC_PROCHOT_LVT3_N) == GPIO_HIGH) &&
 		    (is_sys_throttle_assert == true)) {
 			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
@@ -293,11 +296,16 @@ void ISR_HSC_OC()
 
 static void add_vr_ocp_sel(uint8_t gpio_num, uint8_t vr_num)
 {
+	static uint8_t is_vr_ocp_assert = 0;
 	common_addsel_msg_t sel_msg;
-	if (gpio_get(gpio_num) == GPIO_HIGH) {
+	if ((gpio_get(gpio_num) == GPIO_HIGH) && (is_vr_ocp_assert & BIT(vr_num))) {
 		sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
-	} else {
+		is_vr_ocp_assert &= ~BIT(vr_num);
+	} else if ((gpio_get(gpio_num) == GPIO_LOW) && !(is_vr_ocp_assert & BIT(vr_num))) {
 		sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
+		is_vr_ocp_assert |= BIT(vr_num);
+	} else {
+		return;
 	}
 	sel_msg.InF_target = BMC_IPMB;
 	sel_msg.sensor_type = IPMI_OEM_SENSOR_TYPE_VR;
