@@ -184,6 +184,7 @@ typedef struct _mctp {
 
 	/* for pldm instance id */
 	uint8_t pldm_inst_id;
+	uint8_t *pldm_inst_table;
 	/* for cci_msg_tag */
 	uint8_t cci_msg_tag;
 } mctp;

@@ -58,7 +58,7 @@ K_TIMER_DEFINE(send_cmd_timer, send_cmd_to_dev, NULL);
 K_WORK_DEFINE(send_cmd_work, send_cmd_to_dev_handler);
 
 bool first_time_fail = true;
-uint16_t stress_limit = 5;
+uint16_t stress_limit = 30;
 
 typedef struct _mctp_smbus_port {
 	mctp *mctp_inst;
@@ -342,6 +342,10 @@ void mctp_get_BMC_dev_id()
 		uint8_t instido;
 		uint8_t msgtag;
 		uint16_t ret_len = mctp_pldm_read(find_mctp_by_i3c(I3C_BUS_BMC), &msg, rbuf, sizeof(rbuf), 1, &instido, &msgtag);
+		if (!ret_len) {
+			LOG_ERR("mctp_pldm_read fail");
+			continue;
+		}
 
 		pldm_hdr tmp = {0};
 		memcpy(&tmp, rbuf, sizeof(pldm_hdr));
@@ -350,7 +354,7 @@ void mctp_get_BMC_dev_id()
 		ret_len -= sizeof(pldm_hdr);
 
 		if (!ret_len) {
-			LOG_ERR("mctp_pldm_read fail");
+			LOG_ERR("mctp_pldm_read empty");
 			continue;
 		}
 
@@ -412,6 +416,10 @@ void mctp_get_BMC_self_test()
 uint8_t instido;
 uint8_t msgtag;
 		uint16_t ret_len = mctp_pldm_read(find_mctp_by_i3c(I3C_BUS_BMC), &msg, rbuf, sizeof(rbuf), 1, &instido, &msgtag);
+		if (!ret_len) {
+			LOG_ERR("mctp_pldm_read fail");
+			continue;
+		}
 
 		pldm_hdr tmp = {0};
 		memcpy(&tmp, rbuf, sizeof(pldm_hdr));
@@ -420,7 +428,7 @@ uint8_t msgtag;
 		ret_len -= sizeof(pldm_hdr);
 
 		if (!ret_len) {
-			LOG_ERR("mctp_pldm_read fail");
+			LOG_ERR("mctp_pldm_read empty");
 			continue;
 		}
 
@@ -484,6 +492,10 @@ void mctp_get_BMC_dev_guid()
 uint8_t instido;
 uint8_t msgtag;
 		uint16_t ret_len = mctp_pldm_read(find_mctp_by_i3c(I3C_BUS_BMC), &msg, rbuf, sizeof(rbuf), 1, &instido, &msgtag);
+		if (!ret_len) {
+			LOG_ERR("mctp_pldm_read fail");
+			continue;
+		}
 
 		pldm_hdr tmp = {0};
 		memcpy(&tmp, rbuf, sizeof(pldm_hdr));
@@ -492,7 +504,7 @@ uint8_t msgtag;
 		ret_len -= sizeof(pldm_hdr);
 
 		if (!ret_len) {
-			LOG_ERR("mctp_pldm_read fail");
+			LOG_ERR("mctp_pldm_read empty");
 			continue;
 		}
 
