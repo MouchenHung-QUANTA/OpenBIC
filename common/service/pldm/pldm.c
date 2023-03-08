@@ -84,39 +84,41 @@ static bool unregister_instid(void *mctp_p, uint8_t inst_num)
 		LOG_ERR("Instant table not init!");
 		return false;
 	}
-	if (mctp_inst->pldm_inst_table[inst_num] == 0) {
+	if (! (mctp_inst->pldm_inst_table & BIT(inst_num))) {
 		LOG_ERR("Inatant id %d not register yet!", inst_num);
 		return false;
 	}
-	mctp_inst->pldm_inst_table[inst_num] = 0;
+	WRITE_BIT(mctp_inst->pldm_inst_table, inst_num, 0);
 
 	return true;
 }
 
-static bool register_instid(void *mctp_p, uint8_t inst_num)
+static bool register_instid(void *mctp_p, uint8_t *inst_num)
 {
 	CHECK_NULL_ARG_WITH_RETURN(mctp_p, false);
-
-	if (inst_num >= MAX_INSTID_NUM) {
-		LOG_ERR("Invalid instant number %d", inst_num);
-		return false;
-	}
+	CHECK_NULL_ARG_WITH_RETURN(inst_num, false);
 
 	mctp *mctp_inst = (mctp *)mctp_p;
-	if (!mctp_inst->pldm_inst_table) {
-		LOG_INF("Register instant table!");
-		mctp_inst->pldm_inst_table = (uint8_t *)malloc(sizeof(mctp_inst->pldm_inst_table) * MAX_INSTID_NUM);
-		memset(mctp_inst->pldm_inst_table, 0, MAX_INSTID_NUM);
-		if (!mctp_inst->pldm_inst_table) {
-			LOG_ERR("Instant table malloc failed!");
-			return false;
+
+	static uint8_t cur_inst_num = 0;
+
+	int retry = 0;
+	for (retry = 0; retry < MAX_INSTID_NUM; retry++) {
+		if ( !(mctp_inst->pldm_inst_table & BIT(cur_inst_num)) ) {
+			break;
 		}
+		cur_inst_num = (cur_inst_num+1) & PLDM_HDR_INST_ID_MASK;
 	}
-	if (mctp_inst->pldm_inst_table[inst_num] == 1) {
-		LOG_DBG("Inatant id %d not available!", inst_num);
+
+	if (retry == MAX_INSTID_NUM) {
+		LOG_DBG("Inatant id %d not available!", cur_inst_num);
 		return false;
 	}
-	mctp_inst->pldm_inst_table[inst_num] = 1;
+
+	WRITE_BIT(mctp_inst->pldm_inst_table, cur_inst_num, 1);
+	*inst_num = cur_inst_num;
+
+	cur_inst_num = (cur_inst_num+1) & PLDM_HDR_INST_ID_MASK;
 
 	return true;
 }
@@ -391,22 +393,14 @@ uint8_t mctp_pldm_send_msg(void *mctp_p, pldm_msg *msg, uint8_t *instid)
 * header
 */
 	if (msg->hdr.rq) {
-		/* set pldm header */
-		int retry = 0;
-		while (retry < MAX_INSTID_NUM) {
-			if (register_instid(mctp_p, mctp_inst->pldm_inst_id & PLDM_HDR_INST_ID_MASK) == true) {
-				break;
-			}
-			mctp_inst->pldm_inst_id++;
-			retry++;
-		}
-
-		if (retry == MAX_INSTID_NUM) {
+		uint8_t get_inst_id = 0xff;
+		if (register_instid(mctp_p, &get_inst_id) == false) {
 			LOG_ERR("Register failed!");
 			return PLDM_ERROR;
 		}
 
-		msg->hdr.inst_id = (mctp_inst->pldm_inst_id++) & PLDM_HDR_INST_ID_MASK;
+		/* set pldm header */
+		msg->hdr.inst_id = get_inst_id;
 		*instid = msg->hdr.inst_id;
 		msg->hdr.msg_type = MCTP_MSG_TYPE_PLDM;
 

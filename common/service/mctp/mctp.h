@@ -184,7 +184,7 @@ typedef struct _mctp {
 
 	/* for pldm instance id */
 	uint8_t pldm_inst_id;
-	uint8_t *pldm_inst_table;
+	uint32_t pldm_inst_table; //bit field for 32 instant id
 	/* for cci_msg_tag */
 	uint8_t cci_msg_tag;
 } mctp;
