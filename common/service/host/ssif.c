@@ -64,7 +64,7 @@ bool ssif_set_data(uint8_t channel, ipmi_msg_cfg *msg_cfg)
 	}
 
 	uint8_t ssif_buff[SSIF_BUFF_SIZE];
-	ssif_buff[0] = (msg_cfg->buffer.netfn + 1) << 2; // netfn + lun(0)
+	ssif_buff[0] = msg_cfg->buffer.netfn; // Should modify outside by user
 	ssif_buff[1] = msg_cfg->buffer.cmd;
 	ssif_buff[2] = msg_cfg->buffer.completion_code;
 	if (msg_cfg->buffer.data_len) {
@@ -244,6 +244,7 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 {
 	CHECK_NULL_ARG_WITH_RETURN(ssif_inst, false);
 
+	int ret = 0;
 	static uint16_t remain_data_len = 0;
 
 	switch (action) {
@@ -261,41 +262,77 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 			if (pal_immediate_respond_from_KCS(current_ipmi_msg.buffer.netfn, current_ipmi_msg.buffer.cmd)) {
 				current_ipmi_msg.buffer.data_len = 0;
 				current_ipmi_msg.buffer.completion_code = CC_SUCCESS;
-
 				if (((current_ipmi_msg.buffer.netfn == NETFN_STORAGE_REQ) &&
 						(current_ipmi_msg.buffer.cmd == CMD_STORAGE_ADD_SEL))) {
 					current_ipmi_msg.buffer.data_len += 2;
 					current_ipmi_msg.buffer.data[0] = 0x00;
 					current_ipmi_msg.buffer.data[1] = 0x00;
 				}
+				current_ipmi_msg.buffer.netfn = (current_ipmi_msg.buffer.netfn + 1) << 2;
 
 				if (ssif_set_data(current_ipmi_msg.buffer.InF_source - HOST_SSIF_1, &current_ipmi_msg) == false) {
 					LOG_ERR("Failed to write ssif response data");
 				}
 			}
-/*
+
 			if ((current_ipmi_msg.buffer.netfn == NETFN_APP_REQ) &&
 			    (current_ipmi_msg.buffer.cmd == CMD_APP_SET_SYS_INFO_PARAMS) &&
 			    (current_ipmi_msg.buffer.data[0] == CMD_SYS_INFO_FW_VERSION)) {
-				int ret = pal_record_bios_fw_version(ibuf, rc);
+				uint8_t rdata[SSIF_BUFF_SIZE] = { 0 };
+				rdata[0] = current_ipmi_msg.buffer.netfn;
+				rdata[1] = current_ipmi_msg.buffer.cmd;
+				memcpy(rdata + 2, current_ipmi_msg.buffer.data, current_ipmi_msg.buffer.data_len);
+				ret = pal_record_bios_fw_version(rdata, current_ipmi_msg.buffer.data_len + 2);
 				if (ret == -1) {
 					LOG_ERR("Record bios fw version fail");
 				}
 			}
-*/
-			/* TODO: Send command to BMC */
-			LOG_WRN("Commands to BMC not ready yet, skip it");
+
+			ipmi_msg bridge_msg;
+			bridge_msg.data_len = current_ipmi_msg.buffer.data_len;
+			bridge_msg.seq_source = 0xff; // No seq for SSIF
+			bridge_msg.InF_source = HOST_SSIF_1 + ssif_inst->index;;
+			bridge_msg.InF_target =
+				BMC_IPMB; // default bypassing IPMI standard command to BMC
+			bridge_msg.netfn = current_ipmi_msg.buffer.netfn;
+			bridge_msg.cmd = current_ipmi_msg.buffer.cmd;
+			if (bridge_msg.data_len != 0) {
+				memcpy(&bridge_msg.data[0], current_ipmi_msg.buffer.data, bridge_msg.data_len);
+			}
+
+			// Check BMC communication interface if use IPMB or not
+			if (!pal_is_interface_use_ipmb(IPMB_inf_index_map[BMC_IPMB])) {
+				// Send request to MCTP/PLDM thread to ask BMC
+				ret = pldm_send_ipmi_request(&bridge_msg);
+				if (ret < 0) {
+					LOG_ERR("SSIF send pldm msg to BMC fail, cause %d", ret);
+				}
+
+				// Write MCTP/PLDM response to SSIF
+				current_ipmi_msg.buffer.netfn = (bridge_msg.netfn + 1) << 2;
+				current_ipmi_msg.buffer.cmd = bridge_msg.cmd;
+				current_ipmi_msg.buffer.completion_code = CC_SUCCESS;
+				memcpy(current_ipmi_msg.buffer.data, &bridge_msg.data, bridge_msg.data_len);
+
+				if (ssif_set_data(current_ipmi_msg.buffer.InF_source - HOST_SSIF_1, &current_ipmi_msg) == false) {
+					LOG_ERR("Failed to write ssif response data");
+				}
+			} else {
+				ipmb_error status = ipmb_send_request(&bridge_msg,
+							   IPMB_inf_index_map[BMC_IPMB]);
+				if (status != IPMB_ERROR_SUCCESS) {
+					LOG_ERR("SSIF send ipmb msg to BMC fail status: 0x%x", status);
+				}
+			}
 		}
 
 		int retry = 0;
-		while (retry < 3) {
-			if (k_sem_take(&ssif_inst->rd_buff_sem, K_MSEC(500))) {
-				retry++;
-				continue;
-			}
-			break;
+		for (retry=0; retry<3; retry++) {
+			if (k_sem_take(&ssif_inst->rd_buff_sem, K_MSEC(500)) == 0)
+				break;
 		}
 
+		/* should not reach here */
 		if (retry == 3) {
 			LOG_ERR("Get ipmi message retry over limit");
 			return false;
