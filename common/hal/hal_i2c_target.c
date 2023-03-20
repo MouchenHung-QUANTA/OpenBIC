@@ -73,9 +73,9 @@ __weak void pal_do_something_before_read(void *arg)
 {
 	CHECK_NULL_ARG(arg);
 
+#ifdef ENABLE_SSIF
 	struct i2c_target_data *data = (struct i2c_target_data *)arg;
 
-#ifdef ENABLE_SSIF
 	if (data->wr_buffer_idx == 1)
 		ssif_collect_data(data->target_wr_msg.msg[0], data->i2c_bus);
 #endif
