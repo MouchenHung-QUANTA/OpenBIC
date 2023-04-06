@@ -261,8 +261,10 @@ uint8_t i2c_target_cfg_get(uint8_t bus_num, struct _i2c_target_config *cfg)
 
 	/* check input */
 	uint8_t target_status = i2c_target_status_get(bus_num);
-	if (target_status & (I2C_TARGET_BUS_INVALID | I2C_TARGET_CONTROLLER_ERR | I2C_TARGET_NOT_INIT)) {
-		LOG_ERR("Bus[%d] check status failed with error status 0x%x!", bus_num, target_status);
+	if (target_status &
+	    (I2C_TARGET_BUS_INVALID | I2C_TARGET_CONTROLLER_ERR | I2C_TARGET_NOT_INIT)) {
+		LOG_ERR("Bus[%d] check status failed with error status 0x%x!", bus_num,
+			target_status);
 		return I2C_TARGET_API_BUS_GET_FAIL;
 	}
 
@@ -288,7 +290,8 @@ uint8_t i2c_target_status_print(uint8_t bus_num)
 	/* check input */
 	uint8_t target_status = i2c_target_status_get(bus_num);
 	if (target_status & (I2C_TARGET_BUS_INVALID | I2C_TARGET_CONTROLLER_ERR)) {
-		LOG_ERR("Bus[%d] check status failed with error status 0x%x!", bus_num, target_status);
+		LOG_ERR("Bus[%d] check status failed with error status 0x%x!", bus_num,
+			target_status);
 		return I2C_TARGET_API_BUS_GET_FAIL;
 	}
 
@@ -325,8 +328,10 @@ uint8_t i2c_target_read(uint8_t bus_num, uint8_t *buff, uint16_t buff_len, uint1
 
 	/* check input, support while bus target is unregistered */
 	uint8_t target_status = i2c_target_status_get(bus_num);
-	if (target_status & (I2C_TARGET_BUS_INVALID | I2C_TARGET_CONTROLLER_ERR | I2C_TARGET_NOT_INIT)) {
-		LOG_ERR("Bus[%d] check status failed with error status 0x%x!", bus_num, target_status);
+	if (target_status &
+	    (I2C_TARGET_BUS_INVALID | I2C_TARGET_CONTROLLER_ERR | I2C_TARGET_NOT_INIT)) {
+		LOG_ERR("Bus[%d] check status failed with error status 0x%x!", bus_num,
+			target_status);
 		return I2C_TARGET_API_BUS_GET_FAIL;
 	}
 
@@ -350,7 +355,8 @@ uint8_t i2c_target_read(uint8_t bus_num, uint8_t *buff, uint16_t buff_len, uint1
 	}
 
 	/* if bus target has been unregister cause of queue full previously, then register it on */
-	if (k_msgq_num_used_get(&data->target_wr_msgq_id) == (data->target_wr_msgq_id.max_msgs - 1)) {
+	if (k_msgq_num_used_get(&data->target_wr_msgq_id) ==
+	    (data->target_wr_msgq_id.max_msgs - 1)) {
 		LOG_DBG("Target queue has available space, register bus[%d]", data->i2c_bus);
 
 		if (do_i2c_target_register(bus_num)) {
@@ -379,8 +385,10 @@ uint8_t i2c_target_write(uint8_t bus_num, uint8_t *buff, uint16_t buff_len)
 
 	/* check input, support while bus target is unregistered */
 	uint8_t target_status = i2c_target_status_get(bus_num);
-	if (target_status & (I2C_TARGET_BUS_INVALID | I2C_TARGET_CONTROLLER_ERR | I2C_TARGET_NOT_INIT)) {
-		LOG_ERR("Bus[%d] check status failed with error status 0x%x!", bus_num, target_status);
+	if (target_status &
+	    (I2C_TARGET_BUS_INVALID | I2C_TARGET_CONTROLLER_ERR | I2C_TARGET_NOT_INIT)) {
+		LOG_ERR("Bus[%d] check status failed with error status 0x%x!", bus_num,
+			target_status);
 		return I2C_TARGET_API_BUS_GET_FAIL;
 	}
 
@@ -556,8 +564,8 @@ static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg)
 		goto unlock;
 	}
 
-	k_msgq_init(&data->target_wr_msgq_id, i2C_target_queue_buffer, sizeof(struct i2c_msg_package),
-		    data->max_msg_count);
+	k_msgq_init(&data->target_wr_msgq_id, i2C_target_queue_buffer,
+		    sizeof(struct i2c_msg_package), data->max_msg_count);
 
 	i2c_target_device_global[bus_num].is_init = 1;
 
@@ -670,11 +678,12 @@ void cmd_target_register(const struct shell *shell, size_t argc, char **argv)
 	cfg.i2c_msg_count = 0x0A;
 
 	if (flag == 1) {
-		if ( i2c_target_control(bus, &cfg, I2C_CONTROL_REGISTER) != I2C_TARGET_API_NO_ERR) {
+		if (i2c_target_control(bus, &cfg, I2C_CONTROL_REGISTER) != I2C_TARGET_API_NO_ERR) {
 			shell_error(shell, "Failed to register target");
 		}
 	} else {
-		if ( i2c_target_control(bus, &cfg, I2C_CONTROL_UNREGISTER) != I2C_TARGET_API_NO_ERR) {
+		if (i2c_target_control(bus, &cfg, I2C_CONTROL_UNREGISTER) !=
+		    I2C_TARGET_API_NO_ERR) {
 			shell_error(shell, "Failed to unregister target");
 		}
 	}
@@ -691,14 +700,13 @@ void cmd_ssif_init(const struct shell *shell, size_t argc, char **argv)
 
 	shell_info(shell, "SSIF %d init!", bus);
 
-
 	ssif_device_init(&bus, 1);
 }
 
-SHELL_STATIC_SUBCMD_SET_CREATE(
-	sub_i2ctarget_cmds, SHELL_CMD(register, NULL, "REGISTER.", cmd_target_register),
-	SHELL_CMD(ssif_init, NULL, "SSIF init.", cmd_ssif_init),
-	
-	SHELL_SUBCMD_SET_END);
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2ctarget_cmds,
+			       SHELL_CMD(register, NULL, "REGISTER.", cmd_target_register),
+			       SHELL_CMD(ssif_init, NULL, "SSIF init.", cmd_ssif_init),
+
+			       SHELL_SUBCMD_SET_END);
 
 SHELL_CMD_REGISTER(i2ctarget, &sub_i2ctarget_cmds, "i2c target", NULL);
