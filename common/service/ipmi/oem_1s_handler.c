@@ -2147,6 +2147,43 @@ __weak void OEM_1S_SET_DEVICE_ACTIVE(ipmi_msg *msg)
 	return;
 }
 
+__weak void OEM_1S_MULTI_READ_SSIF(ipmi_msg *msg)
+{
+	CHECK_NULL_ARG(msg);
+
+	if (msg->data_len != 1) {
+		msg->completion_code = CC_INVALID_LENGTH;
+		return;
+	}
+
+	msg->data_len = msg->data[0];
+	for (int i = 0; i < msg->data_len; i++) {
+		msg->data[i] = i;
+	}
+	msg->completion_code = CC_SUCCESS;
+	return;
+}
+
+__weak void OEM_1S_MULTI_WRITE_SSIF(ipmi_msg *msg)
+{
+	CHECK_NULL_ARG(msg);
+
+	if (msg->data_len != 65) {
+		msg->completion_code = CC_INVALID_LENGTH;
+		return;
+	}
+
+	LOG_HEXDUMP_INF(msg->data, msg->data_len, "65 data: ");
+
+	msg->data_len = 3;
+	msg->data[0] = 2;
+	msg->data[1] = 4;
+	msg->data[2] = 6;
+
+	msg->completion_code = CC_SUCCESS;
+	return;
+}
+
 void IPMI_OEM_1S_handler(ipmi_msg *msg)
 {
 	CHECK_NULL_ARG(msg);
@@ -2423,6 +2460,14 @@ void IPMI_OEM_1S_handler(ipmi_msg *msg)
 		LOG_DBG("Received 1S SET DEVICE ACTIVE command");
 		OEM_1S_SET_DEVICE_ACTIVE(msg);
 		break;
+
+	case CMD_OEM_1S_TEST_MULTI_READ_SSIF:
+		OEM_1S_MULTI_READ_SSIF(msg);
+		break;
+	case CMD_OEM_1S_TEST_MULTI_WRITE_SSIF:
+		OEM_1S_MULTI_WRITE_SSIF(msg);
+		break;
+
 	default:
 		LOG_ERR("Invalid OEM message, netfn(0x%x) cmd(0x%x)", msg->netfn, msg->cmd);
 		msg->data_len = 0;

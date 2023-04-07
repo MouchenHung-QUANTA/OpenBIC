@@ -122,6 +122,9 @@ enum Channel_Target {
 	HOST_KCS_3 = 0x52,
 	HOST_KCS_4 = 0x53,
 	/* 54h-5Fh are reserved for KCS */
+	HOST_SSIF_1 = 0x60,
+	HOST_SSIF_2 = 0x61,
+	/* 62h-6Fh are reserved for SSIF */
 	RESERVED,
 };
 
