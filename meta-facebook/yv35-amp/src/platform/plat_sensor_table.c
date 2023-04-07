@@ -59,60 +59,6 @@ sensor_cfg plat_sensor_config[] = {
 	  pre_nvme_read, &mux_conf_addr_0xe2[1], NULL, NULL, NULL },
 
 	/* CPU */
-	{ SENSOR_NUM_TEMP_CPU, sensor_dev_amd_tsi, I2C_BUS14, TSI_ADDR, NONE, post_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, post_amd_tsi_read, NULL, NULL },
-	{ SENSOR_NUM_TEMP_DIMM_A0, sensor_dev_ddr5_temp, I2C_BUS11, NONE, NONE, post_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, post_ddr5_temp_read, NULL, &ddr5_init_temp_args[0] },
-	{ SENSOR_NUM_TEMP_DIMM_A1, sensor_dev_ddr5_temp, I2C_BUS11, NONE, NONE, post_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, post_ddr5_temp_read, NULL, &ddr5_init_temp_args[1] },
-	{ SENSOR_NUM_TEMP_DIMM_A2, sensor_dev_ddr5_temp, I2C_BUS11, NONE, NONE, post_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, post_ddr5_temp_read, NULL, &ddr5_init_temp_args[2] },
-	{ SENSOR_NUM_TEMP_DIMM_A4, sensor_dev_ddr5_temp, I2C_BUS11, NONE, NONE, post_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, post_ddr5_temp_read, NULL, &ddr5_init_temp_args[3] },
-	{ SENSOR_NUM_TEMP_DIMM_A6, sensor_dev_ddr5_temp, I2C_BUS12, NONE, NONE, post_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, post_ddr5_temp_read, NULL, &ddr5_init_temp_args[4] },
-	{ SENSOR_NUM_TEMP_DIMM_A7, sensor_dev_ddr5_temp, I2C_BUS12, NONE, NONE, post_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, post_ddr5_temp_read, NULL, &ddr5_init_temp_args[5] },
-	{ SENSOR_NUM_TEMP_DIMM_A8, sensor_dev_ddr5_temp, I2C_BUS12, NONE, NONE, post_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, post_ddr5_temp_read, NULL, &ddr5_init_temp_args[6] },
-	{ SENSOR_NUM_TEMP_DIMM_A10, sensor_dev_ddr5_temp, I2C_BUS12, NONE, NONE, post_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, post_ddr5_temp_read, NULL, &ddr5_init_temp_args[7] },
-	{ SENSOR_NUM_PWR_CPU, sensor_dev_apml_mailbox, I2C_BUS14, APML_ADDR, SBRMI_MAILBOX_PKGPWR,
-	  post_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
-	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &apml_mailbox_init_args[0] },
-	{ SENSOR_NUM_PWR_DIMM_A0, sensor_dev_ddr5_power, I2C_BUS11, NONE, NONE, post_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, post_ddr5_pwr_read, NULL, &ddr5_init_power_args[0] },
-	{ SENSOR_NUM_PWR_DIMM_A1, sensor_dev_ddr5_power, I2C_BUS11, NONE, NONE, post_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, post_ddr5_pwr_read, NULL, &ddr5_init_power_args[1] },
-	{ SENSOR_NUM_PWR_DIMM_A2, sensor_dev_ddr5_power, I2C_BUS11, NONE, NONE, post_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, post_ddr5_pwr_read, NULL, &ddr5_init_power_args[2] },
-	{ SENSOR_NUM_PWR_DIMM_A4, sensor_dev_ddr5_power, I2C_BUS11, NONE, NONE, post_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, post_ddr5_pwr_read, NULL, &ddr5_init_power_args[3] },
-	{ SENSOR_NUM_PWR_DIMM_A6, sensor_dev_ddr5_power, I2C_BUS12, NONE, NONE, post_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, post_ddr5_pwr_read, NULL, &ddr5_init_power_args[4] },
-	{ SENSOR_NUM_PWR_DIMM_A7, sensor_dev_ddr5_power, I2C_BUS12, NONE, NONE, post_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, post_ddr5_pwr_read, NULL, &ddr5_init_power_args[5] },
-	{ SENSOR_NUM_PWR_DIMM_A8, sensor_dev_ddr5_power, I2C_BUS12, NONE, NONE, post_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, post_ddr5_pwr_read, NULL, &ddr5_init_power_args[6] },
-	{ SENSOR_NUM_PWR_DIMM_A10, sensor_dev_ddr5_power, I2C_BUS12, NONE, NONE, post_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, post_ddr5_pwr_read, NULL, &ddr5_init_power_args[7] },
 
 	/* adc voltage */
 	{ SENSOR_NUM_VOL_P12V_STBY, sensor_dev_ast_adc, ADC_PORT0, NONE, NONE, stby_access, 66, 10,
@@ -153,92 +99,12 @@ sensor_cfg plat_sensor_config[] = {
 	  NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
 
 	/* VR voltage */
-	{ SENSOR_NUM_VOL_PVDDCR_CPU0_VR, sensor_dev_raa229621, I2C_BUS5, RAA229621_PVDDCR_CPU0_ADDR,
-	  PMBUS_READ_VOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_VOL_PVDDCR_SOC_VR, sensor_dev_raa229621, I2C_BUS5, RAA229621_PVDDCR_SOC_ADDR,
-	  PMBUS_READ_VOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_VOL_PVDDCR_CPU1_VR, sensor_dev_raa229621, I2C_BUS5, RAA229621_PVDDCR_CPU1_ADDR,
-	  PMBUS_READ_VOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_VOL_PVDDIO_VR, sensor_dev_raa229621, I2C_BUS5, RAA229621_PVDDIO_ADDR,
-	  PMBUS_READ_VOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_VOL_PVDD11_S3_VR, sensor_dev_raa229621, I2C_BUS5, RAA229621_PVDD11_S3_ADDR,
-	  PMBUS_READ_VOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
 
 	/* VR current */
-	{ SENSOR_NUM_CUR_PVDDCR_CPU0_VR, sensor_dev_raa229621, I2C_BUS5, RAA229621_PVDDCR_CPU0_ADDR,
-	  PMBUS_READ_IOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_CUR_PVDDCR_SOC_VR, sensor_dev_raa229621, I2C_BUS5, RAA229621_PVDDCR_SOC_ADDR,
-	  PMBUS_READ_IOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_CUR_PVDDCR_CPU1_VR, sensor_dev_raa229621, I2C_BUS5, RAA229621_PVDDCR_CPU1_ADDR,
-	  PMBUS_READ_IOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_CUR_PVDDIO_VR, sensor_dev_raa229621, I2C_BUS5, RAA229621_PVDDIO_ADDR,
-	  PMBUS_READ_IOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_CUR_PVDD11_S3_VR, sensor_dev_raa229621, I2C_BUS5, RAA229621_PVDD11_S3_ADDR,
-	  PMBUS_READ_IOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
 
 	/* VR temperature */
-	{ SENSOR_NUM_TEMP_PVDDCR_CPU0_VR, sensor_dev_raa229621, I2C_BUS5,
-	  RAA229621_PVDDCR_CPU0_ADDR, PMBUS_READ_TEMPERATURE_1, vr_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  pre_vr_read, &vr_pre_read_args[0], NULL, NULL, NULL },
-	{ SENSOR_NUM_TEMP_PVDDCR_SOC_VR, sensor_dev_raa229621, I2C_BUS5, RAA229621_PVDDCR_SOC_ADDR,
-	  PMBUS_READ_TEMPERATURE_1, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_TEMP_PVDDCR_CPU1_VR, sensor_dev_raa229621, I2C_BUS5,
-	  RAA229621_PVDDCR_CPU1_ADDR, PMBUS_READ_TEMPERATURE_1, vr_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  pre_vr_read, &vr_pre_read_args[0], NULL, NULL, NULL },
-	{ SENSOR_NUM_TEMP_PVDDIO_VR, sensor_dev_raa229621, I2C_BUS5, RAA229621_PVDDIO_ADDR,
-	  PMBUS_READ_TEMPERATURE_1, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_TEMP_PVDD11_S3_VR, sensor_dev_raa229621, I2C_BUS5, RAA229621_PVDD11_S3_ADDR,
-	  PMBUS_READ_TEMPERATURE_1, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
 
 	/* VR power */
-	{ SENSOR_NUM_PWR_PVDDCR_CPU0_VR, sensor_dev_raa229621, I2C_BUS5, RAA229621_PVDDCR_CPU0_ADDR,
-	  PMBUS_READ_POUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_PWR_PVDDCR_SOC_VR, sensor_dev_raa229621, I2C_BUS5, RAA229621_PVDDCR_SOC_ADDR,
-	  PMBUS_READ_POUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_PWR_PVDDCR_CPU1_VR, sensor_dev_raa229621, I2C_BUS5, RAA229621_PVDDCR_CPU1_ADDR,
-	  PMBUS_READ_POUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_PWR_PVDDIO_VR, sensor_dev_raa229621, I2C_BUS5, RAA229621_PVDDIO_ADDR,
-	  PMBUS_READ_POUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_PWR_PVDD11_S3_VR, sensor_dev_raa229621, I2C_BUS5, RAA229621_PVDD11_S3_ADDR,
-	  PMBUS_READ_POUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
 };
 
 sensor_cfg adm1278_sensor_config_table[] = {
@@ -278,283 +144,6 @@ sensor_cfg mp5990_sensor_config_table[] = {
 	  SENSOR_INIT_STATUS, NULL, NULL, post_mp5990_pwr_read, NULL, &mp5990_init_args[0] },
 };
 
-sensor_cfg xdpe19283b_sensor_config_table[] = {
-	/* VR voltage */
-	{ SENSOR_NUM_VOL_PVDDCR_CPU0_VR, sensor_dev_xdpe19283b, I2C_BUS5,
-	  XDPE19283B_PVDDCR_CPU0_ADDR, PMBUS_READ_VOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT,
-	  POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read,
-	  &vr_pre_read_args[0], NULL, NULL, NULL },
-	{ SENSOR_NUM_VOL_PVDDCR_SOC_VR, sensor_dev_xdpe19283b, I2C_BUS5, XDPE19283B_PVDDCR_SOC_ADDR,
-	  PMBUS_READ_VOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_VOL_PVDDCR_CPU1_VR, sensor_dev_xdpe19283b, I2C_BUS5,
-	  XDPE19283B_PVDDCR_CPU1_ADDR, PMBUS_READ_VOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT,
-	  POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read,
-	  &vr_pre_read_args[0], NULL, NULL, NULL },
-	{ SENSOR_NUM_VOL_PVDDIO_VR, sensor_dev_xdpe19283b, I2C_BUS5, XDPE19283B_PVDDIO_ADDR,
-	  PMBUS_READ_VOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_VOL_PVDD11_S3_VR, sensor_dev_xdpe19283b, I2C_BUS5, XDPE19283B_PVDD11_S3_ADDR,
-	  PMBUS_READ_VOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-
-	/* VR current */
-	{ SENSOR_NUM_CUR_PVDDCR_CPU0_VR, sensor_dev_xdpe19283b, I2C_BUS5,
-	  XDPE19283B_PVDDCR_CPU0_ADDR, PMBUS_READ_IOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT,
-	  POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read,
-	  &vr_pre_read_args[0], NULL, NULL, NULL },
-	{ SENSOR_NUM_CUR_PVDDCR_SOC_VR, sensor_dev_xdpe19283b, I2C_BUS5, XDPE19283B_PVDDCR_SOC_ADDR,
-	  PMBUS_READ_IOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_CUR_PVDDCR_CPU1_VR, sensor_dev_xdpe19283b, I2C_BUS5,
-	  XDPE19283B_PVDDCR_CPU1_ADDR, PMBUS_READ_IOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT,
-	  POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read,
-	  &vr_pre_read_args[0], NULL, NULL, NULL },
-	{ SENSOR_NUM_CUR_PVDDIO_VR, sensor_dev_xdpe19283b, I2C_BUS5, XDPE19283B_PVDDIO_ADDR,
-	  PMBUS_READ_IOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_CUR_PVDD11_S3_VR, sensor_dev_xdpe19283b, I2C_BUS5, XDPE19283B_PVDD11_S3_ADDR,
-	  PMBUS_READ_IOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-
-	/* VR temperature */
-	{ SENSOR_NUM_TEMP_PVDDCR_CPU0_VR, sensor_dev_xdpe19283b, I2C_BUS5,
-	  XDPE19283B_PVDDCR_CPU0_ADDR, PMBUS_READ_TEMPERATURE_1, vr_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  pre_vr_read, &vr_pre_read_args[0], NULL, NULL, NULL },
-	{ SENSOR_NUM_TEMP_PVDDCR_SOC_VR, sensor_dev_xdpe19283b, I2C_BUS5,
-	  XDPE19283B_PVDDCR_SOC_ADDR, PMBUS_READ_TEMPERATURE_1, vr_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  pre_vr_read, &vr_pre_read_args[1], NULL, NULL, NULL },
-	{ SENSOR_NUM_TEMP_PVDDCR_CPU1_VR, sensor_dev_xdpe19283b, I2C_BUS5,
-	  XDPE19283B_PVDDCR_CPU1_ADDR, PMBUS_READ_TEMPERATURE_1, vr_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  pre_vr_read, &vr_pre_read_args[0], NULL, NULL, NULL },
-	{ SENSOR_NUM_TEMP_PVDDIO_VR, sensor_dev_xdpe19283b, I2C_BUS5, XDPE19283B_PVDDIO_ADDR,
-	  PMBUS_READ_TEMPERATURE_1, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_TEMP_PVDD11_S3_VR, sensor_dev_xdpe19283b, I2C_BUS5, XDPE19283B_PVDD11_S3_ADDR,
-	  PMBUS_READ_TEMPERATURE_1, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-
-	/* VR power */
-	{ SENSOR_NUM_PWR_PVDDCR_CPU0_VR, sensor_dev_xdpe19283b, I2C_BUS5,
-	  XDPE19283B_PVDDCR_CPU0_ADDR, PMBUS_READ_POUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT,
-	  POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read,
-	  &vr_pre_read_args[0], NULL, NULL, NULL },
-	{ SENSOR_NUM_PWR_PVDDCR_SOC_VR, sensor_dev_xdpe19283b, I2C_BUS5, XDPE19283B_PVDDCR_SOC_ADDR,
-	  PMBUS_READ_POUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_PWR_PVDDCR_CPU1_VR, sensor_dev_xdpe19283b, I2C_BUS5,
-	  XDPE19283B_PVDDCR_CPU1_ADDR, PMBUS_READ_POUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT,
-	  POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read,
-	  &vr_pre_read_args[0], NULL, NULL, NULL },
-	{ SENSOR_NUM_PWR_PVDDIO_VR, sensor_dev_xdpe19283b, I2C_BUS5, XDPE19283B_PVDDIO_ADDR,
-	  PMBUS_READ_POUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_PWR_PVDD11_S3_VR, sensor_dev_xdpe19283b, I2C_BUS5, XDPE19283B_PVDD11_S3_ADDR,
-	  PMBUS_READ_POUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-};
-
-sensor_cfg mp2856gut_sensor_config_table[] = {
-	/* VR voltage */
-	{ SENSOR_NUM_VOL_PVDDCR_CPU0_VR, sensor_dev_mp2856gut, I2C_BUS5, MP2856GUT_PVDDCR_CPU0_ADDR,
-	  PMBUS_READ_VOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_VOL_PVDDCR_SOC_VR, sensor_dev_mp2856gut, I2C_BUS5, MP2856GUT_PVDDCR_SOC_ADDR,
-	  PMBUS_READ_VOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_VOL_PVDDCR_CPU1_VR, sensor_dev_mp2856gut, I2C_BUS5, MP2856GUT_PVDDCR_CPU1_ADDR,
-	  PMBUS_READ_VOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_VOL_PVDDIO_VR, sensor_dev_mp2856gut, I2C_BUS5, MP2856GUT_PVDDIO_ADDR,
-	  PMBUS_READ_VOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_VOL_PVDD11_S3_VR, sensor_dev_mp2856gut, I2C_BUS5, MP2856GUT_PVDD11_S3_ADDR,
-	  PMBUS_READ_VOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-
-	/* VR current */
-	{ SENSOR_NUM_CUR_PVDDCR_CPU0_VR, sensor_dev_mp2856gut, I2C_BUS5, MP2856GUT_PVDDCR_CPU0_ADDR,
-	  PMBUS_READ_IOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_CUR_PVDDCR_SOC_VR, sensor_dev_mp2856gut, I2C_BUS5, MP2856GUT_PVDDCR_SOC_ADDR,
-	  PMBUS_READ_IOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_CUR_PVDDCR_CPU1_VR, sensor_dev_mp2856gut, I2C_BUS5, MP2856GUT_PVDDCR_CPU1_ADDR,
-	  PMBUS_READ_IOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_CUR_PVDDIO_VR, sensor_dev_mp2856gut, I2C_BUS5, MP2856GUT_PVDDIO_ADDR,
-	  PMBUS_READ_IOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_CUR_PVDD11_S3_VR, sensor_dev_mp2856gut, I2C_BUS5, MP2856GUT_PVDD11_S3_ADDR,
-	  PMBUS_READ_IOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-
-	/* VR temperature */
-	{ SENSOR_NUM_TEMP_PVDDCR_CPU0_VR, sensor_dev_mp2856gut, I2C_BUS5,
-	  MP2856GUT_PVDDCR_CPU0_ADDR, PMBUS_READ_TEMPERATURE_1, vr_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  pre_vr_read, &vr_pre_read_args[0], NULL, NULL, NULL },
-	{ SENSOR_NUM_TEMP_PVDDCR_SOC_VR, sensor_dev_mp2856gut, I2C_BUS5, MP2856GUT_PVDDCR_SOC_ADDR,
-	  PMBUS_READ_TEMPERATURE_1, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_TEMP_PVDDCR_CPU1_VR, sensor_dev_mp2856gut, I2C_BUS5,
-	  MP2856GUT_PVDDCR_CPU1_ADDR, PMBUS_READ_TEMPERATURE_1, vr_access, 0, 0,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  pre_vr_read, &vr_pre_read_args[0], NULL, NULL, NULL },
-	{ SENSOR_NUM_TEMP_PVDDIO_VR, sensor_dev_mp2856gut, I2C_BUS5, MP2856GUT_PVDDIO_ADDR,
-	  PMBUS_READ_TEMPERATURE_1, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_TEMP_PVDD11_S3_VR, sensor_dev_mp2856gut, I2C_BUS5, MP2856GUT_PVDD11_S3_ADDR,
-	  PMBUS_READ_TEMPERATURE_1, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-
-	/* VR power */
-	{ SENSOR_NUM_PWR_PVDDCR_CPU0_VR, sensor_dev_mp2856gut, I2C_BUS5, MP2856GUT_PVDDCR_CPU0_ADDR,
-	  PMBUS_READ_POUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_PWR_PVDDCR_SOC_VR, sensor_dev_mp2856gut, I2C_BUS5, MP2856GUT_PVDDCR_SOC_ADDR,
-	  PMBUS_READ_POUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_PWR_PVDDCR_CPU1_VR, sensor_dev_mp2856gut, I2C_BUS5, MP2856GUT_PVDDCR_CPU1_ADDR,
-	  PMBUS_READ_POUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_PWR_PVDDIO_VR, sensor_dev_mp2856gut, I2C_BUS5, MP2856GUT_PVDDIO_ADDR,
-	  PMBUS_READ_POUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_PWR_PVDD11_S3_VR, sensor_dev_mp2856gut, I2C_BUS5, MP2856GUT_PVDD11_S3_ADDR,
-	  PMBUS_READ_POUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-};
-
-sensor_cfg tps53689_sensor_config_table[] = {
-	/* VR voltage */
-	{ SENSOR_NUM_VOL_PVDDCR_CPU0_VR, sensor_dev_tps53689, I2C_BUS5, TPS53685_PVDDCR_CPU0_ADDR,
-	  PMBUS_READ_VOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_VOL_PVDDCR_SOC_VR, sensor_dev_tps53689, I2C_BUS5, TPS53685_PVDDCR_SOC_ADDR,
-	  PMBUS_READ_VOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_VOL_PVDDCR_CPU1_VR, sensor_dev_tps53689, I2C_BUS5, TPS53685_PVDDCR_CPU1_ADDR,
-	  PMBUS_READ_VOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_VOL_PVDDIO_VR, sensor_dev_tps53689, I2C_BUS5, TPS53685_PVDDIO_ADDR,
-	  PMBUS_READ_VOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_VOL_PVDD11_S3_VR, sensor_dev_tps53689, I2C_BUS5, TPS53685_PVDD11_S3_ADDR,
-	  PMBUS_READ_VOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-
-	/* VR current */
-	{ SENSOR_NUM_CUR_PVDDCR_CPU0_VR, sensor_dev_tps53689, I2C_BUS5, TPS53685_PVDDCR_CPU0_ADDR,
-	  PMBUS_READ_IOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_CUR_PVDDCR_SOC_VR, sensor_dev_tps53689, I2C_BUS5, TPS53685_PVDDCR_SOC_ADDR,
-	  PMBUS_READ_IOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_CUR_PVDDCR_CPU1_VR, sensor_dev_tps53689, I2C_BUS5, TPS53685_PVDDCR_CPU1_ADDR,
-	  PMBUS_READ_IOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_CUR_PVDDIO_VR, sensor_dev_tps53689, I2C_BUS5, TPS53685_PVDDIO_ADDR,
-	  PMBUS_READ_IOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_CUR_PVDD11_S3_VR, sensor_dev_tps53689, I2C_BUS5, TPS53685_PVDD11_S3_ADDR,
-	  PMBUS_READ_IOUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-
-	/* VR temperature */
-	{ SENSOR_NUM_TEMP_PVDDCR_CPU0_VR, sensor_dev_tps53689, I2C_BUS5, TPS53685_PVDDCR_CPU0_ADDR,
-	  PMBUS_READ_TEMPERATURE_1, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_TEMP_PVDDCR_SOC_VR, sensor_dev_tps53689, I2C_BUS5, TPS53685_PVDDCR_SOC_ADDR,
-	  PMBUS_READ_TEMPERATURE_1, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_TEMP_PVDDCR_CPU1_VR, sensor_dev_tps53689, I2C_BUS5, TPS53685_PVDDCR_CPU1_ADDR,
-	  PMBUS_READ_TEMPERATURE_1, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_TEMP_PVDDIO_VR, sensor_dev_tps53689, I2C_BUS5, TPS53685_PVDDIO_ADDR,
-	  PMBUS_READ_TEMPERATURE_1, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_TEMP_PVDD11_S3_VR, sensor_dev_tps53689, I2C_BUS5, TPS53685_PVDD11_S3_ADDR,
-	  PMBUS_READ_TEMPERATURE_1, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-
-	/* VR power */
-	{ SENSOR_NUM_PWR_PVDDCR_CPU0_VR, sensor_dev_tps53689, I2C_BUS5, TPS53685_PVDDCR_CPU0_ADDR,
-	  PMBUS_READ_POUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_PWR_PVDDCR_SOC_VR, sensor_dev_tps53689, I2C_BUS5, TPS53685_PVDDCR_SOC_ADDR,
-	  PMBUS_READ_POUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_PWR_PVDDCR_CPU1_VR, sensor_dev_tps53689, I2C_BUS5, TPS53685_PVDDCR_CPU1_ADDR,
-	  PMBUS_READ_POUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_PWR_PVDDIO_VR, sensor_dev_tps53689, I2C_BUS5, TPS53685_PVDDIO_ADDR,
-	  PMBUS_READ_POUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[1], NULL,
-	  NULL, NULL },
-	{ SENSOR_NUM_PWR_PVDD11_S3_VR, sensor_dev_tps53689, I2C_BUS5, TPS53685_PVDD11_S3_ADDR,
-	  PMBUS_READ_POUT, vr_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, pre_vr_read, &vr_pre_read_args[0], NULL,
-	  NULL, NULL },
-};
-
-sensor_cfg g788p81u_sensor_config_table[] = {
-	{ SENSOR_NUM_TEMP_HSC, sensor_dev_g788p81u, I2C_BUS5, TEMP_HSC_ADDR,
-	  G788P81U_REMOTE_TEMP_OFFSET, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
-	  &g788p81u_init_args[0] },
-};
-
 sensor_cfg mp5990_temp_sensor_config_table[] = {
 	{ SENSOR_NUM_TEMP_HSC, sensor_dev_mp5990, I2C_BUS5, MP5990_ADDR, PMBUS_READ_TEMPERATURE_1,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
@@ -563,28 +152,18 @@ sensor_cfg mp5990_temp_sensor_config_table[] = {
 
 void pal_extend_sensor_config()
 {
-	uint8_t sensor_count = 0;
 	uint8_t hsc_module = get_hsc_module();
 
 	/* Determine which HSC module is used */
 	switch (hsc_module) {
 	case HSC_MODULE_ADM1278:
-		sensor_count = ARRAY_SIZE(adm1278_sensor_config_table);
-		for (int index = 0; index < sensor_count; index++) {
-			add_sensor_config(adm1278_sensor_config_table[index]);
-		}
+		LOG_INF("HSC vendor: ADM1278");
 		break;
 	case HSC_MODULE_LTC4282:
-		sensor_count = ARRAY_SIZE(ltc4282_sensor_config_table);
-		for (int index = 0; index < sensor_count; index++) {
-			add_sensor_config(ltc4282_sensor_config_table[index]);
-		}
+		LOG_INF("HSC vendor: LTC4282");
 		break;
 	case HSC_MODULE_MP5990:
-		sensor_count = ARRAY_SIZE(mp5990_sensor_config_table);
-		for (int index = 0; index < sensor_count; index++) {
-			add_sensor_config(mp5990_sensor_config_table[index]);
-		}
+		LOG_INF("HSC vendor: MP5990");
 		break;
 	default:
 		LOG_ERR("Unsupported HSC module, HSC module: 0x%x", hsc_module);
@@ -595,40 +174,22 @@ void pal_extend_sensor_config()
 	uint8_t vr_vender = (board_revision & 0x30) >> 4;
 	uint8_t board_stage = (board_revision & 0x0F);
 
+	LOG_INF("BOARD config: 0x%x - 0x%x - 0x%x", board_revision, vr_vender, board_stage);
+
 	/* Determine which VR is used */
 	switch (vr_vender) {
 	case VR_VENDER_INFINEON:
-		sensor_count = ARRAY_SIZE(xdpe19283b_sensor_config_table);
-		for (int index = 0; index < sensor_count; index++) {
-			add_sensor_config(xdpe19283b_sensor_config_table[index]);
-		}
+		LOG_INF("VR vendor: INFINEON");
 		break;
 	case VR_VENDER_MPS:
-		sensor_count = ARRAY_SIZE(mp2856gut_sensor_config_table);
-		for (int index = 0; index < sensor_count; index++) {
-			add_sensor_config(mp2856gut_sensor_config_table[index]);
-		}
+		LOG_INF("VR vendor: MPS");
 		break;
 	case VR_VENDER_TI:
-		sensor_count = ARRAY_SIZE(tps53689_sensor_config_table);
-		for (int index = 0; index < sensor_count; index++) {
-			add_sensor_config(tps53689_sensor_config_table[index]);
-		}
+		LOG_INF("VR vendor: TI");
 		break;
 	default:
-		LOG_DBG("Main VR source(RAA229621)");
+		LOG_INF("VR vendor: RNS(default)");
 		break;
-	}
-
-	/* Determine which temperature sensor is used to monitor HSC temperature */
-	if (((board_stage == SYS_BOARD_EVT) && (vr_vender == VR_VENDER_INFINEON)) ||
-	    ((board_stage == SYS_BOARD_EVT) && (vr_vender == VR_VENDER_MPS)) ||
-	    ((board_stage == SYS_BOARD_DVT) && (vr_vender == VR_VENDER_MPS))) {
-		add_sensor_config(g788p81u_sensor_config_table[0]);
-	} else if (hsc_module == HSC_MODULE_MP5990) {
-		add_sensor_config(mp5990_temp_sensor_config_table[0]);
-	} else {
-		LOG_DBG("Main HSC temperature sensor(NCT7718W)");
 	}
 
 	if (sensor_config_count != sdr_count) {

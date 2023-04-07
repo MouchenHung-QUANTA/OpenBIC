@@ -21,6 +21,6 @@
 
 #define BMC_USB_PORT "CDC_ACM_0"
 
-#define ENABLE_APML
+#define ENABLE_SSIF
 
 #endif
