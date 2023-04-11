@@ -33,6 +33,8 @@
 
 LOG_MODULE_REGISTER(ssif);
 
+#define SSIF_TARGET_MSGQ_SIZE 0x0A
+
 #define SSIF_STATUS_CHECK_PER_MS 100
 #define SSIF_TIMEOUT_MS 3000 // i2c bus drop off maximum time
 
@@ -652,10 +654,11 @@ reset:
 	}
 }
 
-void ssif_device_init(uint8_t *config, uint8_t size)
+void ssif_device_init(struct ssif_init_cfg *config, uint8_t size)
 {
-	SAFE_FREE(ssif);
+	CHECK_NULL_ARG(config);
 
+	SAFE_FREE(ssif);
 	ssif = (ssif_dev *)malloc(size * sizeof(*ssif));
 	if (!ssif)
 		return;
@@ -664,8 +667,18 @@ void ssif_device_init(uint8_t *config, uint8_t size)
 	ssif_channel_cnt = size;
 
 	for (int i=0; i<size; i++) {
-		if (config[i] >= I2C_BUS_MAX_NUM) {
-			LOG_ERR("Given i2c bus index %d over limit", config[i]);
+		if (config[i].i2c_bus >= I2C_BUS_MAX_NUM) {
+			LOG_ERR("Given i2c bus index %d over limit", config[i].i2c_bus);
+			continue;
+		}
+
+		struct _i2c_target_config cfg;
+		memset(&cfg, 0, sizeof(cfg));
+		cfg.address = config[i].addr;
+		cfg.i2c_msg_count = config[i].target_msgq_cnt;
+
+		if (i2c_target_control(config[i].i2c_bus, &cfg, I2C_CONTROL_REGISTER) != I2C_TARGET_API_NO_ERR) {
+			LOG_ERR("SSIF[%d] register target failed", i);
 			continue;
 		}
 
@@ -679,20 +692,13 @@ void ssif_device_init(uint8_t *config, uint8_t size)
 			continue;
 		}
 
-		struct _i2c_target_config cfg;
-		uint8_t ret = i2c_target_cfg_get(config[i], &cfg);
-		if (ret) {
-			LOG_ERR("Failed to get i2c %d target config cause of %d", config[i], ret);
-			continue;
-		}
-
-		ssif[i].i2c_bus = config[i];
-		ssif[i].addr = cfg.address;
+		ssif[i].i2c_bus = config[i].i2c_bus;
+		ssif[i].addr = config[i].addr >> 1;
 		ssif[i].addr_lock = false;
 		ssif[i].cur_status = SSIF_STATUS_IDLE;
 		ssif[i].cur_err_status = SSIF_STATUS_NO_ERR;
 
-		snprintf(ssif[i].task_name, sizeof(ssif[i].task_name), "ssif%d_polling", config[i]);
+		snprintf(ssif[i].task_name, sizeof(ssif[i].task_name), "ssif%d_polling", config[i].i2c_bus);
 
 		ssif[i].ssif_task_tid = k_thread_create(&ssif[i].task_thread, ssif[i].ssif_task_stack,
 							K_THREAD_STACK_SIZEOF(ssif[i].ssif_task_stack),
@@ -700,7 +706,7 @@ void ssif_device_init(uint8_t *config, uint8_t size)
 							CONFIG_MAIN_THREAD_PRIORITY, 0, K_NO_WAIT);
 		k_thread_name_set(ssif[i].ssif_task_tid, ssif[i].task_name);
 
-		LOG_INF("SSIF[%d] created", config[i]);
+		LOG_INF("SSIF[%d] created", i);
 	}
 
 	return;

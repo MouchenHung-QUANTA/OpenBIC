@@ -78,6 +78,12 @@ typedef enum ssif_action {
 	SSIF_COLLECT_DATA,
 } ssif_action_t;
 
+struct ssif_init_cfg {
+	uint8_t i2c_bus;
+	uint8_t addr; // bic itself, 7bit
+	uint8_t target_msgq_cnt; // maximum msg count for target msg queue
+};
+
 typedef struct _ssif_dev {
 	uint8_t index;
 	uint8_t i2c_bus;
@@ -133,7 +139,7 @@ struct ssif_rd_middle {
 	uint8_t data[0];
 }  __attribute__((packed));
 
-void ssif_device_init(uint8_t *config, uint8_t size);
+void ssif_device_init(struct ssif_init_cfg *config, uint8_t size);
 ssif_err_status_t ssif_get_error_status();
 void ssif_print_status(uint8_t channel);
 bool ssif_set_data(uint8_t channel, ipmi_msg_cfg *msg_cfg);

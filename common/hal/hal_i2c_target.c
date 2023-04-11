@@ -737,7 +737,18 @@ void cmd_ssif_init(const struct shell *shell, size_t argc, char **argv)
 
 	shell_info(shell, "SSIF %d init!", bus);
 
-	ssif_device_init(&bus, 1);
+	/* only create 1 ssif channel */
+	struct ssif_init_cfg *cfg = (struct ssif_init_cfg *)malloc(1 * sizeof(struct ssif_init_cfg));
+	if (!cfg) {
+		shell_error(shell, "Failed to malloc ssif cfg list");
+		return;
+	}
+
+	cfg[0].i2c_bus = bus;
+	cfg[0].addr = 0x40;
+	cfg[0].target_msgq_cnt = 0x0A;
+
+	ssif_device_init(cfg, 1);
 }
 
 void cmd_target_info(const struct shell *shell, size_t argc, char **argv)
