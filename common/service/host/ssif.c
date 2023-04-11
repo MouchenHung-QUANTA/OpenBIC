@@ -42,7 +42,6 @@ static uint8_t ssif_channel_cnt = 0;
 ssif_status_t pre_status = SSIF_STATUS_IDLE;
 ssif_status_t cur_status = SSIF_STATUS_IDLE;
 ssif_err_status_t cur_err_status = SSIF_STATUS_NO_ERR;
-ssif_action_t cur_action = SSIF_DO_NOTHING;
 
 static uint16_t cur_rd_blck = 0; // for multi-read middle/end
 
@@ -133,7 +132,6 @@ static void ssif_reset(ssif_dev *ssif_inst)
 	CHECK_NULL_ARG(ssif_inst);
 
 	ssif_status_change(SSIF_STATUS_IDLE);
-	cur_action = SSIF_DO_NOTHING;
 	memset(&current_ipmi_msg, 0, sizeof(current_ipmi_msg));
 }
 
@@ -586,10 +584,8 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 
 			if (cur_status == SSIF_STATUS_WR_MULTI_START)
 				continue;
-			else {
-				cur_action = SSIF_SEND_IPMI;
-				break;
-			}
+
+			break;
 		}
 
 		case SSIF_STATUS_WR_MULTI_MIDDLE:
@@ -627,10 +623,8 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 
 			if (cur_status == SSIF_STATUS_WR_MULTI_MIDDLE)
 				continue;
-			else {
-				cur_action = SSIF_SEND_IPMI;
-				break;
-			}
+			
+			break;
 		}
 
 		default:
@@ -643,7 +637,7 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 				current_ipmi_msg.buffer.data_len);
 		LOG_HEXDUMP_DBG(current_ipmi_msg.buffer.data, current_ipmi_msg.buffer.data_len, "");
 
-		if (ssif_do_action(cur_action, cur_smb_cmd, ssif_inst) == false) {
+		if (ssif_do_action(SSIF_SEND_IPMI, cur_smb_cmd, ssif_inst) == false) {
 			cur_err_status = SSIF_STATUS_UNKNOWN_ERR;
 			goto reset;
 		}
