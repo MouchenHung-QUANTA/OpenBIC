@@ -32,8 +32,6 @@ struct __attribute__((__packed__)) i2c_msg_package {
 	uint8_t msg[MAX_I2C_TARGET_BUFF];
 };
 
-typedef void (*rd_data_gen_func)(void *arg);
-
 struct i2c_target_data {
 	uint8_t i2c_bus; // i2c bus number
 	const struct device *i2c_controller; // i2c controller for one target bus
@@ -48,13 +46,15 @@ struct i2c_target_data {
 	/* TARGET READ - Not support pending messages storage */
 	uint32_t rd_buffer_idx; // message buffer index
 	struct i2c_msg_package target_rd_msg; // message's buffer and length
-	rd_data_gen_func data_collect_func; // prepare message for target read
+	void (*prefix_wr_func)(void *); // do something while received first byte
+	void (*suffix_wr_func)(void *); // do something after data received stop
 };
 
 struct _i2c_target_config {
 	uint8_t address;
 	uint32_t i2c_msg_count;
-	rd_data_gen_func data_collect_func;
+	void (*prefix_wr_func)(void *);
+	void (*suffix_wr_func)(void *);
 };
 
 struct i2c_target_device {

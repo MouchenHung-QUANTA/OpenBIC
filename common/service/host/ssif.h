@@ -57,6 +57,7 @@ typedef enum ssif_err_status {
 	SSIF_STATUS_INVALID_CMD_IN_CUR_STATUS,
 	SSIF_STATUS_INVALID_PEC,
 	SSIF_STATUS_INVALID_LEN,
+	SSIF_STATUS_TIMEOUT,
 	SSIF_STATUS_UNKNOWN_ERR = 0xFF,
 } ssif_err_status_t;
 
@@ -81,6 +82,8 @@ typedef struct _ssif_dev {
 	uint8_t index;
 	uint8_t i2c_bus;
 	uint8_t addr; // bic itself, 7bit
+	bool addr_lock;
+	int64_t exp_to_ms;
 	k_tid_t ssif_task_tid;
 	K_KERNEL_STACK_MEMBER(ssif_task_stack, SSIF_THREAD_STACK_SIZE);
 	uint8_t task_name[SSIF_TASK_NAME_LEN];
@@ -130,6 +133,8 @@ void ssif_device_init(uint8_t *config, uint8_t size);
 ssif_err_status_t ssif_get_error_status();
 bool ssif_set_data(uint8_t channel, ipmi_msg_cfg *msg_cfg);
 void ssif_collect_data(uint8_t smb_cmd, uint8_t bus);
+bool ssif_lock_ctl(ssif_dev *ssif_inst, bool lck_flag);
+ssif_dev *ssif_inst_get_by_bus(uint8_t bus);
 
 //#endif /* ENABLE_SSIF */
 

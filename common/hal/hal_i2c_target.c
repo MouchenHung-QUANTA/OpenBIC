@@ -83,6 +83,49 @@ __weak void pal_do_something_before_read(void *arg)
 	return;
 }
 
+__weak void pal_do_something_after_stop(void *arg)
+{
+	CHECK_NULL_ARG(arg);
+
+	struct i2c_target_data *data = (struct i2c_target_data *)arg;
+
+	if (data->wr_buffer_idx == 0)
+		return;
+
+	data->target_wr_msg.msg_length = data->wr_buffer_idx;
+
+	/* try to put new node to message queue */
+	uint8_t ret = k_msgq_put(&data->target_wr_msgq_id, &data->target_wr_msg, K_NO_WAIT);
+	if (ret) {
+		LOG_ERR("Can't put new node to message queue on bus[%d], cause of %d",
+			data->i2c_bus, ret);
+		return;
+	}
+
+	/* if target queue is full, unregister the bus target to prevent next message handle */
+	if (!k_msgq_num_free_get(&data->target_wr_msgq_id)) {
+		LOG_DBG("Target queue is full, unregister bus[%d]", data->i2c_bus);
+		do_i2c_target_unregister(data->i2c_bus);
+	}
+
+#ifdef ENABLE_SSIF
+	if (data->target_wr_msg.msg[0] == SSIF_WR_SINGLE || data->target_wr_msg.msg[0] == SSIF_WR_MULTI_END) {
+		ssif_dev *ssif_inst = ssif_inst_get_by_bus(data->i2c_bus);
+		if (!ssif_inst) {
+			LOG_ERR("Could not find ssif inst by i2c bus %d", data->i2c_bus);
+			return;
+		}
+
+		if (ssif_lock_ctl(ssif_inst, true) == false) {
+			LOG_ERR("Could not disable target address");
+			return;
+		}
+	}
+#endif
+
+	return;
+}
+
 static int i2c_target_write_requested(struct i2c_slave_config *config)
 {
 	CHECK_NULL_ARG_WITH_RETURN(config, 1);
@@ -110,8 +153,10 @@ static int i2c_target_write_received(struct i2c_slave_config *config, uint8_t va
 	}
 	data->target_wr_msg.msg[data->wr_buffer_idx++] = val;
 
-	if (data->data_collect_func)
-		data->data_collect_func(data);
+	if (data->wr_buffer_idx == 1) {
+		if (data->prefix_wr_func)
+			data->prefix_wr_func(data);
+	}
 
 	return 0;
 }
@@ -166,21 +211,8 @@ static int i2c_target_stop(struct i2c_slave_config *config)
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
 	if (data->wr_buffer_idx) {
-		data->target_wr_msg.msg_length = data->wr_buffer_idx;
-
-		/* try to put new node to message queue */
-		uint8_t ret = k_msgq_put(&data->target_wr_msgq_id, &data->target_wr_msg, K_NO_WAIT);
-		if (ret) {
-			LOG_ERR("Can't put new node to message queue on bus[%d], cause of %d",
-				data->i2c_bus, ret);
-			return 1;
-		}
-
-		/* if target queue is full, unregister the bus target to prevent next message handle */
-		if (!k_msgq_num_free_get(&data->target_wr_msgq_id)) {
-			LOG_DBG("Target queue is full, unregister bus[%d]", data->i2c_bus);
-			do_i2c_target_unregister(data->i2c_bus);
-		}
+		if (data->suffix_wr_func)
+			data->suffix_wr_func(data);
 	}
 
 	if (data->rd_buffer_idx) {
@@ -552,10 +584,15 @@ static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg)
 	data->max_msg_count = cfg->i2c_msg_count;
 	data->config.address = cfg->address >> 1; // to 7-bit target address
 
-	if (cfg->data_collect_func)
-		data->data_collect_func = cfg->data_collect_func;
+	if (cfg->prefix_wr_func)
+		data->prefix_wr_func = cfg->prefix_wr_func;
 	else
-		data->data_collect_func = pal_do_something_before_read;
+		data->prefix_wr_func = pal_do_something_before_read;
+
+	if (cfg->suffix_wr_func)
+		data->suffix_wr_func = cfg->suffix_wr_func;
+	else
+		data->suffix_wr_func = pal_do_something_after_stop;
 
 	i2C_target_queue_buffer = malloc(data->max_msg_count * sizeof(struct i2c_msg_package));
 	if (!i2C_target_queue_buffer) {
@@ -703,10 +740,40 @@ void cmd_ssif_init(const struct shell *shell, size_t argc, char **argv)
 	ssif_device_init(&bus, 1);
 }
 
+void cmd_target_start(const struct shell *shell, size_t argc, char **argv)
+{
+	if (argc != 3) {
+		shell_warn(shell, "Help: i2cterget start <i2c_bus> <i2c_addr>");
+		return;
+	}
+
+	uint8_t bus = strtol(argv[1], NULL, 10);
+	uint8_t addr = strtol(argv[2], NULL, 16);
+
+	shell_info(shell, "I2C %d addr set 0x%x", bus, addr);
+
+	i2c_addr_set(bus, addr);
+}
+
+void cmd_target_stop(const struct shell *shell, size_t argc, char **argv)
+{
+	if (argc != 2) {
+		shell_warn(shell, "Help: i2cterget stop <i2c_bus>");
+		return;
+	}
+
+	uint8_t bus = strtol(argv[1], NULL, 10);
+
+	shell_info(shell, "I2C %d addr set 0", bus);
+
+	i2c_addr_set(bus, 0);
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2ctarget_cmds,
 			       SHELL_CMD(register, NULL, "REGISTER.", cmd_target_register),
 			       SHELL_CMD(ssif_init, NULL, "SSIF init.", cmd_ssif_init),
-
+					SHELL_CMD(start, NULL, "addr stop.", cmd_target_start),
+					SHELL_CMD(stop, NULL, "addr start.", cmd_target_stop),
 			       SHELL_SUBCMD_SET_END);
 
 SHELL_CMD_REGISTER(i2ctarget, &sub_i2ctarget_cmds, "i2c target", NULL);

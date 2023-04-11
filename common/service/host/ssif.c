@@ -33,6 +33,9 @@
 
 LOG_MODULE_REGISTER(ssif);
 
+#define SSIF_STATUS_CHECK_PER_MS 100
+#define SSIF_TIMEOUT_MS 3000 // i2c bus drop off maximum time
+
 ssif_dev *ssif;
 static uint8_t ssif_channel_cnt = 0;
 
@@ -90,7 +93,27 @@ bool ssif_set_data(uint8_t channel, ipmi_msg_cfg *msg_cfg)
 	return true;
 }
 
-static ssif_dev *ssif_inst_get_by_bus(uint8_t bus)
+bool ssif_lock_ctl(ssif_dev *ssif_inst, bool lck_flag)
+{
+	CHECK_NULL_ARG_WITH_RETURN(ssif_inst, false);
+
+	uint8_t addr = ssif_inst->addr << 1;
+
+	if (lck_flag == true) {
+		ssif_inst->addr_lock = true;
+		ssif_inst->exp_to_ms = k_uptime_get() + SSIF_TIMEOUT_MS;
+		addr = 0;
+	} else {
+		ssif_inst->addr_lock = false;
+	}
+
+	if (i2c_addr_set(ssif_inst->i2c_bus, addr))
+		return false;
+
+	return true;
+}
+
+ssif_dev *ssif_inst_get_by_bus(uint8_t bus)
 {
 	for (int i=0; i<ssif_channel_cnt; i++) {
 		if (ssif[i].i2c_bus == bus) {
@@ -244,7 +267,6 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 {
 	CHECK_NULL_ARG_WITH_RETURN(ssif_inst, false);
 
-	int ret = 0;
 	static uint16_t remain_data_len = 0;
 
 	switch (action) {
@@ -259,6 +281,9 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 				return false;
 			}
 		} else {
+			LOG_WRN("not support yet!");
+/*
+			int ret = 0;
 			if (pal_immediate_respond_from_KCS(current_ipmi_msg.buffer.netfn, current_ipmi_msg.buffer.cmd)) {
 				current_ipmi_msg.buffer.data_len = 0;
 				current_ipmi_msg.buffer.completion_code = CC_SUCCESS;
@@ -324,22 +349,21 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 					LOG_ERR("SSIF send ipmb msg to BMC fail status: 0x%x", status);
 				}
 			}
+*/
 		}
 
-		int retry = 0;
-		for (retry=0; retry<3; retry++) {
-			if (k_sem_take(&ssif_inst->rd_buff_sem, K_MSEC(500)) == 0)
-				break;
-		}
-
-		/* should not reach here */
-		if (retry == 3) {
-			LOG_ERR("Get ipmi message retry over limit");
+		if (k_sem_take(&ssif_inst->rd_buff_sem, K_MSEC(1500)) != 0) {
+			LOG_ERR("Get ipmi response message timeout!");
 			return false;
 		}
 
 		LOG_DBG("ipmi rsp netfn 0x%x, cmd 0x%x, cc 0x%x, data length %d:", ssif_inst->rd_buff[0], ssif_inst->rd_buff[1], ssif_inst->rd_buff[2], ssif_inst->rd_len-3);
 		LOG_HEXDUMP_DBG(ssif_inst->rd_buff + 3, ssif_inst->rd_len - 3, "");
+
+		/* unlock i2c bus address */
+		if (ssif_lock_ctl(ssif_inst, false) == false) {
+			LOG_ERR("Can't unlock address after sending message");
+		}
 
 		/* TODO: Should let HOST to know data ready */
 		break;
@@ -447,6 +471,32 @@ void ssif_collect_data(uint8_t smb_cmd, uint8_t bus)
 	}
 
 	return;
+}
+
+static void ssif_timeout_monitor(void *dummy0, void *dummy1, void *dummy2)
+{
+	ARG_UNUSED(dummy0);
+	ARG_UNUSED(dummy1);
+	ARG_UNUSED(dummy2);
+
+	while (1) {
+		k_msleep(SSIF_STATUS_CHECK_PER_MS);
+
+		for (int idx=0; idx<ssif_channel_cnt; idx++) {
+			if (ssif[idx].addr_lock == false)
+				continue;
+
+			int64_t cur_uptime = k_uptime_get();
+			if ((ssif[idx].exp_to_ms <= cur_uptime)) {
+				printf("ssif %d msg timeout, ssif unlock!!", idx);
+				if (ssif_lock_ctl(&ssif[idx], false) == false) {
+					printf("ssif %d unlock failed", idx);
+					cur_err_status = SSIF_STATUS_TIMEOUT;
+					ssif_reset(&ssif[idx]);
+				}
+			}
+		}
+	}
 }
 
 static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
@@ -640,6 +690,8 @@ void ssif_device_init(uint8_t *config, uint8_t size)
 		ssif[i].i2c_bus = config[i];
 		ssif[i].addr = cfg.address;
 
+		ssif[i].addr_lock = false;
+
 		snprintf(ssif[i].task_name, sizeof(ssif[i].task_name), "ssif%d_polling", config[i]);
 
 		ssif[i].ssif_task_tid = k_thread_create(&ssif[i].task_thread, ssif[i].ssif_task_stack,
@@ -653,5 +705,7 @@ void ssif_device_init(uint8_t *config, uint8_t size)
 
 	return;
 }
+
+K_THREAD_DEFINE(ssif_addr_lck_check, 1024, ssif_timeout_monitor, NULL, NULL, NULL, 7, 0, 0);
 
 //#endif /* ENABLE_SSIF */
