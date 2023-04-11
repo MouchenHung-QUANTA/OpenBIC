@@ -39,10 +39,6 @@ LOG_MODULE_REGISTER(ssif);
 ssif_dev *ssif;
 static uint8_t ssif_channel_cnt = 0;
 
-static uint16_t cur_rd_blck = 0; // for multi-read middle/end
-
-ipmi_msg_cfg current_ipmi_msg; // for ipmi request data
-
 bool ssif_set_data(uint8_t channel, ipmi_msg_cfg *msg_cfg)
 {
 	CHECK_NULL_ARG_WITH_RETURN(msg_cfg, false);
@@ -122,7 +118,7 @@ static void ssif_reset(ssif_dev *ssif_inst)
 	CHECK_NULL_ARG(ssif_inst);
 
 	ssif_inst->cur_status = SSIF_STATUS_IDLE;
-	memset(&current_ipmi_msg, 0, sizeof(current_ipmi_msg));
+	memset(&ssif_inst->current_ipmi_msg, 0, sizeof(ssif_inst->current_ipmi_msg));
 }
 
 /**
@@ -264,8 +260,8 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 		break;
 
 	case SSIF_SEND_IPMI:
-		if (pal_request_msg_to_BIC_from_KCS(current_ipmi_msg.buffer.netfn, current_ipmi_msg.buffer.cmd)) {
-			while (k_msgq_put(&ipmi_msgq, &current_ipmi_msg, K_NO_WAIT) != 0) {
+		if (pal_request_msg_to_BIC_from_KCS(ssif_inst->current_ipmi_msg.buffer.netfn, ssif_inst->current_ipmi_msg.buffer.cmd)) {
+			while (k_msgq_put(&ipmi_msgq, &ssif_inst->current_ipmi_msg, K_NO_WAIT) != 0) {
 				k_msgq_purge(&ipmi_msgq);
 				LOG_WRN("SSIF[%d] retrying put ipmi msgq", ssif_inst->index);
 				return false;
@@ -274,45 +270,45 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 			LOG_WRN("not support yet!");
 /*
 			int ret = 0;
-			if (pal_immediate_respond_from_KCS(current_ipmi_msg.buffer.netfn, current_ipmi_msg.buffer.cmd)) {
-				current_ipmi_msg.buffer.data_len = 0;
-				current_ipmi_msg.buffer.completion_code = CC_SUCCESS;
-				if (((current_ipmi_msg.buffer.netfn == NETFN_STORAGE_REQ) &&
-						(current_ipmi_msg.buffer.cmd == CMD_STORAGE_ADD_SEL))) {
-					current_ipmi_msg.buffer.data_len += 2;
-					current_ipmi_msg.buffer.data[0] = 0x00;
-					current_ipmi_msg.buffer.data[1] = 0x00;
+			if (pal_immediate_respond_from_KCS(ssif_inst->current_ipmi_msg.buffer.netfn, ssif_inst->current_ipmi_msg.buffer.cmd)) {
+				ssif_inst->current_ipmi_msg.buffer.data_len = 0;
+				ssif_inst->current_ipmi_msg.buffer.completion_code = CC_SUCCESS;
+				if (((ssif_inst->current_ipmi_msg.buffer.netfn == NETFN_STORAGE_REQ) &&
+						(ssif_inst->current_ipmi_msg.buffer.cmd == CMD_STORAGE_ADD_SEL))) {
+					ssif_inst->current_ipmi_msg.buffer.data_len += 2;
+					ssif_inst->current_ipmi_msg.buffer.data[0] = 0x00;
+					ssif_inst->current_ipmi_msg.buffer.data[1] = 0x00;
 				}
-				current_ipmi_msg.buffer.netfn = (current_ipmi_msg.buffer.netfn + 1) << 2;
+				ssif_inst->current_ipmi_msg.buffer.netfn = (ssif_inst->current_ipmi_msg.buffer.netfn + 1) << 2;
 
-				if (ssif_set_data(current_ipmi_msg.buffer.InF_source - HOST_SSIF_1, &current_ipmi_msg) == false) {
+				if (ssif_set_data(ssif_inst->current_ipmi_msg.buffer.InF_source - HOST_SSIF_1, &ssif_inst->current_ipmi_msg) == false) {
 					LOG_ERR("Failed to write ssif response data");
 				}
 			}
 
-			if ((current_ipmi_msg.buffer.netfn == NETFN_APP_REQ) &&
-			    (current_ipmi_msg.buffer.cmd == CMD_APP_SET_SYS_INFO_PARAMS) &&
-			    (current_ipmi_msg.buffer.data[0] == CMD_SYS_INFO_FW_VERSION)) {
+			if ((ssif_inst->current_ipmi_msg.buffer.netfn == NETFN_APP_REQ) &&
+			    (ssif_inst->current_ipmi_msg.buffer.cmd == CMD_APP_SET_SYS_INFO_PARAMS) &&
+			    (ssif_inst->current_ipmi_msg.buffer.data[0] == CMD_SYS_INFO_FW_VERSION)) {
 				uint8_t rdata[SSIF_BUFF_SIZE] = { 0 };
-				rdata[0] = current_ipmi_msg.buffer.netfn;
-				rdata[1] = current_ipmi_msg.buffer.cmd;
-				memcpy(rdata + 2, current_ipmi_msg.buffer.data, current_ipmi_msg.buffer.data_len);
-				ret = pal_record_bios_fw_version(rdata, current_ipmi_msg.buffer.data_len + 2);
+				rdata[0] = ssif_inst->current_ipmi_msg.buffer.netfn;
+				rdata[1] = ssif_inst->current_ipmi_msg.buffer.cmd;
+				memcpy(rdata + 2, ssif_inst->current_ipmi_msg.buffer.data, ssif_inst->current_ipmi_msg.buffer.data_len);
+				ret = pal_record_bios_fw_version(rdata, ssif_inst->current_ipmi_msg.buffer.data_len + 2);
 				if (ret == -1) {
 					LOG_ERR("Record bios fw version fail");
 				}
 			}
 
 			ipmi_msg bridge_msg;
-			bridge_msg.data_len = current_ipmi_msg.buffer.data_len;
+			bridge_msg.data_len = ssif_inst->current_ipmi_msg.buffer.data_len;
 			bridge_msg.seq_source = 0xff; // No seq for SSIF
 			bridge_msg.InF_source = HOST_SSIF_1 + ssif_inst->index;;
 			bridge_msg.InF_target =
 				BMC_IPMB; // default bypassing IPMI standard command to BMC
-			bridge_msg.netfn = current_ipmi_msg.buffer.netfn;
-			bridge_msg.cmd = current_ipmi_msg.buffer.cmd;
+			bridge_msg.netfn = ssif_inst->current_ipmi_msg.buffer.netfn;
+			bridge_msg.cmd = ssif_inst->current_ipmi_msg.buffer.cmd;
 			if (bridge_msg.data_len != 0) {
-				memcpy(&bridge_msg.data[0], current_ipmi_msg.buffer.data, bridge_msg.data_len);
+				memcpy(&bridge_msg.data[0], ssif_inst->current_ipmi_msg.buffer.data, bridge_msg.data_len);
 			}
 
 			// Check BMC communication interface if use IPMB or not
@@ -324,12 +320,12 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 				}
 
 				// Write MCTP/PLDM response to SSIF
-				current_ipmi_msg.buffer.netfn = (bridge_msg.netfn + 1) << 2;
-				current_ipmi_msg.buffer.cmd = bridge_msg.cmd;
-				current_ipmi_msg.buffer.completion_code = CC_SUCCESS;
-				memcpy(current_ipmi_msg.buffer.data, &bridge_msg.data, bridge_msg.data_len);
+				ssif_inst->current_ipmi_msg.buffer.netfn = (bridge_msg.netfn + 1) << 2;
+				ssif_inst->current_ipmi_msg.buffer.cmd = bridge_msg.cmd;
+				ssif_inst->current_ipmi_msg.buffer.completion_code = CC_SUCCESS;
+				memcpy(ssif_inst->current_ipmi_msg.buffer.data, &bridge_msg.data, bridge_msg.data_len);
 
-				if (ssif_set_data(current_ipmi_msg.buffer.InF_source - HOST_SSIF_1, &current_ipmi_msg) == false) {
+				if (ssif_set_data(ssif_inst->current_ipmi_msg.buffer.InF_source - HOST_SSIF_1, &ssif_inst->current_ipmi_msg) == false) {
 					LOG_ERR("Failed to write ssif response data");
 				}
 			} else {
@@ -360,6 +356,7 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 		break;
 
 	case SSIF_COLLECT_DATA: {
+		static uint16_t cur_rd_blck = 0; // for multi-read middle/end
 		uint16_t rd_buff_len = 0;
 		uint8_t rd_buff[SSIF_BUFF_SIZE];
 		memset(rd_buff, 0, ARRAY_SIZE(rd_buff));
@@ -516,7 +513,7 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 	int rc = 0;
 	uint8_t cur_smb_cmd = 0;
 
-	memset(&current_ipmi_msg, 0, sizeof(current_ipmi_msg));
+	memset(&ssif_inst->current_ipmi_msg, 0, sizeof(ssif_inst->current_ipmi_msg));
 
 	while (1) {
 		uint8_t rdata[SSIF_BUFF_SIZE] = { 0 };
@@ -580,13 +577,13 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 				goto reset;
 			}
 
-			current_ipmi_msg.buffer.InF_source = HOST_SSIF_1 + ssif_inst->index;
-			current_ipmi_msg.buffer.netfn = wr_start_msg.netfn >> 2;
-			current_ipmi_msg.buffer.cmd = wr_start_msg.cmd;
-			current_ipmi_msg.buffer.data_len = wr_start_msg.len - 2; // exclude netfn, cmd
-			if (current_ipmi_msg.buffer.data_len != 0) {
-				memcpy(current_ipmi_msg.buffer.data, wr_start_msg.data,
-				       current_ipmi_msg.buffer.data_len);
+			ssif_inst->current_ipmi_msg.buffer.InF_source = HOST_SSIF_1 + ssif_inst->index;
+			ssif_inst->current_ipmi_msg.buffer.netfn = wr_start_msg.netfn >> 2;
+			ssif_inst->current_ipmi_msg.buffer.cmd = wr_start_msg.cmd;
+			ssif_inst->current_ipmi_msg.buffer.data_len = wr_start_msg.len - 2; // exclude netfn, cmd
+			if (ssif_inst->current_ipmi_msg.buffer.data_len != 0) {
+				memcpy(ssif_inst->current_ipmi_msg.buffer.data, wr_start_msg.data,
+				       ssif_inst->current_ipmi_msg.buffer.data_len);
 			}
 
 			if (ssif_inst->cur_status == SSIF_STATUS_WR_MULTI_START)
@@ -619,14 +616,14 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 				goto reset;
 			}
 
-			if (current_ipmi_msg.buffer.data_len == 0) {
+			if (ssif_inst->current_ipmi_msg.buffer.data_len == 0) {
 				LOG_WRN("SSIF[%d] lost first multi read message", ssif_inst->index);
 				ssif_inst->cur_err_status = SSIF_STATUS_INVALID_CMD_IN_CUR_STATUS;
 				goto reset;
 			}
 
-			memcpy(current_ipmi_msg.buffer.data + current_ipmi_msg.buffer.data_len, wr_middle_msg.data, wr_middle_msg.len);
-			current_ipmi_msg.buffer.data_len += wr_middle_msg.len;
+			memcpy(ssif_inst->current_ipmi_msg.buffer.data + ssif_inst->current_ipmi_msg.buffer.data_len, wr_middle_msg.data, wr_middle_msg.len);
+			ssif_inst->current_ipmi_msg.buffer.data_len += wr_middle_msg.len;
 
 			if (ssif_inst->cur_status == SSIF_STATUS_WR_MULTI_MIDDLE)
 				continue;
@@ -640,9 +637,9 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 		}
 
 		LOG_DBG("SSIF[%d] ipmi req netfn 0x%x, cmd 0x%x, data length %d:", ssif_inst->index,
-				current_ipmi_msg.buffer.netfn, current_ipmi_msg.buffer.cmd,
-				current_ipmi_msg.buffer.data_len);
-		LOG_HEXDUMP_DBG(current_ipmi_msg.buffer.data, current_ipmi_msg.buffer.data_len, "");
+				ssif_inst->current_ipmi_msg.buffer.netfn, ssif_inst->current_ipmi_msg.buffer.cmd,
+				ssif_inst->current_ipmi_msg.buffer.data_len);
+		LOG_HEXDUMP_DBG(ssif_inst->current_ipmi_msg.buffer.data, ssif_inst->current_ipmi_msg.buffer.data_len, "");
 
 		if (ssif_do_action(SSIF_SEND_IPMI, cur_smb_cmd, ssif_inst) == false) {
 			ssif_inst->cur_err_status = SSIF_STATUS_UNKNOWN_ERR;

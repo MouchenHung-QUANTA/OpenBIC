@@ -92,6 +92,7 @@ typedef struct _ssif_dev {
 	struct k_sem rd_buff_sem;
 	uint8_t rd_buff[SSIF_BUFF_SIZE];
 	uint16_t rd_len;
+	ipmi_msg_cfg current_ipmi_msg;
 
 	ssif_status_t cur_status;
 	ssif_err_status_t cur_err_status;
