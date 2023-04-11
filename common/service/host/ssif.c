@@ -361,7 +361,7 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 		static uint16_t cur_rd_blck = 0; // for multi-read middle/end
 		uint16_t rd_buff_len = 0;
 		uint8_t rd_buff[SSIF_BUFF_SIZE];
-		memset(rd_buff, 0, ARRAY_SIZE(rd_buff));
+		memset(rd_buff, 0, sizeof(rd_buff));
 
 		if (ssif_inst->rd_len) {
 			if (ssif_inst->cur_status == SSIF_STATUS_RD_SINGLE || ssif_inst->cur_status == SSIF_STATUS_RD_MULTI_START) {
@@ -520,7 +520,7 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 	while (1) {
 		uint8_t rdata[SSIF_BUFF_SIZE] = { 0 };
 		uint16_t rlen = 0;
-		rc = i2c_target_read(ssif_inst->i2c_bus, rdata, ARRAY_SIZE(rdata), &rlen);
+		rc = i2c_target_read(ssif_inst->i2c_bus, rdata, sizeof(rdata), &rlen);
 		if (rc) {
 			LOG_ERR("SSIF[%d] i2c_target_read failed, ret %d\n", ssif_inst->index, rc);
 			ssif_inst->cur_err_status = SSIF_STATUS_UNKNOWN_ERR;
