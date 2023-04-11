@@ -46,8 +46,6 @@ ssif_action_t cur_action = SSIF_DO_NOTHING;
 
 static uint16_t cur_rd_blck = 0; // for multi-read middle/end
 
-static uint8_t is_pec_exist = 1; // should only assign 0 or 1
-
 ipmi_msg_cfg current_ipmi_msg; // for ipmi request data
 
 bool ssif_set_data(uint8_t channel, ipmi_msg_cfg *msg_cfg)
@@ -148,12 +146,14 @@ static void ssif_reset(ssif_dev *ssif_inst)
  * @param data Data to be calculted, should include pec at last byte
  *             and exclude target address
  * @param len Length of the data in bytes
+ * @param is_pec_exist Whether pec exist
  *
  * @return true, if match 
  */
-static bool ssif_pec_check(uint8_t addr, uint8_t *data, uint16_t len)
+static bool ssif_pec_check(uint8_t addr, uint8_t *data, uint16_t len, uint8_t *is_pec_exist)
 {
 	CHECK_NULL_ARG_WITH_RETURN(data, false);
+	CHECK_NULL_ARG_WITH_RETURN(is_pec_exist, false);
 
 	if (len < 2) {
 		LOG_ERR("SSIF request data should at last contain smb_cmd and length");
@@ -162,10 +162,10 @@ static bool ssif_pec_check(uint8_t addr, uint8_t *data, uint16_t len)
 
 	/* skip if pec not exist */
 	if ( (len - data[1] - 2) == 0 ) {
-		is_pec_exist = 0;
+		*is_pec_exist = 0;
 		return true;
 	} else {
-		is_pec_exist = 1;
+		*is_pec_exist = 1;
 	}
 
 	uint8_t pec_buf[len];
@@ -549,7 +549,8 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 			goto reset;
 		}
 
-		if (ssif_pec_check(ssif_inst->addr, rdata, rlen) == false) {
+		uint8_t is_pec_exist = 0;
+		if (ssif_pec_check(ssif_inst->addr, rdata, rlen, &is_pec_exist) == false) {
 			LOG_ERR("SSIF[%d] pec check failed", ssif_inst->index);
 			cur_err_status = SSIF_STATUS_INVALID_PEC;
 			goto reset;
