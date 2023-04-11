@@ -740,40 +740,28 @@ void cmd_ssif_init(const struct shell *shell, size_t argc, char **argv)
 	ssif_device_init(&bus, 1);
 }
 
-void cmd_target_start(const struct shell *shell, size_t argc, char **argv)
-{
-	if (argc != 3) {
-		shell_warn(shell, "Help: i2cterget start <i2c_bus> <i2c_addr>");
-		return;
-	}
-
-	uint8_t bus = strtol(argv[1], NULL, 10);
-	uint8_t addr = strtol(argv[2], NULL, 16);
-
-	shell_info(shell, "I2C %d addr set 0x%x", bus, addr);
-
-	i2c_addr_set(bus, addr);
-}
-
-void cmd_target_stop(const struct shell *shell, size_t argc, char **argv)
+void cmd_target_info(const struct shell *shell, size_t argc, char **argv)
 {
 	if (argc != 2) {
-		shell_warn(shell, "Help: i2cterget stop <i2c_bus>");
+		shell_warn(shell, "Help: i2cterget ssif_status <i2c_bus>");
 		return;
 	}
 
 	uint8_t bus = strtol(argv[1], NULL, 10);
 
-	shell_info(shell, "I2C %d addr set 0", bus);
+	ssif_dev *ssif_inst = ssif_inst_get_by_bus(bus);
+	if (!ssif_inst) {
+		shell_error(shell, "Could not find ssif inst by i2c bus %d", bus);
+		return;
+	}
 
-	i2c_addr_set(bus, 0);
+	ssif_print_status(ssif_inst->index);
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2ctarget_cmds,
 			       SHELL_CMD(register, NULL, "REGISTER.", cmd_target_register),
 			       SHELL_CMD(ssif_init, NULL, "SSIF init.", cmd_ssif_init),
-					SHELL_CMD(start, NULL, "addr stop.", cmd_target_start),
-					SHELL_CMD(stop, NULL, "addr start.", cmd_target_stop),
+					SHELL_CMD(ssif_info, NULL, "SSIF info.", cmd_target_info),
 			       SHELL_SUBCMD_SET_END);
 
 SHELL_CMD_REGISTER(i2ctarget, &sub_i2ctarget_cmds, "i2c target", NULL);

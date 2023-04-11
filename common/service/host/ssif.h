@@ -92,6 +92,9 @@ typedef struct _ssif_dev {
 	struct k_sem rd_buff_sem;
 	uint8_t rd_buff[SSIF_BUFF_SIZE];
 	uint16_t rd_len;
+
+	ssif_status_t cur_status;
+	ssif_err_status_t cur_err_status;
 } ssif_dev;
 
 struct ssif_wr_start {
@@ -131,6 +134,7 @@ struct ssif_rd_middle {
 
 void ssif_device_init(uint8_t *config, uint8_t size);
 ssif_err_status_t ssif_get_error_status();
+void ssif_print_status(uint8_t channel);
 bool ssif_set_data(uint8_t channel, ipmi_msg_cfg *msg_cfg);
 void ssif_collect_data(uint8_t smb_cmd, uint8_t bus);
 bool ssif_lock_ctl(ssif_dev *ssif_inst, bool lck_flag);

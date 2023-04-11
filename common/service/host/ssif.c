@@ -39,10 +39,6 @@ LOG_MODULE_REGISTER(ssif);
 ssif_dev *ssif;
 static uint8_t ssif_channel_cnt = 0;
 
-ssif_status_t pre_status = SSIF_STATUS_IDLE;
-ssif_status_t cur_status = SSIF_STATUS_IDLE;
-ssif_err_status_t cur_err_status = SSIF_STATUS_NO_ERR;
-
 static uint16_t cur_rd_blck = 0; // for multi-read middle/end
 
 ipmi_msg_cfg current_ipmi_msg; // for ipmi request data
@@ -121,17 +117,11 @@ ssif_dev *ssif_inst_get_by_bus(uint8_t bus)
 	return NULL;
 }
 
-static void ssif_status_change(ssif_status_t status)
-{
-	pre_status = cur_status;
-	cur_status = status;
-}
-
 static void ssif_reset(ssif_dev *ssif_inst)
 {
 	CHECK_NULL_ARG(ssif_inst);
 
-	ssif_status_change(SSIF_STATUS_IDLE);
+	ssif_inst->cur_status = SSIF_STATUS_IDLE;
 	memset(&current_ipmi_msg, 0, sizeof(current_ipmi_msg));
 }
 
@@ -205,58 +195,60 @@ static uint8_t ssif_pec_get(uint8_t addr, uint8_t smb_cmd, uint8_t *data, uint16
 	return crc8(pec_buf, sizeof(pec_buf), 0x07, 0x00, false);
 }
 
-static bool ssif_status_check(uint8_t smb_cmd)
+static bool ssif_status_check(ssif_dev *ssif_inst, uint8_t smb_cmd)
 {
+	CHECK_NULL_ARG_WITH_RETURN(ssif_inst, false);
+
 	bool ret = false;
 
 	switch (smb_cmd) {
 	case SSIF_WR_SINGLE:
 	case SSIF_WR_MULTI_START:
 	case SSIF_RD_SINGLE:
-		if (cur_status != SSIF_STATUS_IDLE)
+		if (ssif_inst->cur_status != SSIF_STATUS_IDLE)
 			goto exit;
 		if (smb_cmd == SSIF_WR_SINGLE)
-			ssif_status_change(SSIF_STATUS_WR_SINGLE);
+			ssif_inst->cur_status = SSIF_STATUS_WR_SINGLE;
 		else if (smb_cmd == SSIF_WR_MULTI_START)
-			ssif_status_change(SSIF_STATUS_WR_MULTI_START);
+			ssif_inst->cur_status = SSIF_STATUS_WR_MULTI_START;
 		else
-			ssif_status_change(SSIF_STATUS_RD_SINGLE);
+			ssif_inst->cur_status = SSIF_STATUS_RD_SINGLE;
 		break;
 
 	case SSIF_WR_MULTI_MIDDLE:
 	case SSIF_WR_MULTI_END:
-		if (cur_status != SSIF_STATUS_WR_MULTI_START && cur_status != SSIF_STATUS_WR_MULTI_MIDDLE)
+		if (ssif_inst->cur_status != SSIF_STATUS_WR_MULTI_START && ssif_inst->cur_status != SSIF_STATUS_WR_MULTI_MIDDLE)
 			goto exit;
 		if (smb_cmd == SSIF_WR_MULTI_MIDDLE)
-			ssif_status_change(SSIF_STATUS_WR_MULTI_MIDDLE);
+			ssif_inst->cur_status = SSIF_STATUS_WR_MULTI_MIDDLE;
 		else
-			ssif_status_change(SSIF_STATUS_WR_MULTI_END);
+			ssif_inst->cur_status = SSIF_STATUS_WR_MULTI_END;
 		break;
 
 	case SSIF_RD_MULTI_MIDDLE:
-		if (cur_status != SSIF_STATUS_RD_MULTI_START && cur_status != SSIF_STATUS_RD_MULTI_MIDDLE) {
+		if (ssif_inst->cur_status != SSIF_STATUS_RD_MULTI_START && ssif_inst->cur_status != SSIF_STATUS_RD_MULTI_MIDDLE) {
 			goto exit;
 		}
-		ssif_status_change(SSIF_STATUS_RD_MULTI_MIDDLE);
+		ssif_inst->cur_status = SSIF_STATUS_RD_MULTI_MIDDLE;
 		break;
 
 	case SSIF_RD_MULTI_RETRY:
-		if (cur_status != SSIF_STATUS_RD_MULTI_MIDDLE) {
+		if (ssif_inst->cur_status != SSIF_STATUS_RD_MULTI_MIDDLE) {
 			goto exit;
 		}
-		ssif_status_change(SSIF_STATUS_RD_MULTI_MIDDLE);
+		ssif_inst->cur_status = SSIF_STATUS_RD_MULTI_MIDDLE;
 		break;
 	
 	default:
-		LOG_ERR("Invalid SMB command %d received in first package", smb_cmd);
-		cur_err_status = SSIF_STATUS_INVALID_CMD;
+		LOG_ERR("SSIF[%d] received invalid SMB command 0x%x in first package", ssif_inst->index, smb_cmd);
+		ssif_inst->cur_err_status = SSIF_STATUS_INVALID_CMD;
 		return false;
 	}
 
 	ret = true;
 exit:
 	if (ret == false)
-		cur_err_status = SSIF_STATUS_INVALID_CMD_IN_CUR_STATUS;
+		ssif_inst->cur_err_status = SSIF_STATUS_INVALID_CMD_IN_CUR_STATUS;
 
 	return ret;
 }
@@ -373,7 +365,7 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 		memset(rd_buff, 0, ARRAY_SIZE(rd_buff));
 
 		if (ssif_inst->rd_len) {
-			if (cur_status == SSIF_STATUS_RD_SINGLE || cur_status == SSIF_STATUS_RD_MULTI_START) {
+			if (ssif_inst->cur_status == SSIF_STATUS_RD_SINGLE || ssif_inst->cur_status == SSIF_STATUS_RD_MULTI_START) {
 				remain_data_len = ssif_inst->rd_len;
 				cur_rd_blck = 0;
 				if (remain_data_len > SSIF_MAX_IPMI_DATA_SIZE) {
@@ -381,23 +373,23 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 					rd_buff[2] = SSIF_MULTI_RD_KEY & 0xFF;
 					memcpy(rd_buff + 3, ssif_inst->rd_buff, SSIF_MAX_IPMI_DATA_SIZE - 2);
 					rd_buff_len = SSIF_MAX_IPMI_DATA_SIZE;
-					ssif_status_change(SSIF_STATUS_RD_MULTI_MIDDLE);
+					ssif_inst->cur_status = SSIF_STATUS_RD_MULTI_MIDDLE;
 					remain_data_len -= (SSIF_MAX_IPMI_DATA_SIZE - 2);
 				} else {
 					memcpy(rd_buff + 1, ssif_inst->rd_buff, ssif_inst->rd_len);
 					rd_buff_len = ssif_inst->rd_len;
-					ssif_status_change(SSIF_STATUS_RD_SINGLE);
+					ssif_inst->cur_status = SSIF_STATUS_RD_SINGLE;
 					remain_data_len = 0;
 				}
-			} else if (cur_status == SSIF_STATUS_RD_MULTI_MIDDLE || cur_status == SSIF_STATUS_RD_MULTI_END) {
+			} else if (ssif_inst->cur_status == SSIF_STATUS_RD_MULTI_MIDDLE || ssif_inst->cur_status == SSIF_STATUS_RD_MULTI_END) {
 				if (remain_data_len > (SSIF_MAX_IPMI_DATA_SIZE - 1)) {
 					rd_buff[1] = cur_rd_blck;
 					rd_buff_len = SSIF_MAX_IPMI_DATA_SIZE;
-					ssif_status_change(SSIF_STATUS_RD_MULTI_MIDDLE);
+					ssif_inst->cur_status = SSIF_STATUS_RD_MULTI_MIDDLE;
 				} else {
 					rd_buff[1] = 0xFF;
 					rd_buff_len = remain_data_len + 1;
-					ssif_status_change(SSIF_STATUS_RD_MULTI_END);
+					ssif_inst->cur_status = SSIF_STATUS_RD_MULTI_END;
 				}
 				memcpy(rd_buff + 2, ssif_inst->rd_buff + (ssif_inst->rd_len - remain_data_len), rd_buff_len - 1);
 				remain_data_len -= (rd_buff_len - 1);
@@ -410,7 +402,8 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 			rd_buff[0] = rd_buff_len;
 			rd_buff[rd_buff_len + 1] = ssif_pec_get(ssif_inst->addr, smb_cmd, rd_buff, rd_buff_len + 1);
 
-			LOG_HEXDUMP_INF(rd_buff, rd_buff_len + 2, "host SSIF write RESP data:");
+			LOG_INF("SSIF[%d] write RSP data:", ssif_inst->index);
+			LOG_HEXDUMP_INF(rd_buff, rd_buff_len + 2, "");
 
 			uint8_t rc = i2c_target_write(ssif_inst->i2c_bus, rd_buff, rd_buff_len + 2);
 			if (rc) {
@@ -433,9 +426,17 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 	return true;
 }
 
-ssif_err_status_t ssif_get_error_status()
+void ssif_print_status(uint8_t channel)
 {
-	return cur_err_status;
+	if (channel >= ssif_channel_cnt) {
+		LOG_WRN("Invalid SSIF channel %d", channel);
+		return;
+	}
+
+	LOG_INF("SSIF[%d] bus %d addr 0x%x:", channel, ssif[channel].i2c_bus, ssif[channel].addr);
+	LOG_INF("* current status: %d", ssif[channel].cur_status);
+	LOG_INF("* current error status: %d", ssif[channel].cur_err_status);
+	LOG_INF("* current address lock: %d", ssif[channel].addr_lock);
 }
 
 void ssif_collect_data(uint8_t smb_cmd, uint8_t bus)
@@ -444,11 +445,17 @@ void ssif_collect_data(uint8_t smb_cmd, uint8_t bus)
 		return;
 	}
 
-	if (ssif_status_check(smb_cmd) == false) {
+	ssif_dev *ssif_inst = ssif_inst_get_by_bus(bus);
+	if (!ssif_inst) {
+		LOG_ERR("Could not find ssif inst by i2c bus %d", bus);
 		return;
 	}
 
-	switch (cur_status) {
+	if (ssif_status_check(ssif_inst, smb_cmd) == false) {
+		return;
+	}
+
+	switch (ssif_inst->cur_status) {
 	case SSIF_STATUS_RD_SINGLE:
 	case SSIF_STATUS_RD_MULTI_START:
 	case SSIF_STATUS_RD_MULTI_MIDDLE: {
@@ -459,7 +466,7 @@ void ssif_collect_data(uint8_t smb_cmd, uint8_t bus)
 		}
 
 		if (ssif_do_action(SSIF_COLLECT_DATA, smb_cmd, ssif_inst) == false) {
-			cur_err_status = SSIF_STATUS_UNKNOWN_ERR;
+			ssif_inst->cur_err_status = SSIF_STATUS_UNKNOWN_ERR;
 			return;
 		}
 		break;
@@ -490,7 +497,7 @@ static void ssif_timeout_monitor(void *dummy0, void *dummy1, void *dummy2)
 				printf("SSIF[%d] msg timeout, ssif unlock!!", idx);
 				if (ssif_lock_ctl(&ssif[idx], false) == false) {
 					printf("SSIF[%d] unlock failed", idx);
-					cur_err_status = SSIF_STATUS_TIMEOUT;
+					ssif[idx].cur_err_status = SSIF_STATUS_TIMEOUT;
 					ssif_reset(&ssif[idx]);
 				}
 			}
@@ -517,20 +524,20 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 		rc = i2c_target_read(ssif_inst->i2c_bus, rdata, ARRAY_SIZE(rdata), &rlen);
 		if (rc) {
 			LOG_ERR("SSIF[%d] i2c_target_read failed, ret %d\n", ssif_inst->index, rc);
-			cur_err_status = SSIF_STATUS_UNKNOWN_ERR;
+			ssif_inst->cur_err_status = SSIF_STATUS_UNKNOWN_ERR;
 			goto reset;
 		}
 
 		if (rlen == 0) {
 			LOG_ERR("SSIF[%d] received invalid length of message", ssif_inst->index);
-			cur_err_status = SSIF_STATUS_INVALID_LEN;
+			ssif_inst->cur_err_status = SSIF_STATUS_INVALID_LEN;
 			goto reset;
 		}
 
 		/* Should ignore READ command, cause already been handle in lower level */
-		if (cur_status & 0xF0) {
-			if (cur_status == SSIF_STATUS_RD_MULTI_END || cur_status == SSIF_STATUS_RD_SINGLE) {
-				cur_err_status = SSIF_STATUS_NO_ERR;
+		if (ssif_inst->cur_status & 0xF0) {
+			if (ssif_inst->cur_status == SSIF_STATUS_RD_MULTI_END || ssif_inst->cur_status == SSIF_STATUS_RD_SINGLE) {
+				ssif_inst->cur_err_status = SSIF_STATUS_NO_ERR;
 				goto reset;
 			} else {
 				continue;
@@ -542,7 +549,7 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 
 		cur_smb_cmd = rdata[0];
 
-		if (ssif_status_check(cur_smb_cmd) == false) {
+		if (ssif_status_check(ssif_inst, cur_smb_cmd) == false) {
 			LOG_ERR("SSIF[%d] status check failed", ssif_inst->index);
 			goto reset;
 		}
@@ -550,26 +557,26 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 		uint8_t is_pec_exist = 0;
 		if (ssif_pec_check(ssif_inst->addr, rdata, rlen, &is_pec_exist) == false) {
 			LOG_ERR("SSIF[%d] pec check failed", ssif_inst->index);
-			cur_err_status = SSIF_STATUS_INVALID_PEC;
+			ssif_inst->cur_err_status = SSIF_STATUS_INVALID_PEC;
 			goto reset;
 		}
 
 		/* This part should only handle WRITE command */
-		switch (cur_status) {
+		switch (ssif_inst->cur_status) {
 		case SSIF_STATUS_WR_SINGLE:
 		case SSIF_STATUS_WR_MULTI_START: {
 			struct ssif_wr_start wr_start_msg;
 			memset(&wr_start_msg, 0, sizeof(wr_start_msg));
 			if (rlen - 1 - is_pec_exist > sizeof(wr_start_msg)) { // exclude smb_cmd, pec
 				LOG_WRN("SSIF[%d] received invalid message length for smb command %d", ssif_inst->index, cur_smb_cmd);
-				cur_err_status = SSIF_STATUS_INVALID_LEN;
+				ssif_inst->cur_err_status = SSIF_STATUS_INVALID_LEN;
 				goto reset;
 			}
 			memcpy(&wr_start_msg, rdata + 1, rlen - 1 - is_pec_exist); // exclude smb_cmd, pec
 
 			if (wr_start_msg.len != (rlen - 2 - is_pec_exist)) { // exclude smb_cmd, len, pec
 				LOG_WRN("SSIF[%d] received invalid length byte for smb command %d", ssif_inst->index, cur_smb_cmd);
-				cur_err_status = SSIF_STATUS_INVALID_LEN;
+				ssif_inst->cur_err_status = SSIF_STATUS_INVALID_LEN;
 				goto reset;
 			}
 
@@ -582,7 +589,7 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 				       current_ipmi_msg.buffer.data_len);
 			}
 
-			if (cur_status == SSIF_STATUS_WR_MULTI_START)
+			if (ssif_inst->cur_status == SSIF_STATUS_WR_MULTI_START)
 				continue;
 
 			break;
@@ -595,40 +602,40 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 
 			if (rlen - 1 - is_pec_exist > sizeof(wr_middle_msg)) { // exclude smb_cmd, pec
 				LOG_WRN("SSIF[%d] received invalid message length for smb command %d", ssif_inst->index, cur_smb_cmd);
-				cur_err_status = SSIF_STATUS_INVALID_LEN;
+				ssif_inst->cur_err_status = SSIF_STATUS_INVALID_LEN;
 				goto reset;
 			}
 			memcpy(&wr_middle_msg, rdata + 1, rlen - 1 - is_pec_exist); // exclude smb_cmd, pec
 
 			if (wr_middle_msg.len != (rlen - 2 - is_pec_exist)) { // exclude smb_cmd, len, pec
 				LOG_WRN("SSIF[%d] received invalid length byte for smb command %d", ssif_inst->index, cur_smb_cmd);
-				cur_err_status = SSIF_STATUS_INVALID_LEN;
+				ssif_inst->cur_err_status = SSIF_STATUS_INVALID_LEN;
 				goto reset;
 			}
 
-			if (cur_status == SSIF_STATUS_WR_MULTI_MIDDLE && wr_middle_msg.len != SSIF_MAX_IPMI_DATA_SIZE) {
+			if (ssif_inst->cur_status == SSIF_STATUS_WR_MULTI_MIDDLE && wr_middle_msg.len != SSIF_MAX_IPMI_DATA_SIZE) {
 				LOG_WRN("SSIF[%d] received invalid length for multi middle read", ssif_inst->index);
-				cur_err_status = SSIF_STATUS_INVALID_LEN;
+				ssif_inst->cur_err_status = SSIF_STATUS_INVALID_LEN;
 				goto reset;
 			}
 
 			if (current_ipmi_msg.buffer.data_len == 0) {
 				LOG_WRN("SSIF[%d] lost first multi read message", ssif_inst->index);
-				cur_err_status = SSIF_STATUS_INVALID_CMD_IN_CUR_STATUS;
+				ssif_inst->cur_err_status = SSIF_STATUS_INVALID_CMD_IN_CUR_STATUS;
 				goto reset;
 			}
 
 			memcpy(current_ipmi_msg.buffer.data + current_ipmi_msg.buffer.data_len, wr_middle_msg.data, wr_middle_msg.len);
 			current_ipmi_msg.buffer.data_len += wr_middle_msg.len;
 
-			if (cur_status == SSIF_STATUS_WR_MULTI_MIDDLE)
+			if (ssif_inst->cur_status == SSIF_STATUS_WR_MULTI_MIDDLE)
 				continue;
 			
 			break;
 		}
 
 		default:
-			LOG_ERR("SSIF[%d] get invalid status %d", ssif_inst->index, cur_status);
+			LOG_ERR("SSIF[%d] get invalid status %d", ssif_inst->index, ssif_inst->cur_status);
 			goto reset;
 		}
 
@@ -638,11 +645,11 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 		LOG_HEXDUMP_DBG(current_ipmi_msg.buffer.data, current_ipmi_msg.buffer.data_len, "");
 
 		if (ssif_do_action(SSIF_SEND_IPMI, cur_smb_cmd, ssif_inst) == false) {
-			cur_err_status = SSIF_STATUS_UNKNOWN_ERR;
+			ssif_inst->cur_err_status = SSIF_STATUS_UNKNOWN_ERR;
 			goto reset;
 		}
 
-		cur_err_status = SSIF_STATUS_NO_ERR;
+		ssif_inst->cur_err_status = SSIF_STATUS_NO_ERR;
 reset:
 		ssif_reset(ssif_inst);
 	}
@@ -684,8 +691,9 @@ void ssif_device_init(uint8_t *config, uint8_t size)
 
 		ssif[i].i2c_bus = config[i];
 		ssif[i].addr = cfg.address;
-
 		ssif[i].addr_lock = false;
+		ssif[i].cur_status = SSIF_STATUS_IDLE;
+		ssif[i].cur_err_status = SSIF_STATUS_NO_ERR;
 
 		snprintf(ssif[i].task_name, sizeof(ssif[i].task_name), "ssif%d_polling", config[i]);
 
