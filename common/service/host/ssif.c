@@ -62,7 +62,7 @@ bool ssif_set_data(uint8_t channel, ipmi_msg_cfg *msg_cfg)
 	CHECK_MUTEX_INIT_WITH_RETURN(&ssif[channel].rd_buff_mutex, false);
 
 	if (k_mutex_lock(&ssif[channel].rd_buff_mutex, K_MSEC(5000))) {
-		LOG_ERR("ssif %d mutex lock failed", channel);
+		LOG_ERR("SSIF[%d] mutex lock failed", channel);
 		return false;
 	}
 
@@ -88,7 +88,7 @@ bool ssif_set_data(uint8_t channel, ipmi_msg_cfg *msg_cfg)
 	k_sem_give(&ssif[channel].rd_buff_sem);
 
 	if (k_mutex_unlock(&ssif[channel].rd_buff_mutex))
-		LOG_ERR("ssif %d mutex unlock failed", channel);
+		LOG_ERR("SSIF[%d] mutex unlock failed", channel);
 
 	return true;
 }
@@ -277,7 +277,7 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 		if (pal_request_msg_to_BIC_from_KCS(current_ipmi_msg.buffer.netfn, current_ipmi_msg.buffer.cmd)) {
 			while (k_msgq_put(&ipmi_msgq, &current_ipmi_msg, K_NO_WAIT) != 0) {
 				k_msgq_purge(&ipmi_msgq);
-				LOG_WRN("SSIF retrying put ipmi msgq");
+				LOG_WRN("SSIF[%d] retrying put ipmi msgq", ssif_inst->index);
 				return false;
 			}
 		} else {
@@ -353,16 +353,17 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 		}
 
 		if (k_sem_take(&ssif_inst->rd_buff_sem, K_MSEC(1500)) != 0) {
-			LOG_ERR("Get ipmi response message timeout!");
+			LOG_ERR("SSIF[%d] Get ipmi response message timeout!", ssif_inst->index);
 			return false;
 		}
 
-		LOG_DBG("ipmi rsp netfn 0x%x, cmd 0x%x, cc 0x%x, data length %d:", ssif_inst->rd_buff[0], ssif_inst->rd_buff[1], ssif_inst->rd_buff[2], ssif_inst->rd_len-3);
+		LOG_DBG("SSIF[%d] ipmi rsp netfn 0x%x, cmd 0x%x, cc 0x%x, data length %d:", ssif_inst->index, ssif_inst->rd_buff[0], ssif_inst->rd_buff[1], ssif_inst->rd_buff[2], ssif_inst->rd_len-3);
 		LOG_HEXDUMP_DBG(ssif_inst->rd_buff + 3, ssif_inst->rd_len - 3, "");
 
 		/* unlock i2c bus address */
 		if (ssif_lock_ctl(ssif_inst, false) == false) {
-			LOG_ERR("Can't unlock address after sending message");
+			LOG_ERR("SSIF[%d] can't unlock address after sending message", ssif_inst->index);
+			return false;
 		}
 
 		/* TODO: Should let HOST to know data ready */
@@ -404,7 +405,7 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 				remain_data_len -= (rd_buff_len - 1);
 				cur_rd_blck++;
 			} else {
-				LOG_WRN("Current status not supposed to do this action");
+				LOG_WRN("SSIF[%d] current status not supposed to do this action", ssif_inst->index);
 				return false;
 			}
 
@@ -415,19 +416,19 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 
 			uint8_t rc = i2c_target_write(ssif_inst->i2c_bus, rd_buff, rd_buff_len + 2);
 			if (rc) {
-				LOG_ERR("i2c_target_write fail, ret %d\n", rc);
+				LOG_ERR("SSIF[%d] i2c_target_write fail, ret %d\n", ssif_inst->index, rc);
 				return false;
 			}
 
 		} else {
-			LOG_WRN("Data not ready");
+			LOG_WRN("SSIF[%d] data not ready", ssif_inst->index);
 			return false;
 		}
 		break;
 	}
 
 	default:
-		LOG_WRN("Invalid action %d", action);
+		LOG_WRN("SSIF[%d] action %d invalid", ssif_inst->index, action);
 		return false;
 	}
 
@@ -455,7 +456,7 @@ void ssif_collect_data(uint8_t smb_cmd, uint8_t bus)
 	case SSIF_STATUS_RD_MULTI_MIDDLE: {
 		ssif_dev *ssif_inst = ssif_inst_get_by_bus(bus);
 		if (!ssif_inst) {
-			LOG_WRN("Failed to get ssif inst by i2c bus %d", bus);
+			LOG_WRN("Failed to get ssif_inst by i2c bus %d", bus);
 			return;
 		}
 
@@ -488,9 +489,9 @@ static void ssif_timeout_monitor(void *dummy0, void *dummy1, void *dummy2)
 
 			int64_t cur_uptime = k_uptime_get();
 			if ((ssif[idx].exp_to_ms <= cur_uptime)) {
-				printf("ssif %d msg timeout, ssif unlock!!", idx);
+				printf("SSIF[%d] msg timeout, ssif unlock!!", idx);
 				if (ssif_lock_ctl(&ssif[idx], false) == false) {
-					printf("ssif %d unlock failed", idx);
+					printf("SSIF[%d] unlock failed", idx);
 					cur_err_status = SSIF_STATUS_TIMEOUT;
 					ssif_reset(&ssif[idx]);
 				}
@@ -501,16 +502,14 @@ static void ssif_timeout_monitor(void *dummy0, void *dummy1, void *dummy2)
 
 static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 {
-	int rc = 0;
-	uint8_t cur_smb_cmd = 0;
-
 	ARG_UNUSED(arvg1);
 	ARG_UNUSED(arvg2);
+
 	ssif_dev *ssif_inst = (ssif_dev *)arvg0;
-	if (!ssif_inst) {
-		LOG_ERR("Failed to get the ssif instance");
-		return;
-	}
+	CHECK_NULL_ARG(ssif_inst);
+
+	int rc = 0;
+	uint8_t cur_smb_cmd = 0;
 
 	memset(&current_ipmi_msg, 0, sizeof(current_ipmi_msg));
 
@@ -519,13 +518,13 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 		uint16_t rlen = 0;
 		rc = i2c_target_read(ssif_inst->i2c_bus, rdata, ARRAY_SIZE(rdata), &rlen);
 		if (rc) {
-			LOG_ERR("i2c_target_read fail, ret %d\n", rc);
+			LOG_ERR("SSIF[%d] i2c_target_read failed, ret %d\n", ssif_inst->index, rc);
 			cur_err_status = SSIF_STATUS_UNKNOWN_ERR;
 			goto reset;
 		}
 
 		if (rlen == 0) {
-			LOG_ERR("Invalid length of SSIF message received");
+			LOG_ERR("SSIF[%d] received invalid length of message", ssif_inst->index);
 			cur_err_status = SSIF_STATUS_INVALID_LEN;
 			goto reset;
 		}
@@ -540,17 +539,18 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 			}
 		}
 
-		LOG_HEXDUMP_INF(rdata, rlen, "host SSIF read REQ data:");
+		LOG_INF("SSIF[%d] read REQ data:", ssif_inst->index);
+		LOG_HEXDUMP_INF(rdata, rlen, "");
 
 		cur_smb_cmd = rdata[0];
 
 		if (ssif_status_check(cur_smb_cmd) == false) {
-			LOG_ERR("ssif status check failed");
+			LOG_ERR("SSIF[%d] status check failed", ssif_inst->index);
 			goto reset;
 		}
 
 		if (ssif_pec_check(ssif_inst->addr, rdata, rlen) == false) {
-			LOG_ERR("ssif pec check failed");
+			LOG_ERR("SSIF[%d] pec check failed", ssif_inst->index);
 			cur_err_status = SSIF_STATUS_INVALID_PEC;
 			goto reset;
 		}
@@ -562,14 +562,14 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 			struct ssif_wr_start wr_start_msg;
 			memset(&wr_start_msg, 0, sizeof(wr_start_msg));
 			if (rlen - 1 - is_pec_exist > sizeof(wr_start_msg)) { // exclude smb_cmd, pec
-				LOG_WRN("Invalid message length for smb command %d", cur_smb_cmd);
+				LOG_WRN("SSIF[%d] received invalid message length for smb command %d", ssif_inst->index, cur_smb_cmd);
 				cur_err_status = SSIF_STATUS_INVALID_LEN;
 				goto reset;
 			}
 			memcpy(&wr_start_msg, rdata + 1, rlen - 1 - is_pec_exist); // exclude smb_cmd, pec
 
 			if (wr_start_msg.len != (rlen - 2 - is_pec_exist)) { // exclude smb_cmd, len, pec
-				LOG_WRN("Invalid length byte for smb command %d", cur_smb_cmd);
+				LOG_WRN("SSIF[%d] received invalid length byte for smb command %d", ssif_inst->index, cur_smb_cmd);
 				cur_err_status = SSIF_STATUS_INVALID_LEN;
 				goto reset;
 			}
@@ -597,26 +597,26 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 			memset(&wr_middle_msg, 0, sizeof(wr_middle_msg));
 
 			if (rlen - 1 - is_pec_exist > sizeof(wr_middle_msg)) { // exclude smb_cmd, pec
-				LOG_WRN("Invalid message length for smb command %d", cur_smb_cmd);
+				LOG_WRN("SSIF[%d] received invalid message length for smb command %d", ssif_inst->index, cur_smb_cmd);
 				cur_err_status = SSIF_STATUS_INVALID_LEN;
 				goto reset;
 			}
 			memcpy(&wr_middle_msg, rdata + 1, rlen - 1 - is_pec_exist); // exclude smb_cmd, pec
 
 			if (wr_middle_msg.len != (rlen - 2 - is_pec_exist)) { // exclude smb_cmd, len, pec
-				LOG_WRN("Invalid length byte for smb command %d", cur_smb_cmd);
+				LOG_WRN("SSIF[%d] received invalid length byte for smb command %d", ssif_inst->index, cur_smb_cmd);
 				cur_err_status = SSIF_STATUS_INVALID_LEN;
 				goto reset;
 			}
 
 			if (cur_status == SSIF_STATUS_WR_MULTI_MIDDLE && wr_middle_msg.len != SSIF_MAX_IPMI_DATA_SIZE) {
-				LOG_WRN("Invalid length for multi middle read");
+				LOG_WRN("SSIF[%d] received invalid length for multi middle read", ssif_inst->index);
 				cur_err_status = SSIF_STATUS_INVALID_LEN;
 				goto reset;
 			}
 
 			if (current_ipmi_msg.buffer.data_len == 0) {
-				LOG_WRN("Lost first multi read message");
+				LOG_WRN("SSIF[%d] lost first multi read message", ssif_inst->index);
 				cur_err_status = SSIF_STATUS_INVALID_CMD_IN_CUR_STATUS;
 				goto reset;
 			}
@@ -633,11 +633,11 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 		}
 
 		default:
-			LOG_ERR("Invalid status %d detect", cur_status);
+			LOG_ERR("SSIF[%d] get invalid status %d", ssif_inst->index, cur_status);
 			goto reset;
 		}
 
-		LOG_DBG("ipmi req netfn 0x%x, cmd 0x%x, data length %d:",
+		LOG_DBG("SSIF[%d] ipmi req netfn 0x%x, cmd 0x%x, data length %d:", ssif_inst->index,
 				current_ipmi_msg.buffer.netfn, current_ipmi_msg.buffer.cmd,
 				current_ipmi_msg.buffer.data_len);
 		LOG_HEXDUMP_DBG(current_ipmi_msg.buffer.data, current_ipmi_msg.buffer.data_len, "");
@@ -671,12 +671,12 @@ void ssif_device_init(uint8_t *config, uint8_t size)
 		}
 
 		if (k_mutex_init(&ssif->rd_buff_mutex)) {
-			LOG_ERR("ssif %d rd mutex initial failed", i);
+			LOG_ERR("SSIF[%d] rd mutex initial failed", i);
 			continue;
 		}
 
 		if (k_sem_init(&ssif->rd_buff_sem, 0, 1)) {
-			LOG_ERR("ssif %d rd semaphore initial failed", i);
+			LOG_ERR("SSIF[%d] rd semaphore initial failed", i);
 			continue;
 		}
 
@@ -700,7 +700,7 @@ void ssif_device_init(uint8_t *config, uint8_t size)
 							CONFIG_MAIN_THREAD_PRIORITY, 0, K_NO_WAIT);
 		k_thread_name_set(ssif[i].ssif_task_tid, ssif[i].task_name);
 
-		LOG_INF("SSIF %d created", config[i]);
+		LOG_INF("SSIF[%d] created", config[i]);
 	}
 
 	return;
