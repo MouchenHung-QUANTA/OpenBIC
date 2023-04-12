@@ -569,27 +569,25 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 		switch (ssif_inst->cur_status) {
 		case SSIF_STATUS_WR_SINGLE:
 		case SSIF_STATUS_WR_MULTI_START: {
-			struct ssif_wr_start wr_start_msg;
-			memset(&wr_start_msg, 0, sizeof(wr_start_msg));
-			if (rlen - 1 - is_pec_exist > sizeof(wr_start_msg)) { // exclude smb_cmd, pec
+			if (rlen - 1 - is_pec_exist > sizeof(struct ssif_wr_start)) { // exclude smb_cmd, pec
 				LOG_WRN("SSIF[%d] received invalid message length for smb command %d", ssif_inst->index, cur_smb_cmd);
 				ssif_error_record(ssif_inst->index, SSIF_STATUS_INVALID_LEN);
 				goto reset;
 			}
-			memcpy(&wr_start_msg, rdata + 1, rlen - 1 - is_pec_exist); // exclude smb_cmd, pec
 
-			if (wr_start_msg.len != (rlen - 2 - is_pec_exist)) { // exclude smb_cmd, len, pec
+			struct ssif_wr_start *wr_start_msg = (struct ssif_wr_start *)(rdata + 1);
+			if (wr_start_msg->len != (rlen - 2 - is_pec_exist)) { // exclude smb_cmd, len, pec
 				LOG_WRN("SSIF[%d] received invalid length byte for smb command %d", ssif_inst->index, cur_smb_cmd);
 				ssif_error_record(ssif_inst->index, SSIF_STATUS_INVALID_LEN);
 				goto reset;
 			}
 
 			ssif_inst->current_ipmi_msg.buffer.InF_source = HOST_SSIF_1 + ssif_inst->index;
-			ssif_inst->current_ipmi_msg.buffer.netfn = wr_start_msg.netfn >> 2;
-			ssif_inst->current_ipmi_msg.buffer.cmd = wr_start_msg.cmd;
-			ssif_inst->current_ipmi_msg.buffer.data_len = wr_start_msg.len - 2; // exclude netfn, cmd
+			ssif_inst->current_ipmi_msg.buffer.netfn = wr_start_msg->netfn >> 2;
+			ssif_inst->current_ipmi_msg.buffer.cmd = wr_start_msg->cmd;
+			ssif_inst->current_ipmi_msg.buffer.data_len = wr_start_msg->len - 2; // exclude netfn, cmd
 			if (ssif_inst->current_ipmi_msg.buffer.data_len != 0) {
-				memcpy(ssif_inst->current_ipmi_msg.buffer.data, wr_start_msg.data,
+				memcpy(ssif_inst->current_ipmi_msg.buffer.data, wr_start_msg->data,
 				       ssif_inst->current_ipmi_msg.buffer.data_len);
 			}
 
@@ -601,23 +599,20 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 
 		case SSIF_STATUS_WR_MULTI_MIDDLE:
 		case SSIF_STATUS_WR_MULTI_END: {
-			struct ssif_wr_middle wr_middle_msg;
-			memset(&wr_middle_msg, 0, sizeof(wr_middle_msg));
-
-			if (rlen - 1 - is_pec_exist > sizeof(wr_middle_msg)) { // exclude smb_cmd, pec
+			if (rlen - 1 - is_pec_exist > sizeof(struct ssif_wr_middle)) { // exclude smb_cmd, pec
 				LOG_WRN("SSIF[%d] received invalid message length for smb command %d", ssif_inst->index, cur_smb_cmd);
 				ssif_error_record(ssif_inst->index, SSIF_STATUS_INVALID_LEN);
 				goto reset;
 			}
-			memcpy(&wr_middle_msg, rdata + 1, rlen - 1 - is_pec_exist); // exclude smb_cmd, pec
 
-			if (wr_middle_msg.len != (rlen - 2 - is_pec_exist)) { // exclude smb_cmd, len, pec
+			struct ssif_wr_middle *wr_middle_msg = (struct ssif_wr_middle *)(rdata + 1);
+			if (wr_middle_msg->len != (rlen - 2 - is_pec_exist)) { // exclude smb_cmd, len, pec
 				LOG_WRN("SSIF[%d] received invalid length byte for smb command %d", ssif_inst->index, cur_smb_cmd);
 				ssif_error_record(ssif_inst->index, SSIF_STATUS_INVALID_LEN);
 				goto reset;
 			}
 
-			if (ssif_inst->cur_status == SSIF_STATUS_WR_MULTI_MIDDLE && wr_middle_msg.len != SSIF_MAX_IPMI_DATA_SIZE) {
+			if (ssif_inst->cur_status == SSIF_STATUS_WR_MULTI_MIDDLE && wr_middle_msg->len != SSIF_MAX_IPMI_DATA_SIZE) {
 				LOG_WRN("SSIF[%d] received invalid length for multi middle read", ssif_inst->index);
 				ssif_error_record(ssif_inst->index, SSIF_STATUS_INVALID_LEN);
 				goto reset;
@@ -629,8 +624,8 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 				goto reset;
 			}
 
-			memcpy(ssif_inst->current_ipmi_msg.buffer.data + ssif_inst->current_ipmi_msg.buffer.data_len, wr_middle_msg.data, wr_middle_msg.len);
-			ssif_inst->current_ipmi_msg.buffer.data_len += wr_middle_msg.len;
+			memcpy(ssif_inst->current_ipmi_msg.buffer.data + ssif_inst->current_ipmi_msg.buffer.data_len, wr_middle_msg->data, wr_middle_msg->len);
+			ssif_inst->current_ipmi_msg.buffer.data_len += wr_middle_msg->len;
 
 			if (ssif_inst->cur_status == SSIF_STATUS_WR_MULTI_MIDDLE)
 				continue;
