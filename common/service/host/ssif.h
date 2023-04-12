@@ -94,10 +94,10 @@ typedef struct _ssif_dev {
 	K_KERNEL_STACK_MEMBER(ssif_task_stack, SSIF_THREAD_STACK_SIZE);
 	uint8_t task_name[SSIF_TASK_NAME_LEN];
 	struct k_thread task_thread;
-	struct k_mutex rd_buff_mutex;
-	struct k_sem rd_buff_sem;
-	uint8_t rd_buff[SSIF_BUFF_SIZE];
-	uint16_t rd_len;
+	struct k_mutex rsp_buff_mutex;
+	struct k_sem rsp_buff_sem;
+	uint8_t rsp_buff[IPMI_MSG_MAX_LENGTH];
+	uint16_t rsp_buf_len;
 	ipmi_msg_cfg current_ipmi_msg;
 
 	ssif_status_t cur_status;

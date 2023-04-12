@@ -50,35 +50,33 @@ bool ssif_set_data(uint8_t channel, ipmi_msg_cfg *msg_cfg)
 		return false;
 	}
 
-	CHECK_MUTEX_INIT_WITH_RETURN(&ssif[channel].rd_buff_mutex, false);
+	CHECK_MUTEX_INIT_WITH_RETURN(&ssif[channel].rsp_buff_mutex, false);
 
-	if (k_mutex_lock(&ssif[channel].rd_buff_mutex, K_MSEC(5000))) {
+	if (k_mutex_lock(&ssif[channel].rsp_buff_mutex, K_MSEC(5000))) {
 		LOG_ERR("SSIF[%d] mutex lock failed", channel);
 		return false;
 	}
 
-	uint8_t ssif_buff[SSIF_BUFF_SIZE];
-	ssif_buff[0] = msg_cfg->buffer.netfn; // Should modify outside by user
-	ssif_buff[1] = msg_cfg->buffer.cmd;
-	ssif_buff[2] = msg_cfg->buffer.completion_code;
+	ssif[channel].rsp_buff[0] = msg_cfg->buffer.netfn; // Should modify outside by user
+	ssif[channel].rsp_buff[1] = msg_cfg->buffer.cmd;
+	ssif[channel].rsp_buff[2] = msg_cfg->buffer.completion_code;
 	if (msg_cfg->buffer.data_len) {
-		if (msg_cfg->buffer.data_len <= (SSIF_BUFF_SIZE - 3))
-			memcpy(&ssif_buff[3], msg_cfg->buffer.data,
+		if (msg_cfg->buffer.data_len <= (IPMI_MSG_MAX_LENGTH - 3))
+			memcpy(&ssif[channel].rsp_buff[3], msg_cfg->buffer.data,
 					msg_cfg->buffer.data_len);
 		else
-			memcpy(&ssif_buff[3], msg_cfg->buffer.data,
-					(SSIF_BUFF_SIZE - 3));
+			memcpy(&ssif[channel].rsp_buff[3], msg_cfg->buffer.data,
+					(IPMI_MSG_MAX_LENGTH - 3));
 	}
 
-	ssif[channel].rd_len = msg_cfg->buffer.data_len + 3;
-	memcpy(&ssif[channel].rd_buff, ssif_buff, msg_cfg->buffer.data_len + 3);
+	ssif[channel].rsp_buf_len = msg_cfg->buffer.data_len + 3;
 
-	LOG_DBG("ssif from ipmi netfn %x, cmd %x, data length %d, cc %x", ssif[channel].rd_buff[0],
-		ssif[channel].rd_buff[1], msg_cfg->buffer.data_len, ssif[channel].rd_buff[2]);
+	LOG_DBG("ssif from ipmi netfn %x, cmd %x, data length %d, cc %x", ssif[channel].rsp_buff[0],
+		ssif[channel].rsp_buff[1], msg_cfg->buffer.data_len, ssif[channel].rsp_buff[2]);
 
-	k_sem_give(&ssif[channel].rd_buff_sem);
+	k_sem_give(&ssif[channel].rsp_buff_sem);
 
-	if (k_mutex_unlock(&ssif[channel].rd_buff_mutex))
+	if (k_mutex_unlock(&ssif[channel].rsp_buff_mutex))
 		LOG_ERR("SSIF[%d] mutex unlock failed", channel);
 
 	return true;
@@ -291,11 +289,11 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 			if ((ssif_inst->current_ipmi_msg.buffer.netfn == NETFN_APP_REQ) &&
 			    (ssif_inst->current_ipmi_msg.buffer.cmd == CMD_APP_SET_SYS_INFO_PARAMS) &&
 			    (ssif_inst->current_ipmi_msg.buffer.data[0] == CMD_SYS_INFO_FW_VERSION)) {
-				uint8_t rdata[SSIF_BUFF_SIZE] = { 0 };
-				rdata[0] = ssif_inst->current_ipmi_msg.buffer.netfn;
-				rdata[1] = ssif_inst->current_ipmi_msg.buffer.cmd;
-				memcpy(rdata + 2, ssif_inst->current_ipmi_msg.buffer.data, ssif_inst->current_ipmi_msg.buffer.data_len);
-				ret = pal_record_bios_fw_version(rdata, ssif_inst->current_ipmi_msg.buffer.data_len + 2);
+				uint8_t ipmi_buff[IPMI_MSG_MAX_LENGTH] = { 0 };
+				ipmi_buff[0] = ssif_inst->current_ipmi_msg.buffer.netfn;
+				ipmi_buff[1] = ssif_inst->current_ipmi_msg.buffer.cmd;
+				memcpy(ipmi_buff + 2, ssif_inst->current_ipmi_msg.buffer.data, ssif_inst->current_ipmi_msg.buffer.data_len);
+				ret = pal_record_bios_fw_version(ipmi_buff, ssif_inst->current_ipmi_msg.buffer.data_len + 2);
 				if (ret == -1) {
 					LOG_ERR("Record bios fw version fail");
 				}
@@ -340,13 +338,13 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 */
 		}
 
-		if (k_sem_take(&ssif_inst->rd_buff_sem, K_MSEC(1500)) != 0) {
+		if (k_sem_take(&ssif_inst->rsp_buff_sem, K_MSEC(1500)) != 0) {
 			LOG_ERR("SSIF[%d] Get ipmi response message timeout!", ssif_inst->index);
 			return false;
 		}
 
-		LOG_DBG("SSIF[%d] ipmi rsp netfn 0x%x, cmd 0x%x, cc 0x%x, data length %d:", ssif_inst->index, ssif_inst->rd_buff[0], ssif_inst->rd_buff[1], ssif_inst->rd_buff[2], ssif_inst->rd_len-3);
-		LOG_HEXDUMP_DBG(ssif_inst->rd_buff + 3, ssif_inst->rd_len - 3, "");
+		LOG_DBG("SSIF[%d] ipmi rsp netfn 0x%x, cmd 0x%x, cc 0x%x, data length %d:", ssif_inst->index, ssif_inst->rsp_buff[0], ssif_inst->rsp_buff[1], ssif_inst->rsp_buff[2], ssif_inst->rsp_buf_len-3);
+		LOG_HEXDUMP_DBG(ssif_inst->rsp_buff + 3, ssif_inst->rsp_buf_len - 3, "");
 
 		/* unlock i2c bus address */
 		if (ssif_lock_ctl(ssif_inst, false) == false) {
@@ -359,52 +357,52 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 
 	case SSIF_COLLECT_DATA: {
 		static uint16_t cur_rd_blck = 0; // for multi-read middle/end
-		uint16_t rd_buff_len = 0;
-		uint8_t rd_buff[SSIF_BUFF_SIZE];
-		memset(rd_buff, 0, sizeof(rd_buff));
+		uint16_t wdata_len = 0;
+		uint8_t wdata[SSIF_BUFF_SIZE];
+		memset(wdata, 0, sizeof(wdata));
 
-		if (ssif_inst->rd_len) {
+		if (ssif_inst->rsp_buf_len) {
 			if (ssif_inst->cur_status == SSIF_STATUS_RD_SINGLE || ssif_inst->cur_status == SSIF_STATUS_RD_MULTI_START) {
-				remain_data_len = ssif_inst->rd_len;
+				remain_data_len = ssif_inst->rsp_buf_len;
 				cur_rd_blck = 0;
 				if (remain_data_len > SSIF_MAX_IPMI_DATA_SIZE) {
-					rd_buff[1] = (SSIF_MULTI_RD_KEY >> 8) & 0xFF;
-					rd_buff[2] = SSIF_MULTI_RD_KEY & 0xFF;
-					memcpy(rd_buff + 3, ssif_inst->rd_buff, SSIF_MAX_IPMI_DATA_SIZE - 2);
-					rd_buff_len = SSIF_MAX_IPMI_DATA_SIZE;
+					wdata[1] = (SSIF_MULTI_RD_KEY >> 8) & 0xFF;
+					wdata[2] = SSIF_MULTI_RD_KEY & 0xFF;
+					memcpy(wdata + 3, ssif_inst->rsp_buff, SSIF_MAX_IPMI_DATA_SIZE - 2);
+					wdata_len = SSIF_MAX_IPMI_DATA_SIZE;
 					ssif_inst->cur_status = SSIF_STATUS_RD_MULTI_MIDDLE;
 					remain_data_len -= (SSIF_MAX_IPMI_DATA_SIZE - 2);
 				} else {
-					memcpy(rd_buff + 1, ssif_inst->rd_buff, ssif_inst->rd_len);
-					rd_buff_len = ssif_inst->rd_len;
+					memcpy(wdata + 1, ssif_inst->rsp_buff, ssif_inst->rsp_buf_len);
+					wdata_len = ssif_inst->rsp_buf_len;
 					ssif_inst->cur_status = SSIF_STATUS_RD_SINGLE;
 					remain_data_len = 0;
 				}
 			} else if (ssif_inst->cur_status == SSIF_STATUS_RD_MULTI_MIDDLE || ssif_inst->cur_status == SSIF_STATUS_RD_MULTI_END) {
 				if (remain_data_len > (SSIF_MAX_IPMI_DATA_SIZE - 1)) {
-					rd_buff[1] = cur_rd_blck;
-					rd_buff_len = SSIF_MAX_IPMI_DATA_SIZE;
+					wdata[1] = cur_rd_blck;
+					wdata_len = SSIF_MAX_IPMI_DATA_SIZE;
 					ssif_inst->cur_status = SSIF_STATUS_RD_MULTI_MIDDLE;
 				} else {
-					rd_buff[1] = 0xFF;
-					rd_buff_len = remain_data_len + 1;
+					wdata[1] = 0xFF;
+					wdata_len = remain_data_len + 1;
 					ssif_inst->cur_status = SSIF_STATUS_RD_MULTI_END;
 				}
-				memcpy(rd_buff + 2, ssif_inst->rd_buff + (ssif_inst->rd_len - remain_data_len), rd_buff_len - 1);
-				remain_data_len -= (rd_buff_len - 1);
+				memcpy(wdata + 2, ssif_inst->rsp_buff + (ssif_inst->rsp_buf_len - remain_data_len), wdata_len - 1);
+				remain_data_len -= (wdata_len - 1);
 				cur_rd_blck++;
 			} else {
 				LOG_WRN("SSIF[%d] current status not supposed to do this action", ssif_inst->index);
 				return false;
 			}
 
-			rd_buff[0] = rd_buff_len;
-			rd_buff[rd_buff_len + 1] = ssif_pec_get(ssif_inst->addr, smb_cmd, rd_buff, rd_buff_len + 1);
+			wdata[0] = wdata_len;
+			wdata[wdata_len + 1] = ssif_pec_get(ssif_inst->addr, smb_cmd, wdata, wdata_len + 1);
 
 			LOG_INF("SSIF[%d] write RSP data:", ssif_inst->index);
-			LOG_HEXDUMP_INF(rd_buff, rd_buff_len + 2, "");
+			LOG_HEXDUMP_INF(wdata, wdata_len + 2, "");
 
-			uint8_t rc = i2c_target_write(ssif_inst->i2c_bus, rd_buff, rd_buff_len + 2);
+			uint8_t rc = i2c_target_write(ssif_inst->i2c_bus, wdata, wdata_len + 2);
 			if (rc) {
 				LOG_ERR("SSIF[%d] i2c_target_write fail, ret %d\n", ssif_inst->index, rc);
 				return false;
@@ -682,12 +680,12 @@ void ssif_device_init(struct ssif_init_cfg *config, uint8_t size)
 			continue;
 		}
 
-		if (k_mutex_init(&ssif->rd_buff_mutex)) {
+		if (k_mutex_init(&ssif->rsp_buff_mutex)) {
 			LOG_ERR("SSIF[%d] rd mutex initial failed", i);
 			continue;
 		}
 
-		if (k_sem_init(&ssif->rd_buff_sem, 0, 1)) {
+		if (k_sem_init(&ssif->rsp_buff_sem, 0, 1)) {
 			LOG_ERR("SSIF[%d] rd semaphore initial failed", i);
 			continue;
 		}
