@@ -766,7 +766,13 @@ void cmd_target_info(const struct shell *shell, size_t argc, char **argv)
 		return;
 	}
 
-	ssif_print_status(ssif_inst->index);
+	shell_print(shell, "SSIF[%d] bus %d addr 0x%x:", ssif_inst->index, ssif_inst->i2c_bus, ssif_inst->addr);
+	shell_print(shell, "* current status: %d", ssif_inst->cur_status);
+	shell_print(shell, "* current address lock: %d", ssif_inst->addr_lock);
+	shell_print(shell, "* error status: %d", ssif_inst->err_status);
+	shell_print(shell, "* error idx: %d/%d", ssif_inst->err_idx, SSIF_ERR_RCD_SIZE);
+	shell_print(shell, "* error list:");
+	shell_hexdump(shell, ssif_inst->err_status_lst, SSIF_ERR_RCD_SIZE);
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2ctarget_cmds,

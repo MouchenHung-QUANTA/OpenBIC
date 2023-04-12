@@ -37,6 +37,8 @@
 
 #define CMD_SYS_INFO_FW_VERSION 0x01
 
+#define SSIF_ERR_RCD_SIZE 100
+
 typedef enum ssif_status {
 	SSIF_STATUS_IDLE,
 
@@ -58,6 +60,7 @@ typedef enum ssif_err_status {
 	SSIF_STATUS_INVALID_PEC,
 	SSIF_STATUS_INVALID_LEN,
 	SSIF_STATUS_TIMEOUT,
+	SSIF_STATUS_ADDR_LOCK_ERR,
 	SSIF_STATUS_UNKNOWN_ERR = 0xFF,
 } ssif_err_status_t;
 
@@ -101,7 +104,9 @@ typedef struct _ssif_dev {
 	ipmi_msg_cfg current_ipmi_msg;
 
 	ssif_status_t cur_status;
-	ssif_err_status_t cur_err_status;
+	ssif_err_status_t err_status_lst[SSIF_ERR_RCD_SIZE]; // history error status
+	uint8_t err_idx; // 
+	ssif_err_status_t err_status; // last error status
 } ssif_dev;
 
 struct ssif_wr_start {
@@ -141,7 +146,6 @@ struct ssif_rd_middle {
 
 void ssif_device_init(struct ssif_init_cfg *config, uint8_t size);
 ssif_err_status_t ssif_get_error_status();
-void ssif_print_status(uint8_t channel);
 bool ssif_set_data(uint8_t channel, ipmi_msg_cfg *msg_cfg);
 void ssif_collect_data(uint8_t smb_cmd, uint8_t bus);
 bool ssif_lock_ctl(ssif_dev *ssif_inst, bool lck_flag);
