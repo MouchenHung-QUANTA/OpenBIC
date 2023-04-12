@@ -61,6 +61,7 @@ typedef enum ssif_err_status {
 	SSIF_STATUS_INVALID_LEN,
 	SSIF_STATUS_TIMEOUT,
 	SSIF_STATUS_ADDR_LOCK_ERR,
+	SSIF_STATUS_MUTEX_ERR,
 	SSIF_STATUS_UNKNOWN_ERR = 0xFF,
 } ssif_err_status_t;
 
@@ -149,6 +150,7 @@ ssif_err_status_t ssif_get_error_status();
 bool ssif_set_data(uint8_t channel, ipmi_msg_cfg *msg_cfg);
 void ssif_collect_data(uint8_t smb_cmd, uint8_t bus);
 bool ssif_lock_ctl(ssif_dev *ssif_inst, bool lck_flag);
+void ssif_error_record(uint8_t channel, ssif_err_status_t errcode);
 ssif_dev *ssif_inst_get_by_bus(uint8_t bus);
 
 //#endif /* ENABLE_SSIF */

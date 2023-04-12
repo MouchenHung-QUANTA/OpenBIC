@@ -118,6 +118,7 @@ __weak void pal_do_something_after_stop(void *arg)
 
 		if (ssif_lock_ctl(ssif_inst, true) == false) {
 			LOG_ERR("Could not disable target address");
+			ssif_error_record(ssif_inst->index, SSIF_STATUS_ADDR_LOCK_ERR);
 			return;
 		}
 	}

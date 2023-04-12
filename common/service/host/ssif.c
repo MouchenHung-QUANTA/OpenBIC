@@ -54,6 +54,7 @@ bool ssif_set_data(uint8_t channel, ipmi_msg_cfg *msg_cfg)
 
 	if (k_mutex_lock(&ssif[channel].rsp_buff_mutex, K_MSEC(5000))) {
 		LOG_ERR("SSIF[%d] mutex lock failed", channel);
+		ssif_error_record(ssif[channel].index, SSIF_STATUS_MUTEX_ERR);
 		return false;
 	}
 
@@ -368,6 +369,7 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 		/* unlock i2c bus address */
 		if (ssif_lock_ctl(ssif_inst, false) == false) {
 			LOG_ERR("SSIF[%d] can't unlock address after sending message", ssif_inst->index);
+			ssif_error_record(ssif_inst->index, SSIF_STATUS_ADDR_LOCK_ERR);
 			return false;
 		}
 
