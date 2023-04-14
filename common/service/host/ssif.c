@@ -478,7 +478,7 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 
 static void ssif_collect_data(uint8_t smb_cmd, uint8_t bus)
 {
-	if (smb_cmd != SSIF_RD_START && smb_cmd != SSIF_RD_NEXT && smb_cmd != SSIF_RD_RETRY) {
+	if ((smb_cmd != SSIF_RD_START) && (smb_cmd != SSIF_RD_NEXT) && (smb_cmd != SSIF_RD_RETRY)) {
 		return;
 	}
 
@@ -534,7 +534,7 @@ static bool do_something_while_wr_stop(void *arg)
 	if (data->wr_buffer_idx == 1)
 		goto exit;
 
-	if (data->target_wr_msg.msg[0] == SSIF_WR_SINGLE || data->target_wr_msg.msg[0] == SSIF_WR_MULTI_END) {
+	if ((data->target_wr_msg.msg[0] == SSIF_WR_SINGLE) || (data->target_wr_msg.msg[0] == SSIF_WR_MULTI_END)) {
 		ssif_dev *ssif_inst = ssif_inst_get_by_bus(data->i2c_bus);
 		if (!ssif_inst) {
 			LOG_ERR("Could not find ssif inst by i2c bus %d", data->i2c_bus);
@@ -628,7 +628,7 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 		cur_smb_cmd = rdata[0];
 
 		/* Should not received READ command, cause already been handle in lower level */
-		if (cur_smb_cmd == SSIF_RD_START || cur_smb_cmd == SSIF_RD_NEXT || cur_smb_cmd == SSIF_RD_RETRY) {
+		if ((cur_smb_cmd == SSIF_RD_START) || (cur_smb_cmd == SSIF_RD_NEXT) || (cur_smb_cmd == SSIF_RD_RETRY)) {
 			LOG_ERR("SSIF[%d] not expect READ commands", ssif_inst->index);
 			goto reset;
 		}
@@ -695,7 +695,7 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 				goto reset;
 			}
 
-			if (cur_smb_cmd == SSIF_WR_MULTI_MIDDLE && wr_middle_msg->len != SSIF_MAX_IPMI_DATA_SIZE) {
+			if ((cur_smb_cmd == SSIF_WR_MULTI_MIDDLE) && (wr_middle_msg->len != SSIF_MAX_IPMI_DATA_SIZE)) {
 				LOG_WRN("SSIF[%d] received invalid length for multi middle read", ssif_inst->index);
 				ssif_error_record(ssif_inst->index, SSIF_STATUS_INVALID_LEN);
 				goto reset;
