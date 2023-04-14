@@ -69,12 +69,6 @@ static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg);
 static int do_i2c_target_register(uint8_t bus_num);
 static int do_i2c_target_unregister(uint8_t bus_num);
 
-static bool do_something_while_wr_stop(void *arg)
-{
-	ARG_UNUSED(arg);
-	return true;
-}
-
 static bool do_something_while_rd_start(void *arg)
 {
 	ARG_UNUSED(arg);
@@ -91,6 +85,7 @@ static int i2c_target_write_requested(struct i2c_slave_config *config)
 	data->target_wr_msg.msg_length = 0;
 	memset(data->target_wr_msg.msg, 0x0, MAX_I2C_TARGET_BUFF);
 	data->wr_buffer_idx = 0;
+	data->skip_msg_wr = false;
 
 	return 0;
 }
@@ -119,8 +114,10 @@ static int i2c_target_read_requested(struct i2c_slave_config *config, uint8_t *v
 	struct i2c_target_data *data;
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
-	if (data->prefix_rd_func)
-		data->prefix_rd_func(data);
+	if (data->prefix_rd_func) {
+		if (data->prefix_rd_func(data) == false)
+			data->skip_msg_wr = true;
+	}
 
 	if (!data->target_rd_msg.msg_length) {
 		LOG_WRN("Data not ready");
@@ -163,20 +160,22 @@ static int i2c_target_stop(struct i2c_slave_config *config)
 	struct i2c_target_data *data;
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
+	int ret = 1;
+
 	if (data->wr_buffer_idx) {
-		if (data->suffix_wr_func) {
-			if (data->suffix_wr_func(data) == false)
-				return 0;
+		if (data->skip_msg_wr == true) {
+			ret = 0;
+			goto clean_up;
 		}
 
 		data->target_wr_msg.msg_length = data->wr_buffer_idx;
 
 		/* try to put new node to message queue */
-		uint8_t ret = k_msgq_put(&data->target_wr_msgq_id, &data->target_wr_msg, K_NO_WAIT);
-		if (ret) {
+		uint8_t status = k_msgq_put(&data->target_wr_msgq_id, &data->target_wr_msg, K_NO_WAIT);
+		if (status) {
 			LOG_ERR("Can't put new node to message queue on bus[%d], cause of %d",
-				data->i2c_bus, ret);
-			return 1;
+				data->i2c_bus, status);
+			goto clean_up;
 		}
 
 		/* if target queue is full, unregister the bus target to prevent next message handle */
@@ -184,18 +183,21 @@ static int i2c_target_stop(struct i2c_slave_config *config)
 			LOG_DBG("Target queue is full, unregister bus[%d]", data->i2c_bus);
 			do_i2c_target_unregister(data->i2c_bus);
 		}
-
-		data->wr_buffer_idx = 0;
 	}
 
 	if (data->rd_buffer_idx) {
 		if (data->target_rd_msg.msg_length - data->rd_buffer_idx) {
 			LOG_WRN("Read buffer doesn't read complete");
 		}
-		data->rd_buffer_idx = 0;
 	}
 
-	return 0;
+	ret = 0;
+
+clean_up:
+	data->rd_buffer_idx = 0;
+	data->wr_buffer_idx = 0;
+
+	return ret;
 }
 
 static const struct i2c_slave_callbacks i2c_target_cb = {
@@ -556,11 +558,6 @@ static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg)
 
 	data->max_msg_count = cfg->i2c_msg_count;
 	data->config.address = cfg->address >> 1; // to 7-bit target address
-
-	if (cfg->suffix_wr_func)
-		data->suffix_wr_func = cfg->suffix_wr_func;
-	else
-		data->suffix_wr_func = do_something_while_wr_stop;
 
 	if (cfg->prefix_rd_func)
 		data->prefix_rd_func = cfg->prefix_rd_func;

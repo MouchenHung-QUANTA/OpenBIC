@@ -42,19 +42,18 @@ struct i2c_target_data {
 	struct i2c_msg_package target_wr_msg; // message's buffer and length
 	struct k_msgq target_wr_msgq_id; // target write message queue of Zephyr api
 	uint16_t max_msg_count; // max message count for target write message queue
+	bool skip_msg_wr; // skip message write while target stop
 
 	/* TARGET READ - Not support pending messages storage */
 	uint32_t rd_buffer_idx; // message buffer index
 	struct i2c_msg_package target_rd_msg; // message's buffer and length
 	bool (*prefix_rd_func)(void *); // do something before read first byte
-	bool (*suffix_wr_func)(void *); // do something before data prepare
 };
 
 struct _i2c_target_config {
 	uint8_t address;
 	uint32_t i2c_msg_count;
 	bool (*prefix_rd_func)(void *);
-	bool (*suffix_wr_func)(void *);
 };
 
 struct i2c_target_device {

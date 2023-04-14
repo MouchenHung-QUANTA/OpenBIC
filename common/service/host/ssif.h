@@ -51,9 +51,9 @@ typedef enum ssif_status {
 	SSIF_STATUS_WR_END,
 
 	SSIF_STATUS_RD_START = 0x20,
-	SSIF_STATUS_RD_MULTI_MIDDLE,
-	SSIF_STATUS_RD_MULTI_RETRY,
-	SSIF_STATUS_RD_MULTI_END,
+	SSIF_STATUS_RD_MIDDLE,
+	SSIF_STATUS_RD_RETRY,
+	SSIF_STATUS_RD_END,
 } ssif_status_t;
 
 typedef enum ssif_err_status {
@@ -83,7 +83,6 @@ enum ssif_cmd {
 };
 
 typedef enum ssif_action {
-	SSIF_DO_NOTHING,
 	SSIF_SEND_IPMI,
 	SSIF_COLLECT_DATA,
 } ssif_action_t;

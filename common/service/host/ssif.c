@@ -257,14 +257,14 @@ static bool ssif_status_check(ssif_dev *ssif_inst, uint8_t smb_cmd)
 		if (ssif_inst->cur_status != SSIF_STATUS_WAIT_FOR_RD_NEXT) {
 			goto error;
 		}
-		ssif_state_machine(ssif_inst, SSIF_STATUS_RD_MULTI_MIDDLE);
+		ssif_state_machine(ssif_inst, SSIF_STATUS_RD_MIDDLE);
 		break;
 
 	case SSIF_RD_RETRY:
 		if (ssif_inst->cur_status != SSIF_STATUS_WAIT_FOR_RD_NEXT) {
 			goto error;
 		}
-		ssif_state_machine(ssif_inst, SSIF_STATUS_RD_MULTI_RETRY);
+		ssif_state_machine(ssif_inst, SSIF_STATUS_RD_RETRY);
 		break;
 	
 	default:
@@ -281,16 +281,13 @@ error:
 	return false;
 }
 
-static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif_inst)
+static bool ssif_do_action(ssif_dev *ssif_inst, ssif_action_t action, uint8_t smb_cmd)
 {
 	CHECK_NULL_ARG_WITH_RETURN(ssif_inst, false);
 
 	static uint16_t remain_data_len = 0;
 
 	switch (action) {
-	case SSIF_DO_NOTHING:
-		break;
-
 	case SSIF_SEND_IPMI:
 		if (pal_request_msg_to_BIC_from_KCS(ssif_inst->current_ipmi_msg.buffer.netfn, ssif_inst->current_ipmi_msg.buffer.cmd)) {
 			while (k_msgq_put(&ipmi_msgq, &ssif_inst->current_ipmi_msg, K_NO_WAIT) != 0) {
@@ -425,7 +422,7 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 				} else {
 					wdata[1] = 0xFF;
 					wdata_len = remain_data_len + 1;
-					ssif_state_machine(ssif_inst, SSIF_STATUS_RD_MULTI_END);
+					ssif_state_machine(ssif_inst, SSIF_STATUS_RD_END);
 					next_status = SSIF_STATUS_WAIT_FOR_WR_START;
 				}
 				memcpy(wdata + 2, ssif_inst->rsp_buff + (ssif_inst->rsp_buf_len - remain_data_len), wdata_len - 1);
@@ -453,11 +450,6 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 				return false;
 			}
 
-			if (ssif_inst->cur_status == SSIF_STATUS_RD_MULTI_END) {
-				ssif_error_record(ssif_inst->index, SSIF_STATUS_NO_ERR);
-				ssif_reset(ssif_inst);	
-			}
-
 			ssif_state_machine(ssif_inst, next_status);
 		} else {
 			LOG_WRN("SSIF[%d] data not ready", ssif_inst->index);
@@ -476,81 +468,57 @@ static bool ssif_do_action(ssif_action_t action, uint8_t smb_cmd, ssif_dev *ssif
 	return true;
 }
 
-static void ssif_collect_data(uint8_t smb_cmd, uint8_t bus)
+/* Return false if need to skip data collect while target stop */
+static bool ssif_collect_data(uint8_t smb_cmd, uint8_t bus)
 {
 	if ((smb_cmd != SSIF_RD_START) && (smb_cmd != SSIF_RD_NEXT) && (smb_cmd != SSIF_RD_RETRY)) {
-		return;
+		return true;
 	}
 
 	ssif_dev *ssif_inst = ssif_inst_get_by_bus(bus);
 	if (!ssif_inst) {
 		LOG_ERR("Could not find ssif inst by i2c bus %d", bus);
-		return;
+		goto skip_target_read;
 	}
 
 	switch (smb_cmd) {
 	case SSIF_RD_START:
 	case SSIF_RD_NEXT: {
-		if (ssif_status_check(ssif_inst, smb_cmd) == false) {
-			return;
-		}
+		if (ssif_status_check(ssif_inst, smb_cmd) == false)
+			goto skip_target_read;
 
 		ssif_dev *ssif_inst = ssif_inst_get_by_bus(bus);
 		if (!ssif_inst) {
 			LOG_WRN("Failed to get ssif_inst by i2c bus %d", bus);
-			goto error;
+			goto skip_target_read;
 		}
 
-		if (ssif_do_action(SSIF_COLLECT_DATA, smb_cmd, ssif_inst) == false)
-			goto error;
+		if (ssif_do_action(ssif_inst, SSIF_COLLECT_DATA, smb_cmd) == false)
+			goto skip_target_read;
+
+		if (ssif_inst->cur_status == SSIF_STATUS_WAIT_FOR_RD_NEXT) {
+			return false;
+		}
+
+		if (ssif_inst->cur_status == SSIF_STATUS_WAIT_FOR_WR_START) {
+			ssif_error_record(ssif_inst->index, SSIF_STATUS_NO_ERR);
+			goto skip_target_read;
+		}
 
 		break;
 	}
 	case SSIF_RD_RETRY:
 		LOG_WRN("RETRY cmd not ready yet!");
-		goto error;
+		goto skip_target_read;
 
 	default:
 		break;
 	}
 
-	return;
-
-error:
-	ssif_reset(ssif_inst);
-	return;
-}
-
-static bool do_something_while_wr_stop(void *arg)
-{
-	CHECK_NULL_ARG_WITH_RETURN(arg, false);
-
-	struct i2c_target_data *data = (struct i2c_target_data *)arg;
-
-	if (data->wr_buffer_idx == 0)
-		goto exit;
-
-	/* skip READ condition, no need to do following steps */
-	if (data->wr_buffer_idx == 1)
-		goto exit;
-
-	if ((data->target_wr_msg.msg[0] == SSIF_WR_SINGLE) || (data->target_wr_msg.msg[0] == SSIF_WR_MULTI_END)) {
-		ssif_dev *ssif_inst = ssif_inst_get_by_bus(data->i2c_bus);
-		if (!ssif_inst) {
-			LOG_ERR("Could not find ssif inst by i2c bus %d", data->i2c_bus);
-			goto exit;
-		}
-
-		if (ssif_lock_ctl(ssif_inst, true) == false) {
-			LOG_ERR("Could not disable target address");
-			ssif_error_record(ssif_inst->index, SSIF_STATUS_ADDR_LOCK_ERR);
-			goto exit;
-		}
-	}
-
 	return true;
 
-exit:
+skip_target_read:
+	ssif_reset(ssif_inst);
 	return false;
 }
 
@@ -560,8 +528,10 @@ static bool do_something_while_rd_start(void *arg)
 
 	struct i2c_target_data *data = (struct i2c_target_data *)arg;
 
-	if (data->wr_buffer_idx == 1)
-		ssif_collect_data(data->target_wr_msg.msg[0], data->i2c_bus);
+	if (data->wr_buffer_idx == 1) {
+		if (ssif_collect_data(data->target_wr_msg.msg[0], data->i2c_bus) == false)
+			return false;
+	}
 
 	return true;
 }
@@ -591,6 +561,33 @@ static void ssif_timeout_monitor(void *dummy0, void *dummy1, void *dummy2)
 			}
 		}
 	}
+}
+
+static bool ssif_pre_action(ssif_dev *ssif_inst, uint8_t smb_cmd)
+{
+	CHECK_NULL_ARG_WITH_RETURN(ssif_inst, false);
+
+	/* Should not received READ command, cause already been handle in lower level */
+	if ((smb_cmd == SSIF_RD_START) || (smb_cmd == SSIF_RD_NEXT) || (smb_cmd == SSIF_RD_RETRY)) {
+		LOG_ERR("SSIF[%d] not expect READ commands in this thread", ssif_inst->index);
+		ssif_error_record(ssif_inst->index, SSIF_STATUS_UNKNOWN_ERR);
+		return false;
+	}
+
+	/* Drop bus if write last message and wait for next read */
+	if ((smb_cmd == SSIF_WR_SINGLE) || (smb_cmd == SSIF_WR_MULTI_END)) {
+		if (ssif_lock_ctl(ssif_inst, true) == false) {
+			LOG_ERR("Could not disable target address");
+			ssif_error_record(ssif_inst->index, SSIF_STATUS_ADDR_LOCK_ERR);
+		}
+	}
+
+	if (ssif_status_check(ssif_inst, smb_cmd) == false) {
+		LOG_ERR("SSIF[%d] status check failed", ssif_inst->index);
+		return false;
+	}
+
+	return true;
 }
 
 static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
@@ -626,15 +623,8 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 		LOG_HEXDUMP_INF(rdata, rlen, "");
 
 		cur_smb_cmd = rdata[0];
-
-		/* Should not received READ command, cause already been handle in lower level */
-		if ((cur_smb_cmd == SSIF_RD_START) || (cur_smb_cmd == SSIF_RD_NEXT) || (cur_smb_cmd == SSIF_RD_RETRY)) {
-			LOG_ERR("SSIF[%d] not expect READ commands", ssif_inst->index);
-			goto reset;
-		}
-
-		if (ssif_status_check(ssif_inst, cur_smb_cmd) == false) {
-			LOG_ERR("SSIF[%d] status check failed", ssif_inst->index);
+		
+		if (ssif_pre_action(ssif_inst, cur_smb_cmd) == false) {
 			goto reset;
 		}
 
@@ -729,7 +719,7 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 				ssif_inst->current_ipmi_msg.buffer.data_len);
 		LOG_HEXDUMP_DBG(ssif_inst->current_ipmi_msg.buffer.data, ssif_inst->current_ipmi_msg.buffer.data_len, "");
 
-		if (ssif_do_action(SSIF_SEND_IPMI, cur_smb_cmd, ssif_inst) == false)
+		if (ssif_do_action(ssif_inst, SSIF_SEND_IPMI, cur_smb_cmd) == false)
 			goto reset;
 
 		ssif_error_record(ssif_inst->index, SSIF_STATUS_NO_ERR);
@@ -763,7 +753,6 @@ void ssif_device_init(struct ssif_init_cfg *config, uint8_t size)
 		memset(&cfg, 0, sizeof(cfg));
 		cfg.address = config[i].addr;
 		cfg.i2c_msg_count = config[i].target_msgq_cnt;
-		cfg.suffix_wr_func = do_something_while_wr_stop;
 		cfg.prefix_rd_func = do_something_while_rd_start;
 
 		if (i2c_target_control(config[i].i2c_bus, &cfg, I2C_CONTROL_REGISTER) != I2C_TARGET_API_NO_ERR) {
