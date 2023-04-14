@@ -69,62 +69,16 @@ static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg);
 static int do_i2c_target_register(uint8_t bus_num);
 static int do_i2c_target_unregister(uint8_t bus_num);
 
-__weak void pal_do_something_before_read(void *arg)
+static bool do_something_while_wr_stop(void *arg)
 {
-	CHECK_NULL_ARG(arg);
-
-#ifdef ENABLE_SSIF
-	struct i2c_target_data *data = (struct i2c_target_data *)arg;
-
-	if (data->wr_buffer_idx == 1)
-		ssif_collect_data(data->target_wr_msg.msg[0], data->i2c_bus);
-#endif
-
-	return;
+	ARG_UNUSED(arg);
+	return true;
 }
 
-__weak void pal_do_something_after_stop(void *arg)
+static bool do_something_while_rd_start(void *arg)
 {
-	CHECK_NULL_ARG(arg);
-
-	struct i2c_target_data *data = (struct i2c_target_data *)arg;
-
-	if (data->wr_buffer_idx == 0)
-		return;
-
-	data->target_wr_msg.msg_length = data->wr_buffer_idx;
-
-	/* try to put new node to message queue */
-	uint8_t ret = k_msgq_put(&data->target_wr_msgq_id, &data->target_wr_msg, K_NO_WAIT);
-	if (ret) {
-		LOG_ERR("Can't put new node to message queue on bus[%d], cause of %d",
-			data->i2c_bus, ret);
-		return;
-	}
-
-	/* if target queue is full, unregister the bus target to prevent next message handle */
-	if (!k_msgq_num_free_get(&data->target_wr_msgq_id)) {
-		LOG_DBG("Target queue is full, unregister bus[%d]", data->i2c_bus);
-		do_i2c_target_unregister(data->i2c_bus);
-	}
-
-#ifdef ENABLE_SSIF
-	if (data->target_wr_msg.msg[0] == SSIF_WR_SINGLE || data->target_wr_msg.msg[0] == SSIF_WR_MULTI_END) {
-		ssif_dev *ssif_inst = ssif_inst_get_by_bus(data->i2c_bus);
-		if (!ssif_inst) {
-			LOG_ERR("Could not find ssif inst by i2c bus %d", data->i2c_bus);
-			return;
-		}
-
-		if (ssif_lock_ctl(ssif_inst, true) == false) {
-			LOG_ERR("Could not disable target address");
-			ssif_error_record(ssif_inst->index, SSIF_STATUS_ADDR_LOCK_ERR);
-			return;
-		}
-	}
-#endif
-
-	return;
+	ARG_UNUSED(arg);
+	return true;
 }
 
 static int i2c_target_write_requested(struct i2c_slave_config *config)
@@ -154,11 +108,6 @@ static int i2c_target_write_received(struct i2c_slave_config *config, uint8_t va
 	}
 	data->target_wr_msg.msg[data->wr_buffer_idx++] = val;
 
-	if (data->wr_buffer_idx == 1) {
-		if (data->prefix_wr_func)
-			data->prefix_wr_func(data);
-	}
-
 	return 0;
 }
 
@@ -169,6 +118,9 @@ static int i2c_target_read_requested(struct i2c_slave_config *config, uint8_t *v
 
 	struct i2c_target_data *data;
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
+
+	if (data->prefix_rd_func)
+		data->prefix_rd_func(data);
 
 	if (!data->target_rd_msg.msg_length) {
 		LOG_WRN("Data not ready");
@@ -212,16 +164,36 @@ static int i2c_target_stop(struct i2c_slave_config *config)
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
 	if (data->wr_buffer_idx) {
-		if (data->suffix_wr_func)
-			data->suffix_wr_func(data);
+		if (data->suffix_wr_func) {
+			if (data->suffix_wr_func(data) == false)
+				return 0;
+		}
+
+		data->target_wr_msg.msg_length = data->wr_buffer_idx;
+
+		/* try to put new node to message queue */
+		uint8_t ret = k_msgq_put(&data->target_wr_msgq_id, &data->target_wr_msg, K_NO_WAIT);
+		if (ret) {
+			LOG_ERR("Can't put new node to message queue on bus[%d], cause of %d",
+				data->i2c_bus, ret);
+			return 1;
+		}
+
+		/* if target queue is full, unregister the bus target to prevent next message handle */
+		if (!k_msgq_num_free_get(&data->target_wr_msgq_id)) {
+			LOG_DBG("Target queue is full, unregister bus[%d]", data->i2c_bus);
+			do_i2c_target_unregister(data->i2c_bus);
+		}
+
+		data->wr_buffer_idx = 0;
 	}
 
 	if (data->rd_buffer_idx) {
 		if (data->target_rd_msg.msg_length - data->rd_buffer_idx) {
 			LOG_WRN("Read buffer doesn't read complete");
 		}
+		data->rd_buffer_idx = 0;
 	}
-	data->rd_buffer_idx = 0;
 
 	return 0;
 }
@@ -585,15 +557,15 @@ static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg)
 	data->max_msg_count = cfg->i2c_msg_count;
 	data->config.address = cfg->address >> 1; // to 7-bit target address
 
-	if (cfg->prefix_wr_func)
-		data->prefix_wr_func = cfg->prefix_wr_func;
-	else
-		data->prefix_wr_func = pal_do_something_before_read;
-
 	if (cfg->suffix_wr_func)
 		data->suffix_wr_func = cfg->suffix_wr_func;
 	else
-		data->suffix_wr_func = pal_do_something_after_stop;
+		data->suffix_wr_func = do_something_while_wr_stop;
+
+	if (cfg->prefix_rd_func)
+		data->prefix_rd_func = cfg->prefix_rd_func;
+	else
+		data->prefix_rd_func = do_something_while_rd_start;
 
 	i2C_target_queue_buffer = malloc(data->max_msg_count * sizeof(struct i2c_msg_package));
 	if (!i2C_target_queue_buffer) {
@@ -768,9 +740,9 @@ void cmd_target_info(const struct shell *shell, size_t argc, char **argv)
 	}
 
 	shell_print(shell, "SSIF[%d] bus %d addr 0x%x:", ssif_inst->index, ssif_inst->i2c_bus, ssif_inst->addr);
-	shell_print(shell, "* current status: %d", ssif_inst->cur_status);
-	shell_print(shell, "* current address lock: %d", ssif_inst->addr_lock);
-	shell_print(shell, "* error status: %d", ssif_inst->err_status);
+	shell_print(shell, "* current status: 0x%d", ssif_inst->cur_status);
+	shell_print(shell, "* current address lock: %s", ssif_inst->addr_lock == true ? "LOCK":"UNLOCK");
+	shell_print(shell, "* error status: 0x%x", ssif_inst->err_status);
 	shell_print(shell, "* error idx: %d/%d", ssif_inst->err_idx, SSIF_ERR_RCD_SIZE);
 	shell_print(shell, "* error list:");
 	shell_hexdump(shell, ssif_inst->err_status_lst, SSIF_ERR_RCD_SIZE);
