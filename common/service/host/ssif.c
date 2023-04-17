@@ -281,7 +281,7 @@ error:
 	return false;
 }
 
-static bool ssif_do_action(ssif_dev *ssif_inst, ssif_action_t action, uint8_t smb_cmd)
+static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t smb_cmd)
 {
 	CHECK_NULL_ARG_WITH_RETURN(ssif_inst, false);
 
@@ -493,7 +493,7 @@ static bool ssif_collect_data(uint8_t smb_cmd, uint8_t bus)
 			goto skip_target_read;
 		}
 
-		if (ssif_do_action(ssif_inst, SSIF_COLLECT_DATA, smb_cmd) == false)
+		if (ssif_data_handle(ssif_inst, SSIF_COLLECT_DATA, smb_cmd) == false)
 			goto skip_target_read;
 
 		if (ssif_inst->cur_status == SSIF_STATUS_WAIT_FOR_RD_NEXT) {
@@ -563,7 +563,7 @@ static void ssif_timeout_monitor(void *dummy0, void *dummy1, void *dummy2)
 	}
 }
 
-static bool ssif_pre_action(ssif_dev *ssif_inst, uint8_t smb_cmd)
+static bool ssif_data_pre_handle(ssif_dev *ssif_inst, uint8_t smb_cmd)
 {
 	CHECK_NULL_ARG_WITH_RETURN(ssif_inst, false);
 
@@ -624,7 +624,7 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 
 		cur_smb_cmd = rdata[0];
 		
-		if (ssif_pre_action(ssif_inst, cur_smb_cmd) == false) {
+		if (ssif_data_pre_handle(ssif_inst, cur_smb_cmd) == false) {
 			goto reset;
 		}
 
@@ -719,7 +719,7 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 				ssif_inst->current_ipmi_msg.buffer.data_len);
 		LOG_HEXDUMP_DBG(ssif_inst->current_ipmi_msg.buffer.data, ssif_inst->current_ipmi_msg.buffer.data_len, "");
 
-		if (ssif_do_action(ssif_inst, SSIF_SEND_IPMI, cur_smb_cmd) == false)
+		if (ssif_data_handle(ssif_inst, SSIF_SEND_IPMI, cur_smb_cmd) == false)
 			goto reset;
 
 		ssif_error_record(ssif_inst->index, SSIF_STATUS_NO_ERR);
