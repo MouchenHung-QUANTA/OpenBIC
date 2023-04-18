@@ -114,8 +114,8 @@ static int i2c_target_read_requested(struct i2c_slave_config *config, uint8_t *v
 	struct i2c_target_data *data;
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
-	if (data->prefix_rd_func) {
-		if (data->prefix_rd_func(data) == false)
+	if (data->rd_data_collect_func) {
+		if (data->rd_data_collect_func(data) == false)
 			data->skip_msg_wr = true;
 	}
 
@@ -559,10 +559,10 @@ static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg)
 	data->max_msg_count = cfg->i2c_msg_count;
 	data->config.address = cfg->address >> 1; // to 7-bit target address
 
-	if (cfg->prefix_rd_func)
-		data->prefix_rd_func = cfg->prefix_rd_func;
+	if (cfg->rd_data_collect_func)
+		data->rd_data_collect_func = cfg->rd_data_collect_func;
 	else
-		data->prefix_rd_func = do_something_while_rd_start;
+		data->rd_data_collect_func = do_something_while_rd_start;
 
 	i2C_target_queue_buffer = malloc(data->max_msg_count * sizeof(struct i2c_msg_package));
 	if (!i2C_target_queue_buffer) {

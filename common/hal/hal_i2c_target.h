@@ -47,13 +47,13 @@ struct i2c_target_data {
 	/* TARGET READ - Not support pending messages storage */
 	uint32_t rd_buffer_idx; // message buffer index
 	struct i2c_msg_package target_rd_msg; // message's buffer and length
-	bool (*prefix_rd_func)(void *); // do something before read first byte
+	bool (*rd_data_collect_func)(void *); // do something before read first byte
 };
 
 struct _i2c_target_config {
 	uint8_t address;
 	uint32_t i2c_msg_count;
-	bool (*prefix_rd_func)(void *);
+	bool (*rd_data_collect_func)(void *);
 };
 
 struct i2c_target_device {

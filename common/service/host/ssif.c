@@ -522,7 +522,7 @@ skip_target_read:
 	return false;
 }
 
-static bool do_something_while_rd_start(void *arg)
+static bool ssif_write_data(void *arg)
 {
 	CHECK_NULL_ARG_WITH_RETURN(arg, false);
 
@@ -577,7 +577,7 @@ static bool ssif_data_pre_handle(ssif_dev *ssif_inst, uint8_t smb_cmd)
 	/* Drop bus if write last message and wait for next read */
 	if ((smb_cmd == SSIF_WR_SINGLE) || (smb_cmd == SSIF_WR_MULTI_END)) {
 		if (ssif_lock_ctl(ssif_inst, true) == false) {
-			LOG_ERR("Could not disable target address");
+			LOG_ERR("Could not lock address");
 			ssif_error_record(ssif_inst->index, SSIF_STATUS_ADDR_LOCK_ERR);
 		}
 	}
@@ -610,13 +610,13 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 		if (rc) {
 			LOG_ERR("SSIF[%d] i2c_target_read failed, ret %d\n", ssif_inst->index, rc);
 			ssif_error_record(ssif_inst->index, SSIF_STATUS_TARGET_WR_RD_ERROR);
-			goto reset;
+			goto cold_reset;
 		}
 
 		if (rlen == 0) {
 			LOG_ERR("SSIF[%d] received invalid length of message", ssif_inst->index);
 			ssif_error_record(ssif_inst->index, SSIF_STATUS_INVALID_LEN);
-			goto reset;
+			goto cold_reset;
 		}
 
 		LOG_INF("SSIF[%d] read REQ data:", ssif_inst->index);
@@ -625,14 +625,14 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 		cur_smb_cmd = rdata[0];
 		
 		if (ssif_data_pre_handle(ssif_inst, cur_smb_cmd) == false) {
-			goto reset;
+			goto cold_reset;
 		}
 
 		uint8_t is_pec_exist = 0;
 		if (ssif_pec_check(ssif_inst->addr, rdata, rlen, &is_pec_exist) == false) {
 			LOG_ERR("SSIF[%d] pec check failed", ssif_inst->index);
 			ssif_error_record(ssif_inst->index, SSIF_STATUS_INVALID_PEC);
-			goto reset;
+			goto cold_reset;
 		}
 
 		/* This part should only handle WRITE command */
@@ -642,14 +642,14 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 			if (rlen - 1 - is_pec_exist > sizeof(struct ssif_wr_start)) { // exclude smb_cmd, pec
 				LOG_WRN("SSIF[%d] received invalid message length for smb command %d", ssif_inst->index, cur_smb_cmd);
 				ssif_error_record(ssif_inst->index, SSIF_STATUS_INVALID_LEN);
-				goto reset;
+				goto cold_reset;
 			}
 
 			struct ssif_wr_start *wr_start_msg = (struct ssif_wr_start *)(rdata + 1);
 			if (wr_start_msg->len != (rlen - 2 - is_pec_exist)) { // exclude smb_cmd, len, pec
 				LOG_WRN("SSIF[%d] received invalid length byte for smb command %d", ssif_inst->index, cur_smb_cmd);
 				ssif_error_record(ssif_inst->index, SSIF_STATUS_INVALID_LEN);
-				goto reset;
+				goto cold_reset;
 			}
 
 			ssif_inst->current_ipmi_msg.buffer.InF_source = HOST_SSIF_1 + ssif_inst->index;
@@ -675,26 +675,26 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 			if (rlen - 1 - is_pec_exist > sizeof(struct ssif_wr_middle)) { // exclude smb_cmd, pec
 				LOG_WRN("SSIF[%d] received invalid message length for smb command %d", ssif_inst->index, cur_smb_cmd);
 				ssif_error_record(ssif_inst->index, SSIF_STATUS_INVALID_LEN);
-				goto reset;
+				goto cold_reset;
 			}
 
 			struct ssif_wr_middle *wr_middle_msg = (struct ssif_wr_middle *)(rdata + 1);
 			if (wr_middle_msg->len != (rlen - 2 - is_pec_exist)) { // exclude smb_cmd, len, pec
 				LOG_WRN("SSIF[%d] received invalid length byte for smb command %d", ssif_inst->index, cur_smb_cmd);
 				ssif_error_record(ssif_inst->index, SSIF_STATUS_INVALID_LEN);
-				goto reset;
+				goto cold_reset;
 			}
 
 			if ((cur_smb_cmd == SSIF_WR_MULTI_MIDDLE) && (wr_middle_msg->len != SSIF_MAX_IPMI_DATA_SIZE)) {
 				LOG_WRN("SSIF[%d] received invalid length for multi middle read", ssif_inst->index);
 				ssif_error_record(ssif_inst->index, SSIF_STATUS_INVALID_LEN);
-				goto reset;
+				goto cold_reset;
 			}
 
 			if (ssif_inst->current_ipmi_msg.buffer.data_len == 0) {
 				LOG_WRN("SSIF[%d] lost first multi read message", ssif_inst->index);
 				ssif_error_record(ssif_inst->index, SSIF_STATUS_INVALID_CMD_IN_CUR_STATUS);
-				goto reset;
+				goto cold_reset;
 			}
 
 			memcpy(ssif_inst->current_ipmi_msg.buffer.data + ssif_inst->current_ipmi_msg.buffer.data_len, wr_middle_msg->data, wr_middle_msg->len);
@@ -711,7 +711,7 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 
 		default:
 			LOG_ERR("SSIF[%d] get invalid smb cmd %d", ssif_inst->index, cur_smb_cmd);
-			goto reset;
+			goto cold_reset;
 		}
 
 		LOG_DBG("SSIF[%d] ipmi req netfn 0x%x, cmd 0x%x, data length %d:", ssif_inst->index,
@@ -720,13 +720,22 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 		LOG_HEXDUMP_DBG(ssif_inst->current_ipmi_msg.buffer.data, ssif_inst->current_ipmi_msg.buffer.data_len, "");
 
 		if (ssif_data_handle(ssif_inst, SSIF_SEND_IPMI, cur_smb_cmd) == false)
-			goto reset;
+			goto warm_reset;
 
 		ssif_error_record(ssif_inst->index, SSIF_STATUS_NO_ERR);
 		ssif_state_machine(ssif_inst, SSIF_STATUS_WAIT_FOR_RD_START);
 		continue;
 
-reset:
+cold_reset:
+		/* Bus resume */
+		if (ssif_inst->addr_lock == true) {
+			if (ssif_lock_ctl(ssif_inst, false) == false) {
+				LOG_ERR("Could not unlock address");
+				ssif_error_record(ssif_inst->index, SSIF_STATUS_ADDR_LOCK_ERR);
+			}
+		}
+
+warm_reset:
 		ssif_reset(ssif_inst);
 	}
 }
@@ -753,7 +762,7 @@ void ssif_device_init(struct ssif_init_cfg *config, uint8_t size)
 		memset(&cfg, 0, sizeof(cfg));
 		cfg.address = config[i].addr;
 		cfg.i2c_msg_count = config[i].target_msgq_cnt;
-		cfg.prefix_rd_func = do_something_while_rd_start;
+		cfg.rd_data_collect_func = ssif_write_data;
 
 		if (i2c_target_control(config[i].i2c_bus, &cfg, I2C_CONTROL_REGISTER) != I2C_TARGET_API_NO_ERR) {
 			LOG_ERR("SSIF[%d] register target failed", i);
