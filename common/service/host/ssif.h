@@ -108,6 +108,7 @@ typedef struct _ssif_dev {
 	uint8_t rsp_buff[IPMI_MSG_MAX_LENGTH];
 	uint16_t rsp_buf_len;
 	ipmi_msg_cfg current_ipmi_msg;
+	uint16_t cur_rd_blck; // for multi-read middle/end
 
 	ssif_status_t cur_status;
 	ssif_err_status_t err_status_lst[SSIF_ERR_RCD_SIZE]; // history error status

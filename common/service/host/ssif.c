@@ -386,18 +386,16 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 		break;
 
 	case SSIF_COLLECT_DATA: {
-		static uint16_t cur_rd_blck = 0; // for multi-read middle/end
 		ssif_status_t next_status = SSIF_STATUS_WAIT_FOR_WR_START;
 		uint16_t wdata_len = 0;
 		uint8_t wdata[SSIF_BUFF_SIZE];
 		memset(wdata, 0, sizeof(wdata));
 
 		if (ssif_inst->rsp_buf_len) {
-			switch (smb_cmd)
-			{
+			switch (smb_cmd) {
 			case SSIF_RD_START: {
 				remain_data_len = ssif_inst->rsp_buf_len;
-				cur_rd_blck = 0;
+				ssif_inst->cur_rd_blck = 0;
 				if (remain_data_len > SSIF_MAX_IPMI_DATA_SIZE) {
 					wdata[1] = (SSIF_MULTI_RD_KEY >> 8) & 0xFF;
 					wdata[2] = SSIF_MULTI_RD_KEY & 0xFF;
@@ -416,7 +414,7 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 
 			case SSIF_RD_NEXT: {
 				if (remain_data_len > (SSIF_MAX_IPMI_DATA_SIZE - 1)) {
-					wdata[1] = cur_rd_blck;
+					wdata[1] = ssif_inst->cur_rd_blck;
 					wdata_len = SSIF_MAX_IPMI_DATA_SIZE;
 					next_status = SSIF_STATUS_WAIT_FOR_RD_NEXT;
 				} else {
@@ -427,7 +425,7 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 				}
 				memcpy(wdata + 2, ssif_inst->rsp_buff + (ssif_inst->rsp_buf_len - remain_data_len), wdata_len - 1);
 				remain_data_len -= (wdata_len - 1);
-				cur_rd_blck++;
+				ssif_inst->cur_rd_blck++;
 				break;
 			}
 			
