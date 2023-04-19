@@ -37,8 +37,20 @@
 	clock-frequency = <I2C_BITRATE_STANDARD>;
 };
 
+&i2c3 {
+	pinctrl-0 = <&pinctrl_i2c3_default>;
+	status = "okay";
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+};
+
 &i2c4 {
 	pinctrl-0 = <&pinctrl_i2c4_default>;
+	status = "okay";
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+};
+
+&i2c5 {
+	pinctrl-0 = <&pinctrl_i2c5_default>;
 	status = "okay";
 	clock-frequency = <I2C_BITRATE_STANDARD>;
 };
@@ -224,5 +236,5 @@
 };
 
 &sram0 {
-    reg = <0 DT_SIZE_K(512)>, <0x80000 DT_SIZE_K(256)>;
+    reg = <0 DT_SIZE_K(520)>, <DT_SIZE_K(520) DT_SIZE_K(248)>;
 };

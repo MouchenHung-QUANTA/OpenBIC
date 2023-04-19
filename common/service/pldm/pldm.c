@@ -68,6 +68,12 @@ static K_MUTEX_DEFINE(wait_recv_resp_mutex);
 
 static sys_slist_t wait_recv_resp_list = SYS_SLIST_STATIC_INIT(&wait_recv_resp_list);
 
+__weak bool pal_pldm_request_msg_filter(uint8_t pldm_type, uint8_t cmd, uint8_t *buf, uint32_t len)
+{
+	ARG_UNUSED(buf);
+	return true;
+}
+
 void pldm_read_resp_handler(void *args, uint8_t *rbuf, uint16_t rlen)
 {
 	if (!args || !rbuf || !rlen)
@@ -247,10 +253,9 @@ uint8_t mctp_pldm_cmd_handler(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext
 	LOG_DBG("cmd = 0x%x", hdr->cmd);
 
 	/*
-* The message is a response, check if any callback function should be
-* invoked
-*/
-
+	* The message is a response, check if any callback function should be
+	* invoked
+	*/
 	if (!hdr->rq)
 		return pldm_resp_msg_process(mctp_inst, buf, len, ext_params);
 
@@ -259,9 +264,9 @@ uint8_t mctp_pldm_cmd_handler(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext
 	/* initial response data */
 	uint8_t resp_buf[PLDM_MAX_DATA_SIZE] = { 0 };
 	/*
-* Default without header length, the header length will be added before
-* sending.
-*/
+	* Default without header length, the header length will be added before
+	* sending.
+	*/
 	uint16_t resp_len = 1;
 
 	/* make response header */
