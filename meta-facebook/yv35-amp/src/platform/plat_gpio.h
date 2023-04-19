@@ -26,79 +26,79 @@
 // clang-format off
 
 #define name_gpioA \
-	gpio_name_to_num(Reserve_GPIOA0) \
-	gpio_name_to_num(FM_BIOS_POST_CMPLT_BIC_N) \
-	gpio_name_to_num(FM_CPU_BIC_SLP_S3_N) \
-	gpio_name_to_num(APML_CPU_ALERT_BIC_N) \
+	gpio_name_to_num(CPU0_BMC_GPIOA0_PRESENT_L) \
+	gpio_name_to_num(BMC_GPIOA1_S01_SYSRESET_L) \
+	gpio_name_to_num(S0_BMC_GPIOA2_FAULT_ALERT) \
+	gpio_name_to_num(JTAG_CMPL2_PD_BIC) \
 	gpio_name_to_num(IRQ_UV_DETECT_N) \
-	gpio_name_to_num(Reserve_GPIOA5) \
-	gpio_name_to_num(PVDDCR_CPU0_BIC_OCP_N) \
+	gpio_name_to_num(S0_BMC_GPIOA5_FW_BOOT_OK) \
+	gpio_name_to_num(S0_BMC_GPIOA6_SHD_REQ_L) \
 	gpio_name_to_num(HSC_OCP_GPIO1_R)
 
 #define name_gpioB \
-	gpio_name_to_num(PVDDCR_CPU1_BIC_OCP_N) \
+	gpio_name_to_num(S0_BMC_GPIOB0_SHD_ACK_L) \
 	gpio_name_to_num(RST_USB_HUB_R_N) \
 	gpio_name_to_num(P3V_BAT_SCALED_EN_R) \
-	gpio_name_to_num(HDT_BIC_TRST_R_N) \
-	gpio_name_to_num(Reserve_GPIOB4) \
-	gpio_name_to_num(FM_CPU_BIC_SLP_S5_N) \
-	gpio_name_to_num(Reserve_GPIOB6) \
-	gpio_name_to_num(PVDD11_S3_BIC_OCP_N)
+	gpio_name_to_num(FM_BIOS_POST_CMPLT_BIC_N) \
+	gpio_name_to_num(S0_BMC_GPIOB4_REBOOT_ACK_L) \
+	gpio_name_to_num(S0_BMC_GPIOB5_PCP_OC_WARN_L) \
+	gpio_name_to_num(S0_BMC_GPIOB6_OVERTEMP_L) \
+	gpio_name_to_num(S0_BMC_GPIOB7_HIGHTEMP_L)
 
 #define name_gpioC \
 	gpio_name_to_num(FM_HSC_TIMER) \
 	gpio_name_to_num(IRQ_SMB_IO_LVC3_STBY_ALRT_N) \
-	gpio_name_to_num(PVDDCR_CPU1_PMALERT_N) \
-	gpio_name_to_num(Reserve_GPIOC3) \
-	gpio_name_to_num(FM_CPU_BIC_THERMTRIP_N) \
-	gpio_name_to_num(FM_PRSNT_CPU_BIC_N) \
+	gpio_name_to_num(BMC_GPIOC2_S0_RTC_LOCK) \
+	gpio_name_to_num(BMC_GPIOC3_OK) \
+	gpio_name_to_num(S0_BMC_MPRO_HEARTBEAT) \
+	gpio_name_to_num(BMC_GPIOT5_JTAG_SRST_L) \
 	gpio_name_to_num(AUTH_PRSNT_BIC_N) \
-	gpio_name_to_num(RST_CPU_RESET_BIC_N)
+	gpio_name_to_num(BMC_GPIOT6_SPI0_PROGRAM_SEL)
 
 #define name_gpioD \
 	gpio_name_to_num(PWRBTN_R1_N) \
 	gpio_name_to_num(RST_BMC_R_N) \
-	gpio_name_to_num(HDT_BIC_DBREQ_R_N) \
-	gpio_name_to_num(BMC_READY) \
-	gpio_name_to_num(BIC_READY) \
+	gpio_name_to_num(FM_BIOS_MRC_DEBUG_MSG_DIS) \
+	gpio_name_to_num(BTN_PWR_BUF_BMC_GPIOD3_L) \
+	gpio_name_to_num(BMC_GPIOD4_SW_HBLED) \
 	gpio_name_to_num(FM_SOL_UART_CH_SEL_R) \
 	gpio_name_to_num(Reserve_GPIOD6) \
 	gpio_name_to_num(Reserve_GPIOD7)
 
 #define name_gpioE \
-	gpio_name_to_num(PWRGD_CPU_LVC3) \
-	gpio_name_to_num(CPU_ERROR_BIC_LVC3_R_N) \
-	gpio_name_to_num(PVDD11_S3_PMALERT_N) \
+	gpio_name_to_num(Reserve_GPIOE0) \
+	gpio_name_to_num(S0_BMC_GPIOE1_SYS_AUTH_FAILURE_L) \
+	gpio_name_to_num(CPLD_BMC_GPIOE2_S0_SPI_AUTH_FAIL_L) \
 	gpio_name_to_num(IRQ_HSC_ALERT1_N) \
 	gpio_name_to_num(SMB_SENSOR_LVC3_ALERT_N) \
-	gpio_name_to_num(Reserve_GPIOE5) \
+	gpio_name_to_num(BIC_FW_RECOVERY_L) \
 	gpio_name_to_num(SYS_PWRBTN_BIC_N) \
 	gpio_name_to_num(RST_PLTRST_BIC_N)
 
 #define name_gpioF \
-	gpio_name_to_num(CPU_SMERR_BIC_N) \
+	gpio_name_to_num(CPU_BIOS_RECOVER_GPIOF0) \
 	gpio_name_to_num(IRQ_HSC_ALERT2_N) \
 	gpio_name_to_num(Reserve_GPIOF2) \
-	gpio_name_to_num(FM_BMC_DEBUG_ENABLE_N) \
-	gpio_name_to_num(FM_DBP_PRESENT_N) \
+	gpio_name_to_num(S0_BMC_GPIOF3_VRHOT_L) \
+	gpio_name_to_num(S0_BMC_GPIOF4_VRD_FAULT_L) \
 	gpio_name_to_num(FM_FAST_PROCHOT_EN_R_N) \
 	gpio_name_to_num(Reserve_GPIOF6) \
-	gpio_name_to_num(Reserve_GPIOF7)
+	gpio_name_to_num(BTN_SYS_RST_BMC_GPIOF7_L)
 
 #define name_gpioG \
-	gpio_name_to_num(Reserve_GPIOG0) \
-	gpio_name_to_num(FM_BIOS_MRC_DEBUG_MSG_DIS) \
+	gpio_name_to_num(CPLD_SOC_SPI_NOR_ACCESS) \
+	gpio_name_to_num(CPLD_BMC_SPI_NOR_ACCESS) \
 	gpio_name_to_num(FAST_PROCHOT_N) \
-	gpio_name_to_num(Reserve_GPIOG3) \
+	gpio_name_to_num(BIC_SALT4_L) \
 	gpio_name_to_num(BIC_JTAG_SEL_R) \
-	gpio_name_to_num(Reserve_GPIOG5) \
+	gpio_name_to_num(BIC_SALT12_L) \
 	gpio_name_to_num(HSC_OCP_GPIO2_R) \
 	gpio_name_to_num(HSC_OCP_GPIO3_R)
 
 #define name_gpioH \
-	gpio_name_to_num(RST_RSMRST_BMC_N) \
-	gpio_name_to_num(Reserve_GPIOH1) \
-	gpio_name_to_num(Reserve_GPIOH2) \
+	gpio_name_to_num(BIC_SALT7_L) \
+	gpio_name_to_num(BMC_GPIOH1_SPD_SEL) \
+	gpio_name_to_num(BMC_GPIOH2_VRD_SEL) \
 	gpio_name_to_num(FM_CPU_BIC_PROCHOT_LVT3_N) \
 	gpio_name_to_num(Reserve_GPIOH4) \
 	gpio_name_to_num(Reserve_GPIOH5) \
@@ -136,11 +136,11 @@
 	gpio_name_to_num(Reserve_GPIOK7)
 
 #define name_gpioL \
-	gpio_name_to_num(Reserve_GPIOL0) \
-	gpio_name_to_num(Reserve_GPIOL1) \
+	gpio_name_to_num(BMC_GPIOL0_SYS_PSON_L) \
+	gpio_name_to_num(BMC_GPIOL1_SYS_PWRGD) \
 	gpio_name_to_num(BIC_JTAG_MUX_SEL) \
 	gpio_name_to_num(BOARD_ID2) \
-	gpio_name_to_num(PVDDCR_CPU0_PMALERT_N) \
+	gpio_name_to_num(Reserve_GPIOL4) \
 	gpio_name_to_num(Reserve_GPIOL5) \
 	gpio_name_to_num(BOARD_ID0) \
 	gpio_name_to_num(BOARD_ID1)
@@ -160,16 +160,16 @@
 	gpio_name_to_num(Reserve_GPION1) \
 	gpio_name_to_num(Reserve_GPION2) \
 	gpio_name_to_num(Reserve_GPION3) \
-	gpio_name_to_num(Reserve_GPION4) \
-	gpio_name_to_num(Reserve_GPION5) \
-	gpio_name_to_num(Reserve_GPION6) \
-	gpio_name_to_num(Reserve_GPION7)
+	gpio_name_to_num(BMC_GPION4_DEBUG_MODE) \
+	gpio_name_to_num(S0_BMC_GPIOM1_DDR_SAVE) \
+	gpio_name_to_num(BMC_GPION6_WD_DISABLE_L) \
+	gpio_name_to_num(BMC_GPIOD3_EXT_HIGH_TEMP_L)
 
 #define name_gpioO \
-	gpio_name_to_num(Reserve_GPIOO0) \
-	gpio_name_to_num(Reserve_GPIOO1) \
-	gpio_name_to_num(Reserve_GPIOO2) \
-	gpio_name_to_num(Reserve_GPIOO3) \
+	gpio_name_to_num(BMC_GPIOO0_S01_SPECIAL_BOOT) \
+	gpio_name_to_num(BMC_GPIOO1_S01_PMIN_L) \
+	gpio_name_to_num(BMC_GPIOO2_READY) \
+	gpio_name_to_num(BMC_GPIOO3_USER_MODE) \
 	gpio_name_to_num(Reserve_GPIOO4) \
 	gpio_name_to_num(Reserve_GPIOO5) \
 	gpio_name_to_num(Reserve_GPIOO6) \

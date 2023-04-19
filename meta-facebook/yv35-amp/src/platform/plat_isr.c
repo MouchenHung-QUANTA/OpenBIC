@@ -35,9 +35,130 @@
 
 LOG_MODULE_REGISTER(plat_isr);
 
+static void isr_dbg_print(uint8_t gpio_num)
+{
+	switch (gpio_cfg[gpio_num].int_type) {
+	case GPIO_INT_EDGE_FALLING:
+		LOG_INF("gpio[%-3d] isr type[fall] trigger 1 -> 0", gpio_num);
+		break;
+
+	case GPIO_INT_EDGE_RISING:
+		LOG_INF("gpio[%-3d] isr type[rise] trigger 0 -> 1", gpio_num);
+		break;
+
+	case GPIO_INT_EDGE_BOTH:
+		if (gpio_get(gpio_num))
+			LOG_INF("gpio[%-3d] isr type[both] trigger 0 -> 1", gpio_num);
+		else
+			LOG_INF("gpio[%-3d] isr type[both] trigger 1 -> 0", gpio_num);
+		break;
+
+	default:
+		LOG_WRN("gpio[%-3d] isr trigger unexpected", gpio_num);
+		break;
+	}
+}
+
+void ISR_CPU_PRSNT()
+{
+	isr_dbg_print(CPU0_BMC_GPIOA0_PRESENT_L);
+}
+
+void ISR_CPU_FAULT_ALERT()
+{
+	isr_dbg_print(S0_BMC_GPIOA2_FAULT_ALERT);
+}
+
+void ISR_CPU_JTAG_CMPL2()
+{
+	isr_dbg_print(JTAG_CMPL2_PD_BIC);
+}
+
+void ISR_MPRO_BOOT_OK()
+{
+	isr_dbg_print(S0_BMC_GPIOA5_FW_BOOT_OK);
+}
+
+void ISR_MPRO_HB()
+{
+	isr_dbg_print(S0_BMC_MPRO_HEARTBEAT);
+}
+
+void ISR_CPU_SHD_ACK()
+{
+	isr_dbg_print(S0_BMC_GPIOB0_SHD_ACK_L);
+}
+
+void ISR_CPU_REBOOT_ACK()
+{
+	isr_dbg_print(S0_BMC_GPIOB4_REBOOT_ACK_L);
+}
+
+void ISR_CPU_OVERTEMP()
+{
+	isr_dbg_print(S0_BMC_GPIOB6_OVERTEMP_L);
+}
+
+void ISR_CPU_HIGHTEMP()
+{
+	isr_dbg_print(S0_BMC_GPIOB7_HIGHTEMP_L);
+}
+
+void ISR_CPU_SYS_AUTH_FAIL()
+{
+	isr_dbg_print(S0_BMC_GPIOE1_SYS_AUTH_FAILURE_L);
+}
+
+void ISR_CPU_SPI_AUTH_FAIL()
+{
+	isr_dbg_print(CPLD_BMC_GPIOE2_S0_SPI_AUTH_FAIL_L);
+}
+
 void ISR_POST_COMPLETE()
 {
+	isr_dbg_print(FM_BIOS_POST_CMPLT_BIC_N);
+
 	set_post_status(FM_BIOS_POST_CMPLT_BIC_N);
+}
+
+void ISR_VRHOT()
+{
+	isr_dbg_print(S0_BMC_GPIOF3_VRHOT_L);
+}
+
+void ISR_VRFAULT()
+{
+	isr_dbg_print(S0_BMC_GPIOF4_VRD_FAULT_L);
+}
+
+void ISR_AC_STATUS()
+{
+	isr_dbg_print(BTN_PWR_BUF_BMC_GPIOD3_L);
+}
+
+void ISR_SYS_RST_BMC()
+{
+	isr_dbg_print(BTN_SYS_RST_BMC_GPIOF7_L);
+}
+
+void ISR_CPU_SPI_ACCESS()
+{
+	isr_dbg_print(CPLD_SOC_SPI_NOR_ACCESS);
+}
+
+void ISR_SALT4()
+{
+	isr_dbg_print(BIC_SALT4_L);
+}
+
+void ISR_SALT7()
+{
+	isr_dbg_print(BIC_SALT7_L);
+}
+
+void ISR_SALT12()
+{
+	isr_dbg_print(BIC_SALT12_L);
 }
 
 K_WORK_DELAYABLE_DEFINE(set_DC_on_5s_work, set_DC_on_delayed_status);
@@ -47,7 +168,7 @@ K_WORK_DELAYABLE_DEFINE(set_DC_on_5s_work, set_DC_on_delayed_status);
 void ISR_DC_ON()
 {
 	/* TODO: Add postcode relatice code */
-	set_DC_status(PWRGD_CPU_LVC3);
+	set_DC_status(BMC_GPIOL1_SYS_PWRGD);
 	if (get_DC_status() == true) {
 		k_work_schedule(&set_DC_on_5s_work, K_SECONDS(DC_ON_5_SECOND));
 	} else {
@@ -58,66 +179,12 @@ void ISR_DC_ON()
 	}
 }
 
-static void SLP3_handler()
-{
-	common_addsel_msg_t sel_msg;
-	if ((gpio_get(FM_CPU_BIC_SLP_S3_N) == GPIO_HIGH) &&
-	    (gpio_get(PWRGD_CPU_LVC3) == GPIO_LOW)) {
-		sel_msg.InF_target = BMC_IPMB;
-		sel_msg.sensor_type = IPMI_OEM_SENSOR_TYPE_SYS_STA;
-		sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
-		sel_msg.sensor_number = SENSOR_NUM_SYSTEM_STATUS;
-		sel_msg.event_data1 = IPMI_OEM_EVENT_OFFSET_SYS_VRWATCHDOG;
-		sel_msg.event_data2 = 0xFF;
-		sel_msg.event_data3 = 0xFF;
-		if (!common_add_sel_evt_record(&sel_msg)) {
-			LOG_ERR("Failed to add VR watchdog timeout sel.");
-		}
-	}
-}
-
-K_WORK_DELAYABLE_DEFINE(SLP3_work, SLP3_handler);
-#define DETECT_VR_WDT_DELAY_S 10
-void ISR_SLP3()
-{
-	if (gpio_get(FM_CPU_BIC_SLP_S3_N) == GPIO_HIGH) {
-		LOG_INF("slp3");
-		k_work_schedule_for_queue(&plat_work_q, &SLP3_work,
-					  K_SECONDS(DETECT_VR_WDT_DELAY_S));
-		return;
-	} else {
-		if (k_work_cancel_delayable(&SLP3_work) != 0) {
-			LOG_ERR("Failed to cancel delayable work.");
-		}
-	}
-}
-
-void ISR_DBP_PRSNT()
-{
-	common_addsel_msg_t sel_msg;
-	gpio_set(BIC_JTAG_SEL_R, gpio_get(FM_DBP_PRESENT_N));
-	if ((gpio_get(FM_DBP_PRESENT_N) == GPIO_HIGH)) {
-		sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
-	} else {
-		sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
-	}
-	sel_msg.InF_target = BMC_IPMB;
-	sel_msg.sensor_type = IPMI_OEM_SENSOR_TYPE_HDT;
-	sel_msg.sensor_number = SENSOR_NUM_HDT_PRESENT;
-	sel_msg.event_data1 = 0xFF;
-	sel_msg.event_data2 = 0xFF;
-	sel_msg.event_data3 = 0xFF;
-	if (!common_add_sel_evt_record(&sel_msg)) {
-		LOG_ERR("Failed to add HDT present sel.");
-	}
-}
-
 void ISR_HSC_THROTTLE()
 {
 	common_addsel_msg_t sel_msg;
 	static bool is_hsc_throttle_assert = false; // Flag for filt out fake alert
-	if (gpio_get(RST_RSMRST_BMC_N) == GPIO_HIGH) {
-		if (gpio_get(PWRGD_CPU_LVC3) == GPIO_LOW) {
+	if (1) {
+		if (gpio_get(BMC_GPIOL1_SYS_PWRGD) == GPIO_LOW) {
 			return;
 		} else {
 			if ((gpio_get(IRQ_HSC_ALERT1_N) == GPIO_HIGH) &&
@@ -153,7 +220,7 @@ void ISR_MB_THROTTLE()
 	 */
 	static bool is_mb_throttle_assert = false;
 	common_addsel_msg_t sel_msg;
-	if (gpio_get(RST_RSMRST_BMC_N) == GPIO_HIGH && get_DC_status()) {
+	if (1 && get_DC_status()) {
 		if ((gpio_get(FAST_PROCHOT_N) == GPIO_HIGH) && (is_mb_throttle_assert == true)) {
 			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
 			is_mb_throttle_assert = false;
@@ -179,7 +246,7 @@ void ISR_MB_THROTTLE()
 void ISR_SOC_THMALTRIP()
 {
 	common_addsel_msg_t sel_msg;
-	if (gpio_get(RST_CPU_RESET_BIC_N) == GPIO_HIGH) {
+	if (1) {
 		sel_msg.InF_target = BMC_IPMB;
 		sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
 		sel_msg.sensor_type = IPMI_OEM_SENSOR_TYPE_SYS_STA;
@@ -200,8 +267,7 @@ void ISR_SYS_THROTTLE()
 	 */
 	static bool is_sys_throttle_assert = false;
 	common_addsel_msg_t sel_msg;
-	if ((gpio_get(RST_CPU_RESET_BIC_N) == GPIO_HIGH) &&
-	    (gpio_get(PWRGD_CPU_LVC3) == GPIO_HIGH)) {
+	if (1 && (gpio_get(BMC_GPIOL1_SYS_PWRGD) == GPIO_HIGH)) {
 		if ((gpio_get(FM_CPU_BIC_PROCHOT_LVT3_N) == GPIO_HIGH) &&
 		    (is_sys_throttle_assert == true)) {
 			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
@@ -228,7 +294,7 @@ void ISR_SYS_THROTTLE()
 void ISR_HSC_OC()
 {
 	common_addsel_msg_t sel_msg;
-	if (gpio_get(RST_RSMRST_BMC_N) == GPIO_HIGH) {
+	if (1) {
 		if (gpio_get(FM_HSC_TIMER) == GPIO_LOW) {
 			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
 		} else {
@@ -246,55 +312,10 @@ void ISR_HSC_OC()
 	}
 }
 
-static void add_vr_ocp_sel(uint8_t gpio_num, uint8_t vr_num)
-{
-	static uint8_t is_vr_ocp_assert = 0;
-	common_addsel_msg_t sel_msg;
-	if ((gpio_get(gpio_num) == GPIO_HIGH) && (is_vr_ocp_assert & BIT(vr_num))) {
-		sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
-		is_vr_ocp_assert &= ~BIT(vr_num);
-	} else if ((gpio_get(gpio_num) == GPIO_LOW) && !(is_vr_ocp_assert & BIT(vr_num))) {
-		sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
-		is_vr_ocp_assert |= BIT(vr_num);
-	} else {
-		return;
-	}
-	sel_msg.InF_target = BMC_IPMB;
-	sel_msg.sensor_type = IPMI_OEM_SENSOR_TYPE_VR;
-	sel_msg.sensor_number = SENSOR_NUM_VR_OCP;
-	sel_msg.event_data1 = vr_num;
-	sel_msg.event_data2 = 0xFF;
-	sel_msg.event_data3 = 0xFF;
-	if (!common_add_sel_evt_record(&sel_msg)) {
-		LOG_ERR("Failed to add VR OCP sel.");
-	}
-}
-
-void ISR_PVDDCR_CPU0_OCP()
-{
-	if (get_DC_status() == true) {
-		add_vr_ocp_sel(PVDDCR_CPU0_BIC_OCP_N, 0);
-	}
-}
-
-void ISR_PVDDCR_CPU1_OCP()
-{
-	if (get_DC_status() == true) {
-		add_vr_ocp_sel(PVDDCR_CPU1_BIC_OCP_N, 1);
-	}
-}
-
-void ISR_PVDD11_S3_OCP()
-{
-	if (get_DC_status() == true) {
-		add_vr_ocp_sel(PVDD11_S3_BIC_OCP_N, 2);
-	}
-}
-
 void ISR_UV_DETECT()
 {
 	common_addsel_msg_t sel_msg;
-	if (gpio_get(RST_RSMRST_BMC_N) == GPIO_HIGH) {
+	if (1) {
 		if (gpio_get(IRQ_UV_DETECT_N) == GPIO_HIGH) {
 			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
 		} else {
@@ -309,62 +330,5 @@ void ISR_UV_DETECT()
 		if (!common_add_sel_evt_record(&sel_msg)) {
 			LOG_ERR("Failed to add under voltage sel.");
 		}
-	}
-}
-
-void IST_PLTRST()
-{
-	reset_tsi_status();
-}
-
-#define FATAL_ERROR_DELAY_MSECOND 500
-typedef struct {
-	struct k_work_delayable work;
-	uint8_t ras_status;
-} fatal_error_work_info;
-
-static void send_apml_alert(struct k_work *work)
-{
-	fatal_error_work_info *work_info = CONTAINER_OF(work, fatal_error_work_info, work);
-	if (get_DC_status()) {
-		LOG_INF("Send apml alert to bmc.");
-		send_apml_alert_to_bmc(work_info->ras_status);
-	}
-	SAFE_FREE(work_info);
-}
-
-void ISR_APML_ALERT()
-{
-	uint8_t ras_status;
-	if (apml_read_byte(APML_BUS, SB_RMI_ADDR, SBRMI_RAS_STATUS, &ras_status)) {
-		LOG_ERR("Failed to read RAS status.");
-		return;
-	}
-
-	if (ras_status & 0x0F) {
-		LOG_INF("Fatal error happened, ras_status 0x%x.", ras_status);
-		fatal_error_happened();
-
-		if ((ras_status & 0x01) &&
-		    (apml_write_byte(APML_BUS, SB_RMI_ADDR, SBRMI_RAS_STATUS, 0x01)))
-			LOG_ERR("Failed to clear fatal error.");
-
-		uint8_t status;
-		if (apml_read_byte(APML_BUS, SB_RMI_ADDR, SBRMI_STATUS, &status))
-			LOG_ERR("Failed to read RMI status.");
-
-		if ((status & 0x02) && (apml_write_byte(APML_BUS, SB_RMI_ADDR, SBRMI_STATUS, 0x02)))
-			LOG_ERR("Failed to clear SwAlertSts.");
-
-		fatal_error_work_info *delay_work = malloc(sizeof(fatal_error_work_info));
-		if (delay_work == NULL) {
-			LOG_ERR("Failed to allocate delay_job.");
-			return;
-		}
-		memset(delay_work, 0, sizeof(fatal_error_work_info));
-
-		delay_work->ras_status = ras_status;
-		k_work_init_delayable(&(delay_work->work), send_apml_alert);
-		k_work_schedule(&(delay_work->work), K_MSEC(FATAL_ERROR_DELAY_MSECOND));
 	}
 }
