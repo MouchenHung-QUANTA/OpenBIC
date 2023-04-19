@@ -78,6 +78,10 @@ static mctp_smbus_port smbus_port[] = {
 	{ .conf.smbus_conf.addr = I2C_ADDR_BIC, .conf.smbus_conf.bus = I2C_BUS_MPRO },
 };
 
+mctp_route_entry mctp_route_tbl[] = {
+	{ MCTP_EID_MPRO, I2C_BUS_MPRO, I2C_ADDR_MPRO },
+};
+
 static mctp *find_mctp_by_smbus(uint8_t bus)
 {
 	uint8_t i;
@@ -91,6 +95,32 @@ static mctp *find_mctp_by_smbus(uint8_t bus)
 	return NULL;
 }
 
+static uint8_t get_mctp_route_info(uint8_t dest_endpoint, void **mctp_inst, mctp_ext_params *ext_params)
+{
+	CHECK_NULL_ARG_WITH_RETURN(mctp_inst, MCTP_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(ext_params, MCTP_ERROR);
+
+	uint8_t ret = MCTP_ERROR;
+	uint32_t index = 0;
+
+	for (index = 0; index < ARRAY_SIZE(mctp_route_tbl); index++) {
+		mctp_route_entry *port = mctp_route_tbl + index;
+		CHECK_NULL_ARG_WITH_RETURN(port, MCTP_ERROR);
+
+		if (port->endpoint == dest_endpoint) {
+			*mctp_inst = find_mctp_by_smbus(port->bus);
+			CHECK_NULL_ARG_WITH_RETURN(mctp_inst, MCTP_ERROR);
+
+			ext_params->ep = port->endpoint;
+			ext_params->type = MCTP_MEDIUM_TYPE_SMBUS;
+			ext_params->smbus_ext_params.addr = port->addr;
+			ret = MCTP_SUCCESS;
+			break;
+		}
+	}
+	return ret;
+}
+
 static void set_endpoint_resp_handler(void *args, uint8_t *buf, uint16_t len)
 {
 	if (!buf || !len)
@@ -100,9 +130,9 @@ static void set_endpoint_resp_handler(void *args, uint8_t *buf, uint16_t len)
 
 static void set_endpoint_resp_timeout(void *args)
 {
-	ARG_UNUSED(args);
-	printk("[%s] Endpoint 0x%x set endpoint failed on bus %d \n", __func__, MCTP_CTRL_CMD_SET_ENDPOINT_ID,
-	       I2C_BUS_MPRO);
+	mctp_route_entry *p = (mctp_route_entry *)args;
+	printk("[%s] Endpoint 0x%x set endpoint failed on bus %d \n", __func__, p->endpoint,
+	       p->bus);
 }
 
 static void set_dev_endpoint(void)
@@ -112,25 +142,157 @@ static void set_dev_endpoint(void)
 	if (gpio_get(CPU_PRESENT_PIN))
 		continue;
 */
-	struct _set_eid_req req = { 0 };
-	req.op = SET_EID_REQ_OP_SET_EID;
-	req.eid = MCTP_EID_MPRO;
+	mctp_route_entry *p = mctp_route_tbl;
 
-	mctp_ctrl_msg msg;
-	memset(&msg, 0, sizeof(msg));
-	msg.ext_params.type = MCTP_MEDIUM_TYPE_SMBUS;
-	msg.ext_params.smbus_ext_params.addr = I2C_ADDR_MPRO;
+	for (uint8_t j = 0; j < ARRAY_SIZE(smbus_port); j++) {
+		if (p->bus != smbus_port[j].conf.smbus_conf.bus)
+			continue;
 
-	msg.hdr.cmd = MCTP_CTRL_CMD_SET_ENDPOINT_ID;
-	msg.hdr.rq = 1;
+		struct _set_eid_req req = { 0 };
+		req.op = SET_EID_REQ_OP_SET_EID;
+		req.eid = p->endpoint;
 
-	msg.cmd_data = (uint8_t *)&req;
-	msg.cmd_data_len = sizeof(req);
+		mctp_ctrl_msg msg;
+		memset(&msg, 0, sizeof(msg));
+		msg.ext_params.type = MCTP_MEDIUM_TYPE_SMBUS;
+		msg.ext_params.smbus_ext_params.addr = p->addr;
 
-	msg.recv_resp_cb_fn = set_endpoint_resp_handler;
-	msg.timeout_cb_fn = set_endpoint_resp_timeout;
+		msg.hdr.cmd = MCTP_CTRL_CMD_SET_ENDPOINT_ID;
+		msg.hdr.rq = 1;
 
-	mctp_ctrl_send_msg(find_mctp_by_smbus(I2C_BUS_MPRO), &msg);
+		msg.cmd_data = (uint8_t *)&req;
+		msg.cmd_data_len = sizeof(req);
+
+		msg.recv_resp_cb_fn = set_endpoint_resp_handler;
+		msg.timeout_cb_fn = set_endpoint_resp_timeout;
+		msg.timeout_cb_fn_args = p;
+
+		mctp_ctrl_send_msg(find_mctp_by_smbus(p->bus), &msg);
+	}
+}
+
+//Victor test
+
+static void set_tid(void)
+{
+	uint8_t ret = MCTP_ERROR;
+	uint8_t resp_len = 0;
+	pldm_msg pmsg = { 0 };
+	uint8_t resp_buf[PLDM_MAX_DATA_SIZE] = { 0 };
+	mctp *mctp_inst = NULL;
+
+	ret = get_mctp_route_info(MCTP_EID_MPRO, (void **)&mctp_inst, &pmsg.ext_params);
+	if (ret != MCTP_SUCCESS) {
+		LOG_ERR("Invalid EID: 0x%x, unable to get route information", MCTP_EID_MPRO);
+	}
+
+	// Set PLDM header
+	pmsg.hdr.msg_type = MCTP_MSG_TYPE_PLDM;
+	pmsg.hdr.pldm_type = PLDM_TYPE_BASE;
+	pmsg.hdr.cmd = 0x01;
+	pmsg.hdr.rq = PLDM_REQUEST;
+
+	//set req data
+	struct _set_tid_req req = { 0 };
+	req.tid = 0x01; //Victor test
+
+	pmsg.buf = (uint8_t *)&req;
+	pmsg.len = sizeof(req);
+
+	// Send request to PLDM/MCTP thread and get response
+	resp_len = mctp_pldm_read(mctp_inst, &pmsg, resp_buf, sizeof(resp_buf));
+	if (resp_len == 0) {
+		LOG_ERR("mctp_pldm_read fail");
+	}
+
+	LOG_HEXDUMP_INF(resp_buf, resp_len, "set tid");
+	struct _set_tid_resp *resp = (struct _set_tid_resp *)resp_buf;
+	LOG_INF("set tid receiver response = 0x%x", resp->completion_code);
+}
+
+struct pldm_set_event_receiver_resp {
+	uint8_t completion_code;
+} __attribute__((packed));
+
+static void set_event_receiver(void)
+{
+	uint8_t ret = MCTP_ERROR;
+	uint8_t resp_len = 0;
+	pldm_msg pmsg = { 0 };
+	uint8_t resp_buf[PLDM_MAX_DATA_SIZE] = { 0 };
+	mctp *mctp_inst = NULL;
+
+	ret = get_mctp_route_info(MCTP_EID_MPRO, (void **)&mctp_inst, &pmsg.ext_params);
+	if (ret != MCTP_SUCCESS) {
+		LOG_ERR("Invalid EID: 0x%x, unable to get route information", MCTP_EID_MPRO);
+	}
+
+	// Set PLDM header
+	pmsg.hdr.msg_type = MCTP_MSG_TYPE_PLDM;
+	pmsg.hdr.pldm_type = PLDM_TYPE_PLAT_MON_CTRL;
+	pmsg.hdr.cmd = 0x04;
+	pmsg.hdr.rq = PLDM_REQUEST;
+
+	//set req data
+	struct pldm_set_event_receiver_req req = { 0 };
+	req.event_message_global_enable = 0x02; //Victor test
+	req.transport_protocol_type = 0x00;
+	req.event_receiver_address_info = 0x0A;
+	req.heartbeat_timer = 0x0000;
+
+	pmsg.buf = (uint8_t *)&req;
+	pmsg.len = sizeof(req);
+
+	// Send request to PLDM/MCTP thread and get response
+	resp_len = mctp_pldm_read(mctp_inst, &pmsg, resp_buf, sizeof(resp_buf));
+	if (resp_len == 0) {
+		LOG_ERR("mctp_pldm_read fail");
+	}
+
+	LOG_HEXDUMP_INF(resp_buf, resp_len, "receiver response");
+	struct pldm_set_event_receiver_resp *resp = (struct pldm_set_event_receiver_resp *)resp_buf;
+	LOG_INF("set event receiver response = 0x%x", resp->completion_code);
+}
+
+struct event_message_buffer_size_req {
+	uint16_t event_receiver_max_buffer_size;
+} __attribute__((packed));
+
+static void event_message_buffer_size(void)
+{
+	uint8_t ret = MCTP_ERROR;
+	uint8_t resp_len = 0;
+	pldm_msg pmsg = { 0 };
+	uint8_t resp_buf[PLDM_MAX_DATA_SIZE] = { 0 };
+	mctp *mctp_inst = NULL;
+
+	ret = get_mctp_route_info(MCTP_EID_MPRO, (void **)&mctp_inst, &pmsg.ext_params);
+	if (ret != MCTP_SUCCESS) {
+		LOG_ERR("Invalid EID: 0x%x, unable to get route information", MCTP_EID_MPRO);
+	}
+
+	// Set PLDM header
+	pmsg.hdr.msg_type = MCTP_MSG_TYPE_PLDM;
+	pmsg.hdr.pldm_type = PLDM_TYPE_PLAT_MON_CTRL;
+	pmsg.hdr.cmd = 0x0D;
+	pmsg.hdr.rq = PLDM_REQUEST;
+
+	//set req data
+	struct event_message_buffer_size_req req = { 0 };
+	req.event_receiver_max_buffer_size = 0xC0; //192 Bytes
+
+	pmsg.buf = (uint8_t *)&req;
+	pmsg.len = sizeof(req);
+
+	// Send request to PLDM/MCTP thread and get response
+	resp_len = mctp_pldm_read(mctp_inst, &pmsg, resp_buf, sizeof(resp_buf));
+	if (resp_len == 0) {
+		LOG_ERR("mctp_pldm_read fail");
+	}
+
+	LOG_HEXDUMP_INF(resp_buf, resp_len, "event message buffer size");
+	struct pldm_set_event_receiver_resp *resp = (struct pldm_set_event_receiver_resp *)resp_buf;
+	LOG_INF("event message buffer size response = 0x%x", resp->completion_code);
 }
 
 static uint8_t mctp_msg_recv(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext_params ext_params)
@@ -160,21 +322,19 @@ static uint8_t mctp_msg_recv(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext_
 	return MCTP_SUCCESS;
 }
 
-static uint8_t get_mctp_route_info(uint8_t dest_endpoint, void **mctp_inst,
-				   mctp_ext_params *ext_params)
-{
-	if (!mctp_inst || !ext_params)
-		return MCTP_ERROR;
-
-	uint8_t rc = MCTP_ERROR;
-
-	return rc;
-}
-
 void send_cmd_to_dev_handler(struct k_work *work)
 {
 	/* init the device endpoint */
 	set_dev_endpoint();
+	/* get device parameters */
+
+	set_tid();
+
+	LOG_INF("prepare set_event_receiver");
+	//Victor test set event receiver
+	set_event_receiver();
+
+	event_message_buffer_size();
 }
 
 void send_cmd_to_dev(struct k_timer *timer)
