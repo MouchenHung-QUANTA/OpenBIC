@@ -53,7 +53,7 @@ bool ssif_set_data(uint8_t channel, ipmi_msg_cfg *msg_cfg)
 
 	CHECK_MUTEX_INIT_WITH_RETURN(&ssif[channel].rsp_buff_mutex, false);
 
-	if (k_mutex_lock(&ssif[channel].rsp_buff_mutex, K_MSEC(5000))) {
+	if (k_mutex_lock(&ssif[channel].rsp_buff_mutex, K_MSEC(1000))) {
 		LOG_ERR("SSIF[%d] mutex lock failed", channel);
 		ssif_error_record(ssif[channel].index, SSIF_STATUS_MUTEX_ERR);
 		return false;
@@ -300,8 +300,6 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 				LOG_WRN("SSIF[%d] retrying put ipmi msgq", ssif_inst->index);
 			}
 		} else {
-			LOG_WRN("not support yet!");
-/*
 			int ret = 0;
 			if (pal_immediate_respond_from_KCS(ssif_inst->current_ipmi_msg.buffer.netfn, ssif_inst->current_ipmi_msg.buffer.cmd)) {
 				ssif_inst->current_ipmi_msg.buffer.data_len = 0;
@@ -332,43 +330,23 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 				}
 			}
 
-			ipmi_msg bridge_msg;
-			bridge_msg.data_len = ssif_inst->current_ipmi_msg.buffer.data_len;
-			bridge_msg.seq_source = 0xff; // No seq for SSIF
-			bridge_msg.InF_source = HOST_SSIF_1 + ssif_inst->index;;
-			bridge_msg.InF_target =
-				BMC_IPMB; // default bypassing IPMI standard command to BMC
-			bridge_msg.netfn = ssif_inst->current_ipmi_msg.buffer.netfn;
-			bridge_msg.cmd = ssif_inst->current_ipmi_msg.buffer.cmd;
-			if (bridge_msg.data_len != 0) {
-				memcpy(&bridge_msg.data[0], ssif_inst->current_ipmi_msg.buffer.data, bridge_msg.data_len);
+			LOG_INF("sending SSIF command to BMC...");
+
+			uint8_t seq_source = 0xFF;
+			ipmi_msg msg;
+			msg = construct_ipmi_message(seq_source, ssif_inst->current_ipmi_msg.buffer.netfn, ssif_inst->current_ipmi_msg.buffer.cmd, SELF,
+							BMC_IPMB, ssif_inst->current_ipmi_msg.buffer.data_len,
+							ssif_inst->current_ipmi_msg.buffer.data);
+			ipmb_error ipmb_ret = ipmb_read(&msg, IPMB_inf_index_map[msg.InF_target]);
+			if ((ipmb_ret != IPMB_ERROR_SUCCESS) || (msg.completion_code != CC_SUCCESS)) {
+				LOG_ERR("SSIF[%d] Failed to send SSIF msg to BMC with ret: 0x%x CC: 0x%x\n", ssif_inst->index, ipmb_ret, msg.completion_code);
 			}
 
-			// Check BMC communication interface if use IPMB or not
-			if (!pal_is_interface_use_ipmb(IPMB_inf_index_map[BMC_IPMB])) {
-				// Send request to MCTP/PLDM thread to ask BMC
-				ret = pldm_send_ipmi_request(&bridge_msg);
-				if (ret < 0) {
-					LOG_ERR("SSIF send pldm msg to BMC fail, cause %d", ret);
-				}
-
-				// Write MCTP/PLDM response to SSIF
-				ssif_inst->current_ipmi_msg.buffer.netfn = (bridge_msg.netfn + 1) << 2;
-				ssif_inst->current_ipmi_msg.buffer.cmd = bridge_msg.cmd;
-				ssif_inst->current_ipmi_msg.buffer.completion_code = CC_SUCCESS;
-				memcpy(ssif_inst->current_ipmi_msg.buffer.data, &bridge_msg.data, bridge_msg.data_len);
-
-				if (ssif_set_data(ssif_inst->current_ipmi_msg.buffer.InF_source - HOST_SSIF_1, &ssif_inst->current_ipmi_msg) == false) {
-					LOG_ERR("Failed to write ssif response data");
-				}
-			} else {
-				ipmb_error status = ipmb_send_request(&bridge_msg,
-							   IPMB_inf_index_map[BMC_IPMB]);
-				if (status != IPMB_ERROR_SUCCESS) {
-					LOG_ERR("SSIF send ipmb msg to BMC fail status: 0x%x", status);
-				}
+			ipmi_msg_cfg ssif_rsp = {0};
+			ssif_rsp.buffer = msg;
+			if (ssif_set_data(ssif_inst->index, &ssif_rsp) == false) {
+				LOG_ERR("SSIF[%d] failed to write ssif response data", ssif_inst->index);
 			}
-*/
 		}
 
 		if (k_sem_take(&ssif_inst->rsp_buff_sem, K_MSEC(1500)) != 0) {
@@ -381,10 +359,12 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 		LOG_HEXDUMP_DBG(ssif_inst->rsp_buff + 3, ssif_inst->rsp_buf_len - 3, "");
 
 		/* unlock i2c bus address */
-		if (ssif_lock_ctl(ssif_inst, false) == false) {
-			LOG_ERR("SSIF[%d] can't unlock address after sending message", ssif_inst->index);
-			ssif_error_record(ssif_inst->index, SSIF_STATUS_ADDR_LOCK_ERR);
-			return false;
+		if (ssif_inst->addr_lock == true) {
+			if (ssif_lock_ctl(ssif_inst, false) == false) {
+				LOG_ERR("SSIF[%d] can't unlock address after sending message", ssif_inst->index);
+				ssif_error_record(ssif_inst->index, SSIF_STATUS_ADDR_LOCK_ERR);
+				return false;
+			}
 		}
 
 		/* Let HOST know data ready by i2c alert pin */

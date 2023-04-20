@@ -61,7 +61,7 @@ void pal_pre_init()
 
 void pal_post_init()
 {
-	plat_mctp_init();
+	//plat_mctp_init();
 
 	/* only create 1 ssif channel */
 	struct ssif_init_cfg *cfg = (struct ssif_init_cfg *)malloc(1 * sizeof(struct ssif_init_cfg));
