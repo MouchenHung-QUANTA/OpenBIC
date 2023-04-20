@@ -84,26 +84,6 @@ bool ssif_set_data(uint8_t channel, ipmi_msg_cfg *msg_cfg)
 	return true;
 }
 
-bool ssif_lock_ctl(ssif_dev *ssif_inst, bool lck_flag)
-{
-	CHECK_NULL_ARG_WITH_RETURN(ssif_inst, false);
-
-	uint8_t addr = ssif_inst->addr << 1;
-
-	if (lck_flag == true) {
-		ssif_inst->addr_lock = true;
-		ssif_inst->exp_to_ms = k_uptime_get() + SSIF_TIMEOUT_MS;
-		addr = 0;
-	} else {
-		ssif_inst->addr_lock = false;
-	}
-
-	if (i2c_addr_set(ssif_inst->i2c_bus, addr))
-		return false;
-
-	return true;
-}
-
 ssif_dev *ssif_inst_get_by_bus(uint8_t bus)
 {
 	for (int i=0; i<ssif_channel_cnt; i++) {
@@ -132,6 +112,31 @@ void ssif_error_record(uint8_t channel, ssif_err_status_t errcode)
 		ssif[channel].err_status_lst[ssif[channel].err_idx] = errcode;
 		ssif[channel].err_idx++;
 	}
+}
+
+__weak void pal_ssif_alert_trigger()
+{
+	return;
+}
+
+static bool ssif_lock_ctl(ssif_dev *ssif_inst, bool lck_flag)
+{
+	CHECK_NULL_ARG_WITH_RETURN(ssif_inst, false);
+
+	uint8_t addr = ssif_inst->addr << 1;
+
+	if (lck_flag == true) {
+		ssif_inst->addr_lock = true;
+		ssif_inst->exp_to_ms = k_uptime_get() + SSIF_TIMEOUT_MS;
+		addr = 0;
+	} else {
+		ssif_inst->addr_lock = false;
+	}
+
+	if (i2c_addr_set(ssif_inst->i2c_bus, addr))
+		return false;
+
+	return true;
 }
 
 /**
@@ -382,7 +387,8 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 			return false;
 		}
 
-		/* TODO: Should let HOST to know data ready */
+		/* Let HOST know data ready by i2c alert pin */
+		pal_ssif_alert_trigger();
 		break;
 
 	case SSIF_COLLECT_DATA: {

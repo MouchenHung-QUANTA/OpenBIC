@@ -23,7 +23,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <zephyr.h>
-
+#include "ipmb.h"
 #include "hal_i2c_target.h"
 
 #define SSIF_THREAD_STACK_SIZE 3072
@@ -154,9 +154,9 @@ struct ssif_rd_middle {
 void ssif_device_init(struct ssif_init_cfg *config, uint8_t size);
 ssif_err_status_t ssif_get_error_status();
 bool ssif_set_data(uint8_t channel, ipmi_msg_cfg *msg_cfg);
-bool ssif_lock_ctl(ssif_dev *ssif_inst, bool lck_flag);
 void ssif_error_record(uint8_t channel, ssif_err_status_t errcode);
 ssif_dev *ssif_inst_get_by_bus(uint8_t bus);
+void pal_ssif_alert_trigger();
 
 //#endif /* ENABLE_SSIF */
 
