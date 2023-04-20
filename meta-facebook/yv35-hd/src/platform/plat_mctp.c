@@ -48,7 +48,7 @@ LOG_MODULE_REGISTER(plat_mctp);
 #define I2C_ADDR_MPRO 0x9E
 
 /* i2c dev bus */
-#define I2C_BUS_MPRO I2C_BUS4
+#define I2C_BUS_MPRO I2C_BUS6
 
 /* mctp endpoint */
 #define MCTP_EID_MPRO 0x0A

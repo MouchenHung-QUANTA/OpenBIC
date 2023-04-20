@@ -70,7 +70,7 @@ void pal_post_init()
 		return;
 	}
 
-	cfg[0].i2c_bus = I2C_BUS6;
+	cfg[0].i2c_bus = I2C_BUS4;
 	cfg[0].addr = 0x20;
 	cfg[0].target_msgq_cnt = 0x0A;
 
