@@ -312,7 +312,7 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 				}
 				ssif_inst->current_ipmi_msg.buffer.netfn = (ssif_inst->current_ipmi_msg.buffer.netfn + 1) << 2;
 
-				if (ssif_set_data(ssif_inst->current_ipmi_msg.buffer.InF_source - HOST_SSIF_1, &ssif_inst->current_ipmi_msg) == false) {
+				if (ssif_set_data(ssif_inst->index, &ssif_inst->current_ipmi_msg) == false) {
 					LOG_ERR("Failed to write ssif response data");
 				}
 			}
@@ -344,6 +344,7 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 
 			ipmi_msg_cfg ssif_rsp = {0};
 			ssif_rsp.buffer = msg;
+			ssif_rsp.buffer.netfn = ssif_rsp.buffer.netfn << 2;
 			if (ssif_set_data(ssif_inst->index, &ssif_rsp) == false) {
 				LOG_ERR("SSIF[%d] failed to write ssif response data", ssif_inst->index);
 			}
