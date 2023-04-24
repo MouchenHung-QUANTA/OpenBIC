@@ -50,7 +50,7 @@ void ISR_PVDDCR_CPU1_OCP();
 void ISR_PVDDCR_CPU0_OCP();
 void ISR_PVDD11_S3_OCP();
 void ISR_UV_DETECT();
-void IST_PLTRST();
+void ISR_PLTRST();
 void ISR_APML_ALERT();
 
 #endif

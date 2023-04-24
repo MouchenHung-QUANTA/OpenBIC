@@ -161,6 +161,11 @@ void ISR_SALT12()
 	isr_dbg_print(BIC_SALT12_L);
 }
 
+void ISR_PLTRST()
+{
+	isr_dbg_print(RST_PLTRST_BIC_N);
+}
+
 K_WORK_DELAYABLE_DEFINE(set_DC_on_5s_work, set_DC_on_delayed_status);
 #define DC_ON_5_SECOND 5
 #define PROC_FAIL_START_DELAY_SECOND 10
