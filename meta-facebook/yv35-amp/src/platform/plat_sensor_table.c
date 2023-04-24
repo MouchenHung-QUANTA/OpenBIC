@@ -30,7 +30,7 @@ LOG_MODULE_REGISTER(plat_sensor_table);
 
 sensor_poll_time_cfg diff_poll_time_sensor_table[] = {
 	// sensor_number, last_access_time
-	{ SENSOR_NUM_VOL_P3V_BAT, 0 },
+	{ SENSOR_NUM_VOL_ADC4_P3V_BAT, 0 },
 };
 
 sensor_cfg plat_sensor_config[] = {
@@ -48,63 +48,55 @@ sensor_cfg plat_sensor_config[] = {
 	{ SENSOR_NUM_TEMP_TMP75_FIO, sensor_dev_tmp75, I2C_BUS2, TMP75_FIO_ADDR, TMP75_TEMP_OFFSET,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
-	{ SENSOR_NUM_TEMP_HSC, sensor_dev_nct7718w, I2C_BUS5, TEMP_HSC_ADDR,
-	  NCT7718W_REMOTE_TEMP_MSB_OFFSET, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT,
-	  POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL,
-	  &nct7718w_init_args[0] },
 
 	/* NVME */
 	{ SENSOR_NUM_TEMP_SSD, sensor_dev_nvme, I2C_BUS2, SSD_ADDR, SSD_TEMP_OFFSET, post_access, 0,
 	  0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
 	  pre_nvme_read, &mux_conf_addr_0xe2[1], NULL, NULL, NULL },
 
-	/* CPU */
-
 	/* adc voltage */
-	{ SENSOR_NUM_VOL_P12V_STBY, sensor_dev_ast_adc, ADC_PORT0, NONE, NONE, stby_access, 66, 10,
+	{ SENSOR_NUM_VOL_ADC0_P12V_STBY, sensor_dev_ast_adc, ADC_PORT0, NONE, NONE, stby_access, 66,
+	  10, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
+	  NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
+	{ SENSOR_NUM_VOL_ADC1_SOC_RC_DDR0, sensor_dev_ast_adc, ADC_PORT1, NONE, NONE, dc_access, 1,
+	  1, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
+	  NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
+	{ SENSOR_NUM_VOL_ADC2_P3V3_STBY, sensor_dev_ast_adc, ADC_PORT2, NONE, NONE, stby_access, 2,
+	  1, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
+	  NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
+	{ SENSOR_NUM_VOL_ADC3_P0V75_PCP, sensor_dev_ast_adc, ADC_PORT3, NONE, NONE, dc_access, 1, 1,
 	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
 	  NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
-	{ SENSOR_NUM_VOL_PVDD18_S5, sensor_dev_ast_adc, ADC_PORT1, NONE, NONE, dc_access, 1, 1,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
-	{ SENSOR_NUM_VOL_P3V3_STBY, sensor_dev_ast_adc, ADC_PORT2, NONE, NONE, stby_access, 2, 1,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
-	{ SENSOR_NUM_VOL_PVDD11_S3, sensor_dev_ast_adc, ADC_PORT3, NONE, NONE, dc_access, 1, 1,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
-	{ SENSOR_NUM_VOL_P3V_BAT, sensor_dev_ast_adc, ADC_PORT4, NONE, NONE, stby_access, 31, 10,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_BAT3V, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
+	{ SENSOR_NUM_VOL_ADC4_P3V_BAT, sensor_dev_ast_adc, ADC_PORT4, NONE, NONE, stby_access, 301,
+	  100, SAMPLE_COUNT_DEFAULT, POLL_TIME_BAT3V, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
 	  pre_vol_bat3v_read, NULL, post_vol_bat3v_read, NULL, &ast_adc_init_args[0] },
-	{ SENSOR_NUM_VOL_PVDD33_S5, sensor_dev_ast_adc, ADC_PORT5, NONE, NONE, dc_access, 2, 1,
+	{ SENSOR_NUM_VOL_ADC5_P0V8_D2D, sensor_dev_ast_adc, ADC_PORT5, NONE, NONE, dc_access, 1, 1,
 	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
 	  NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
-	{ SENSOR_NUM_VOL_P5V_STBY, sensor_dev_ast_adc, ADC_PORT14, NONE, NONE, stby_access, 711,
-	  200, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+
+	{ SENSOR_NUM_VOL_ADC8_EXT_VREF_ADC_S0, sensor_dev_ast_adc, ADC_PORT8, NONE, NONE,
+	  stby_access, 1, 1, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
-	{ SENSOR_NUM_VOL_P12V_MEM_1, sensor_dev_ast_adc, ADC_PORT13, NONE, NONE, dc_access, 66, 10,
+	{ SENSOR_NUM_VOL_ADC9_P3V3_M2, sensor_dev_ast_adc, ADC_PORT9, NONE, NONE, dc_access, 2, 1,
 	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
 	  NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
-	{ SENSOR_NUM_VOL_P12V_MEM_0, sensor_dev_ast_adc, ADC_PORT12, NONE, NONE, dc_access, 66, 10,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
-	{ SENSOR_NUM_VOL_P1V2_STBY, sensor_dev_ast_adc, ADC_PORT10, NONE, NONE, stby_access, 1, 1,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
-	{ SENSOR_NUM_VOL_P3V3_M2, sensor_dev_ast_adc, ADC_PORT9, NONE, NONE, dc_access, 2, 1,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
-	{ SENSOR_NUM_VOL_P1V8_STBY, sensor_dev_ast_adc, ADC_PORT8, NONE, NONE, stby_access, 1, 1,
-	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
-	  NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
+	{ SENSOR_NUM_VOL_ADC10_P1V2_STBY, sensor_dev_ast_adc, ADC_PORT10, NONE, NONE, stby_access,
+	  1, 1, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
+	{ SENSOR_NUM_VOL_ADC11_SOC_RC_DDR1, sensor_dev_ast_adc, ADC_PORT11, NONE, NONE, stby_access,
+	  1, 1, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
+	{ SENSOR_NUM_VOL_ADC12_P12V_S0_DIMM0, sensor_dev_ast_adc, ADC_PORT12, NONE, NONE, dc_access,
+	  66, 10, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
+	{ SENSOR_NUM_VOL_ADC13_P12V_S0_DIMM1, sensor_dev_ast_adc, ADC_PORT13, NONE, NONE, dc_access,
+	  66, 10, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
+	{ SENSOR_NUM_VOL_ADC14_P5V_STBY, sensor_dev_ast_adc, ADC_PORT14, NONE, NONE, stby_access,
+	  711, 200, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
 
-	/* VR voltage */
-
-	/* VR current */
-
-	/* VR temperature */
-
-	/* VR power */
+	/* MPRO */
 };
 
 sensor_cfg adm1278_sensor_config_table[] = {
@@ -152,43 +144,36 @@ sensor_cfg mp5990_temp_sensor_config_table[] = {
 
 void pal_extend_sensor_config()
 {
+	uint8_t sensor_count = 0;
 	uint8_t hsc_module = get_hsc_module();
 
 	/* Determine which HSC module is used */
 	switch (hsc_module) {
 	case HSC_MODULE_ADM1278:
 		LOG_INF("HSC vendor: ADM1278");
+		sensor_count = ARRAY_SIZE(adm1278_sensor_config_table);
+		for (int index = 0; index < sensor_count; index++) {
+			add_sensor_config(adm1278_sensor_config_table[index]);
+		}
 		break;
 	case HSC_MODULE_LTC4282:
 		LOG_INF("HSC vendor: LTC4282");
+		sensor_count = ARRAY_SIZE(ltc4282_sensor_config_table);
+		for (int index = 0; index < sensor_count; index++) {
+			add_sensor_config(ltc4282_sensor_config_table[index]);
+		}
 		break;
 	case HSC_MODULE_MP5990:
 		LOG_INF("HSC vendor: MP5990");
+		sensor_count = ARRAY_SIZE(mp5990_sensor_config_table);
+		for (int index = 0; index < sensor_count; index++) {
+			add_sensor_config(mp5990_sensor_config_table[index]);
+		}
+		/* MP5990 can read HSC temperature */
+		add_sensor_config(mp5990_temp_sensor_config_table[0]);
 		break;
 	default:
 		LOG_ERR("Unsupported HSC module, HSC module: 0x%x", hsc_module);
-		break;
-	}
-
-	uint8_t board_revision = get_board_revision();
-	uint8_t vr_vender = (board_revision & 0x30) >> 4;
-	uint8_t board_stage = (board_revision & 0x0F);
-
-	LOG_INF("BOARD config: 0x%x - 0x%x - 0x%x", board_revision, vr_vender, board_stage);
-
-	/* Determine which VR is used */
-	switch (vr_vender) {
-	case VR_VENDER_INFINEON:
-		LOG_INF("VR vendor: INFINEON");
-		break;
-	case VR_VENDER_MPS:
-		LOG_INF("VR vendor: MPS");
-		break;
-	case VR_VENDER_TI:
-		LOG_INF("VR vendor: TI");
-		break;
-	default:
-		LOG_INF("VR vendor: RNS(default)");
 		break;
 	}
 
