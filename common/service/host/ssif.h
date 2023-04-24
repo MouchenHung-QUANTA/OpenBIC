@@ -112,7 +112,7 @@ typedef struct _ssif_dev {
 
 	ssif_status_t cur_status;
 	ssif_err_status_t err_status_lst[SSIF_ERR_RCD_SIZE]; // history error status
-	uint8_t err_idx; // 
+	uint8_t err_idx; //
 	ssif_err_status_t err_status; // last error status
 } ssif_dev;
 
@@ -126,7 +126,7 @@ struct ssif_wr_start {
 struct ssif_wr_middle {
 	uint8_t len;
 	uint8_t data[SSIF_MAX_IPMI_DATA_SIZE];
-}  __attribute__((packed));
+} __attribute__((packed));
 
 struct ssif_rd_single {
 	uint8_t len;
@@ -134,7 +134,7 @@ struct ssif_rd_single {
 	uint8_t cmd;
 	uint8_t cmplt_code;
 	uint8_t data[SSIF_MAX_IPMI_DATA_SIZE - 3]; // -netfn -cmd -cc
-}  __attribute__((packed));
+} __attribute__((packed));
 
 struct ssif_rd_start {
 	uint8_t len;
@@ -143,13 +143,13 @@ struct ssif_rd_start {
 	uint8_t cmd;
 	uint8_t cmplt_code;
 	uint8_t data[SSIF_MAX_IPMI_DATA_SIZE - 5]; // -netfn -cmd -cc -key(2bytes)
-}  __attribute__((packed));
+} __attribute__((packed));
 
 struct ssif_rd_middle {
 	uint8_t len;
 	uint8_t block;
 	uint8_t data[0];
-}  __attribute__((packed));
+} __attribute__((packed));
 
 void ssif_device_init(struct ssif_init_cfg *config, uint8_t size);
 ssif_err_status_t ssif_get_error_status();

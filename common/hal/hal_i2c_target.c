@@ -14,35 +14,6 @@
  * limitations under the License.
  */
 
-/*
-  NAME: I2C TARGET DEVICE
-  FILE: hal_i2c_target.c
-  DESCRIPTION: There is 1 callback function "i2c_target_cb" for I2C target ISR handle and user APIs for user access.
-  AUTHOR: MouchenHung
-  DATE/VERSION: 2021.12.09 - v1.4.2
-  Note: 
-    (1) Shall not modify code in this file!!!
-
-    (2) "hal_i2c_target.h" must be included!
-
-    (3) User APIs follow check-rule before doing task 
-          [api]                               [.is_init] [.is_register]
-        * i2c_target_control                   X          X
-        * i2c_target_read                      O          X
-        * i2c_target_status_get                X          X
-        * i2c_target_status_print              X          X
-        * i2c_target_cfg_get                   O          X
-                                              (O: must equal 1, X: no need to check)
-
-    (4) I2C target function/api usage recommend
-        [ACTIVATE]
-          Use "i2c_target_control()" to register/modify/unregister target bus
-        [READ]
-          Use "i2c_target_read()" to read target queue message
-
-    (5) Target queue method: Zephyr api, unregister the bus while full msgq, register back while msgq get space.
-*/
-
 #include <zephyr.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -171,7 +142,8 @@ static int i2c_target_stop(struct i2c_slave_config *config)
 		data->target_wr_msg.msg_length = data->wr_buffer_idx;
 
 		/* try to put new node to message queue */
-		uint8_t status = k_msgq_put(&data->target_wr_msgq_id, &data->target_wr_msg, K_NO_WAIT);
+		uint8_t status =
+			k_msgq_put(&data->target_wr_msgq_id, &data->target_wr_msg, K_NO_WAIT);
 		if (status) {
 			LOG_ERR("Can't put new node to message queue on bus[%d], cause of %d",
 				data->i2c_bus, status);
@@ -708,7 +680,8 @@ void cmd_ssif_init(const struct shell *shell, size_t argc, char **argv)
 	shell_info(shell, "SSIF %d init!", bus);
 
 	/* only create 1 ssif channel */
-	struct ssif_init_cfg *cfg = (struct ssif_init_cfg *)malloc(1 * sizeof(struct ssif_init_cfg));
+	struct ssif_init_cfg *cfg =
+		(struct ssif_init_cfg *)malloc(1 * sizeof(struct ssif_init_cfg));
 	if (!cfg) {
 		shell_error(shell, "Failed to malloc ssif cfg list");
 		return;
@@ -736,9 +709,11 @@ void cmd_target_info(const struct shell *shell, size_t argc, char **argv)
 		return;
 	}
 
-	shell_print(shell, "SSIF[%d] bus %d addr 0x%x:", ssif_inst->index, ssif_inst->i2c_bus, ssif_inst->addr);
+	shell_print(shell, "SSIF[%d] bus %d addr 0x%x:", ssif_inst->index, ssif_inst->i2c_bus,
+		    ssif_inst->addr);
 	shell_print(shell, "* current status: 0x%d", ssif_inst->cur_status);
-	shell_print(shell, "* current address lock: %s", ssif_inst->addr_lock == true ? "LOCK":"UNLOCK");
+	shell_print(shell, "* current address lock: %s",
+		    ssif_inst->addr_lock == true ? "LOCK" : "UNLOCK");
 	shell_print(shell, "* error status: 0x%x", ssif_inst->err_status);
 	shell_print(shell, "* error idx: %d/%d", ssif_inst->err_idx, SSIF_ERR_RCD_SIZE);
 	shell_print(shell, "* error list:");
@@ -748,7 +723,7 @@ void cmd_target_info(const struct shell *shell, size_t argc, char **argv)
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2ctarget_cmds,
 			       SHELL_CMD(register, NULL, "REGISTER.", cmd_target_register),
 			       SHELL_CMD(ssif_init, NULL, "SSIF init.", cmd_ssif_init),
-					SHELL_CMD(ssif_info, NULL, "SSIF info.", cmd_target_info),
+			       SHELL_CMD(ssif_info, NULL, "SSIF info.", cmd_target_info),
 			       SHELL_SUBCMD_SET_END);
 
 SHELL_CMD_REGISTER(i2ctarget, &sub_i2ctarget_cmds, "i2c target", NULL);
