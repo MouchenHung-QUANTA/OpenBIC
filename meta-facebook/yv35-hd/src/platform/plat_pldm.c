@@ -33,56 +33,142 @@
 #include "plat_hook.h"
 #include "plat_mctp.h"
 #include "plat_gpio.h"
+#include "plat_pldm.h"
 
 LOG_MODULE_REGISTER(plat_pldm);
-
-#define NETFN_OEM_PLDM_TO_IPMB 0xAA
-#define CMD_OEM_PLDM_TO_IPMB 0xAA
 
 struct _pldm_cmd_sup_lst {
 	uint8_t pldm_type;
 	uint8_t cmd;
 };
 
+#define PLDM_EVENT_NUM_POSTCODE 0xAF
+
+struct _pldm_sensor_event_sup_lst {
+	uint16_t sensor_id;
+	uint8_t sensor_event_class;
+	bool (*event_handler_func)(uint8_t *, uint16_t);
+};
+
+static bool mpro_postcode_collect(uint8_t *buf, uint16_t len);
+
+static struct _pldm_sensor_event_sup_lst event_sensor_sup_lst[] = {
+	{ PLDM_EVENT_NUM_POSTCODE, PLDM_NUMERIC_SENSOR_STATE, mpro_postcode_collect },
+};
+
 struct _pldm_cmd_sup_lst pldm_cmd_sup_tbl[] = {
-	{ PLDM_TYPE_BASE, PLDM_BASE_CMD_CODE_SETTID },
 	{ PLDM_TYPE_BASE, PLDM_BASE_CMD_CODE_GETTID },
 	{ PLDM_TYPE_BASE, PLDM_BASE_CMD_CODE_GET_PLDM_TYPE },
 	{ PLDM_TYPE_BASE, PLDM_BASE_CMD_CODE_GET_PLDM_CMDS },
 
-	{ PLDM_TYPE_PLAT_MON_CTRL, PLDM_MONITOR_CMD_CODE_GET_SENSOR_READING },
-	{ PLDM_TYPE_PLAT_MON_CTRL, PLDM_MONITOR_CMD_CODE_SET_EVENT_RECEIVER },
-	{ PLDM_TYPE_PLAT_MON_CTRL, PLDM_MONITOR_CMD_CODE_SET_STATE_EFFECTER_STATES },
+	{ PLDM_TYPE_PLAT_MON_CTRL, PLDM_MONITOR_CMD_CODE_PLATFORM_EVENT_MESSAGE },
 	{ PLDM_TYPE_PLAT_MON_CTRL, PLDM_MONITOR_CMD_CODE_GET_STATE_EFFECTER_STATES },
-
-	{ PLDM_TYPE_OEM, PLDM_OEM_CMD_ECHO },
-	{ PLDM_TYPE_OEM, PLDM_OEM_IPMI_BRIDGE }
 };
-/*
-bool pal_pldm_request_msg_filter(uint8_t *buff, uint32_t len, uint8_t *rsp_buff, uint32_t *rsp_len)
+
+bool pldm_request_msg_need_bypass(uint8_t *buf, uint32_t len)
 {
-	CHECK_NULL_ARG_WITH_RETURN(buff, false);
+	CHECK_NULL_ARG_WITH_RETURN(buf, false);
+	pldm_hdr *hdr = (pldm_hdr *)buf;
 
-	pldm_hdr *hdr = (pldm_hdr *)buff;
-
-	for (int i=0; i<ARRAY_SIZE(pldm_cmd_sup_tbl); i++) {
-		if ( (hdr->pldm_type == pldm_cmd_sup_tbl[i].pldm_type) && (hdr->cmd == pldm_cmd_sup_tbl[i].cmd) )
-			return true;
+	for (int i = 0; i < ARRAY_SIZE(pldm_cmd_sup_tbl); i++) {
+		if ((hdr->pldm_type == pldm_cmd_sup_tbl[i].pldm_type) &&
+		    (hdr->cmd == pldm_cmd_sup_tbl[i].cmd))
+			return false;
 	}
 
-	uint8_t seq_source = 0xFF;
-
-	ipmi_msg msg;
-	memset(&msg, 0, sizeof(ipmi_msg));
-	msg = construct_ipmi_message(seq_source, NETFN_OEM_PLDM_TO_IPMB, CMD_OEM_PLDM_TO_IPMB, SELF,
-					   BMC_IPMB, len, buff);
-	ipmb_error ipmb_ret = ipmb_read(&msg, IPMB_inf_index_map[msg.InF_target]);
-	if ((ipmb_ret != IPMB_ERROR_SUCCESS) || (msg.completion_code != CC_SUCCESS)) {
-		LOG_ERR("[%s] fail to send get dimm temperature command ret: 0x%x CC: 0x%x\n",
-		       __func__, ipmb_ret, msg.completion_code);
-		return false;
+	/* Filter some commands with certain data */
+	if ((hdr->pldm_type == PLDM_TYPE_PLAT_MON_CTRL) &&
+	    (hdr->cmd == PLDM_MONITOR_CMD_CODE_PLATFORM_EVENT_MESSAGE)) {
+		struct pldm_platform_event_message_req *req_p =
+			(struct pldm_platform_event_message_req *)(buf + sizeof(*hdr));
+		if (req_p->event_class == PLDM_SENSOR_EVENT) {
+			uint16_t sensor_id = req_p->event_data[0] | (req_p->event_data[1] << 8);
+			for (int i = 0; i < ARRAY_SIZE(event_sensor_sup_lst); i++) {
+				if (sensor_id == event_sensor_sup_lst[i].sensor_id)
+					return false;
+			}
+		}
+		return true;
 	}
 
-	return false;
+	return true;
 }
-*/
+
+uint8_t pldm_platform_event_message(const void *mctp_inst, const uint8_t *buf, uint16_t len,
+				    uint8_t *resp, uint16_t *resp_len, const void *ext_params)
+{
+	CHECK_NULL_ARG_WITH_RETURN(mctp_inst, PLDM_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(buf, PLDM_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(resp, PLDM_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(resp_len, PLDM_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(ext_params, PLDM_ERROR);
+
+	struct pldm_platform_event_message_req *req_p =
+		(struct pldm_platform_event_message_req *)buf;
+	struct pldm_platform_event_message_resp *res_p =
+		(struct pldm_platform_event_message_resp *)resp;
+
+	LOG_INF("Recieved event class 0x%x", req_p->event_class);
+	LOG_HEXDUMP_WRN(req_p->event_data, len - 3, "event data:");
+
+	uint8_t ret_cc = PLDM_SUCCESS;
+
+	uint8_t ret = pldm_event_len_check(&req_p->event_class, len - 2);
+	if (ret == PLDM_ERROR_INVALID_LENGTH) {
+		ret_cc = ret;
+		goto exit;
+	}
+
+	switch (req_p->event_class) {
+	case PLDM_SENSOR_EVENT: {
+		uint16_t sensor_id = req_p->event_data[0] | (req_p->event_data[1] << 8);
+		uint8_t sensor_event_class = req_p->event_data[2];
+
+		int i = 0;
+		for (i = 0; i < ARRAY_SIZE(event_sensor_sup_lst); i++) {
+			if ((sensor_id == event_sensor_sup_lst[i].sensor_id) &&
+			    (sensor_event_class == event_sensor_sup_lst[i].sensor_event_class)) {
+				break;
+			}
+		}
+
+		if (i == ARRAY_SIZE(event_sensor_sup_lst))
+			goto exit;
+
+		if (!event_sensor_sup_lst[i].event_handler_func) {
+			LOG_ERR("Event class 0x%x sensor id 0x%x lost handler", req_p->event_class,
+				sensor_id);
+			goto exit;
+		}
+
+		if (event_sensor_sup_lst[i].event_handler_func(&req_p->event_data[3], len - 5) ==
+		    false) {
+			LOG_ERR("Event class 0x%x sensor id 0x%x lost handler got error",
+				req_p->event_class, sensor_id);
+			goto exit;
+		}
+		break;
+	}
+
+	default:
+		LOG_WRN("Event class 0x%x not supported yet!", req_p->event_class);
+		goto exit;
+	}
+
+exit:
+	res_p->completion_code = ret_cc;
+	res_p->platform_event_status = 0x00; // BIC always not log record
+
+	*resp_len = 2;
+
+	return PLDM_SUCCESS;
+}
+
+static bool mpro_postcode_collect(uint8_t *buf, uint16_t len)
+{
+	CHECK_ARG_WITH_RETURN(buf, false);
+
+	/* TODO: Collect data to  */
+
+	return true;
+}

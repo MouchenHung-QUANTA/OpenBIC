@@ -208,6 +208,24 @@ enum pldm_event_message_global_enable {
 	PLDM_EVENT_MESSAGE_GLOBAL_ENABLE_ASYNC_KEEP_ALIVE
 };
 
+struct pldm_sensor_event_op_exp_data {
+	uint8_t op_state;
+	uint8_t pre_op_state;
+} __attribute__((packed));
+
+struct pldm_sensor_event_state_exp_data {
+	uint16_t sensor_ofst;
+	uint8_t event_state;
+	uint8_t pre_event_state;
+} __attribute__((packed));
+
+struct pldm_sensor_event_numeric_exp_data {
+	uint8_t event_state;
+	uint8_t pre_event_state;
+	uint8_t sensor_data_size;
+	uint8_t reading[1];
+} __attribute__((packed));
+
 struct pldm_platform_event_message_req {
 	uint8_t format_version;
 	uint8_t tid;
@@ -301,6 +319,8 @@ uint16_t pldm_platform_monitor_read(void *mctp_inst, mctp_ext_params ext_params,
 
 uint8_t pldm_send_platform_event(uint8_t event_class, uint16_t id, uint8_t ext_class,
 				 const uint8_t *event_data, uint8_t event_data_length);
+
+uint8_t pldm_event_len_check(uint8_t *buf, uint16_t len);
 
 #ifdef __cplusplus
 }

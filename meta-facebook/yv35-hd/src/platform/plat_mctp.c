@@ -32,6 +32,7 @@
 #include "sensor.h"
 #include "plat_hook.h"
 #include "plat_mctp.h"
+#include "plat_pldm.h"
 #include "plat_gpio.h"
 #include "plat_i2c.h"
 #include "hal_i2c_target.h"
@@ -52,6 +53,9 @@ LOG_MODULE_REGISTER(plat_mctp);
 
 /* mctp endpoint */
 #define MCTP_EID_MPRO 0x10
+
+#define NETFN_OEM_PLDM_TO_IPMB 0xAA
+#define CMD_OEM_PLDM_TO_IPMB 0xAA
 
 K_TIMER_DEFINE(send_cmd_timer, send_cmd_to_dev, NULL);
 K_WORK_DEFINE(send_cmd_work, send_cmd_to_dev_handler);
@@ -96,7 +100,8 @@ static mctp *find_mctp_by_smbus(uint8_t bus)
 	return NULL;
 }
 
-static uint8_t get_mctp_route_info(uint8_t dest_endpoint, void **mctp_inst, mctp_ext_params *ext_params)
+static uint8_t get_mctp_route_info(uint8_t dest_endpoint, void **mctp_inst,
+				   mctp_ext_params *ext_params)
 {
 	CHECK_NULL_ARG_WITH_RETURN(mctp_inst, MCTP_ERROR);
 	CHECK_NULL_ARG_WITH_RETURN(ext_params, MCTP_ERROR);
@@ -138,7 +143,7 @@ static void set_endpoint_resp_timeout(void *args)
 
 static void set_dev_endpoint(void)
 {
-/*
+	/*
 	// TODO: CPU present pin check
 	if (gpio_get(CPU_PRESENT_PIN))
 		continue;
@@ -312,6 +317,24 @@ static uint8_t mctp_msg_recv(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext_
 		break;
 
 	case MCTP_MSG_TYPE_PLDM:
+		if (pldm_request_msg_need_bypass(buf, len) == true) {
+			uint8_t seq_source = 0xFF;
+			ipmi_msg msg = { 0 };
+			msg = construct_ipmi_message(seq_source, NETFN_OEM_PLDM_TO_IPMB,
+						     CMD_OEM_PLDM_TO_IPMB, SELF, BMC_IPMB, len,
+						     buf);
+
+			ipmb_error ipmb_ret = ipmb_read(&msg, IPMB_inf_index_map[msg.InF_target]);
+			if ((ipmb_ret != IPMB_ERROR_SUCCESS) ||
+			    (msg.completion_code != CC_SUCCESS)) {
+				LOG_ERR("Fail to send pldm bridge ipmb request msg with ret: 0x%x CC: 0x%x",
+					ipmb_ret, msg.completion_code);
+				return MCTP_ERROR;
+			}
+
+			return mctp_send_msg(mctp_p, msg.data, msg.data_len, ext_params);
+		}
+
 		mctp_pldm_cmd_handler(mctp_p, buf, len, ext_params);
 		break;
 
@@ -358,7 +381,8 @@ void plat_mctp_init(void)
 		cfg.address = p->conf.smbus_conf.addr;
 		cfg.i2c_msg_count = 0x0A;
 
-		if (i2c_target_control(p->conf.smbus_conf.bus, &cfg, I2C_CONTROL_REGISTER) != I2C_TARGET_API_NO_ERR) {
+		if (i2c_target_control(p->conf.smbus_conf.bus, &cfg, I2C_CONTROL_REGISTER) !=
+		    I2C_TARGET_API_NO_ERR) {
 			LOG_ERR("i2c %d register target failed", p->conf.smbus_conf.bus);
 			continue;
 		}
@@ -382,7 +406,7 @@ void plat_mctp_init(void)
 	}
 
 	/* TODO: Only send command to device when DC on */
-/*
+	/*
 	if (is_mb_dc_on())
 */
 	k_timer_start(&send_cmd_timer, K_MSEC(5000), K_NO_WAIT);

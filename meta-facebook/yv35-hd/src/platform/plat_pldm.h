@@ -17,5 +17,6 @@
 #ifndef _PLAT_PLDM_h
 #define _PLAT_PLDM_h
 
+bool pldm_request_msg_need_bypass(uint8_t *buf, uint32_t len);
 
 #endif /* _PLAT_PLDM_h */
