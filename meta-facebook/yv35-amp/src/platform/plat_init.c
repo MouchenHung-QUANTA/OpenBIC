@@ -24,7 +24,6 @@
 #include "plat_i2c.h"
 #include "plat_pmic.h"
 #include "plat_apml.h"
-#include "plat_kcs.h"
 #include "rg3mxxb12.h"
 #include "util_worker.h"
 
@@ -50,7 +49,7 @@ void pal_pre_init()
 
 void pal_post_init()
 {
-	kcs_init();
+	return;
 }
 
 void pal_set_sys_status()
