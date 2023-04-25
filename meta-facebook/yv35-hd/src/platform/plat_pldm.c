@@ -168,6 +168,7 @@ static bool mpro_postcode_collect(uint8_t *buf, uint16_t len)
 {
 	CHECK_ARG_WITH_RETURN(buf, false);
 
+	LOG_HEXDUMP_INF(buf, len, "* postcode: ");
 	/* TODO: Collect data to  */
 
 	return true;
