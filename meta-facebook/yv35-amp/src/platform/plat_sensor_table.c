@@ -109,7 +109,6 @@ sensor_cfg adm1278_sensor_config_table[] = {
 	{ SENSOR_NUM_PWR_HSCIN, sensor_dev_adm1278, I2C_BUS5, ADM1278_ADDR, PMBUS_READ_PIN,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, post_adm1278_pwr_read, NULL, &adm1278_init_args[0] },
-
 };
 
 sensor_cfg ltc4282_sensor_config_table[] = {
