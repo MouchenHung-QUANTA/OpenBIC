@@ -173,3 +173,84 @@ static bool mpro_postcode_collect(uint8_t *buf, uint16_t len)
 
 	return true;
 }
+
+#define PLDM_MAX_INSTID_COUNT 32
+static uint32_t inst_table_for_ipmb;
+static bridge_store store_table[PLDM_MAX_INSTID_COUNT];
+
+bool pldm_save_mctp_inst_from_ipmb_req(void *mctp_inst, uint8_t inst_num,
+				       mctp_ext_params ext_params)
+{
+	CHECK_ARG_WITH_RETURN(mctp_inst, false);
+
+	if (inst_num >= PLDM_MAX_INSTID_COUNT) {
+		LOG_ERR("Invalid instance number %d", inst_num);
+		return false;
+	}
+
+	if (!(inst_table_for_ipmb & BIT(inst_num))) {
+		LOG_ERR("Instant id %d has been used!", inst_num);
+		return false;
+	}
+
+	WRITE_BIT(inst_table_for_ipmb, inst_num, 1);
+	store_table[inst_num].mctp_inst = (mctp *)mctp_inst;
+	store_table[inst_num].ext_params = ext_params;
+
+	return true;
+}
+
+bridge_store *pldm_find_mctp_inst_by_inst_id(uint8_t inst_num)
+{
+	if (!(inst_table_for_ipmb & BIT(inst_num))) {
+		LOG_ERR("Received unexpected inatant id %d not register yet!", inst_num);
+		return NULL;
+	}
+
+	WRITE_BIT(inst_table_for_ipmb, inst_num, 0);
+
+	return &store_table[inst_num];
+}
+
+bool pldm_send_ipmb_rsp(ipmi_msg *msg)
+{
+	CHECK_NULL_ARG_WITH_RETURN(msg, false);
+
+	if ((msg->netfn != (NETFN_OEM_1S_REQ + 1)) || (msg->cmd != CMD_OEM_1S_SEND_PLDM_TO_IPMB)) {
+		LOG_ERR("Non-support NetFn 0x%x and Cmd 0x%x", msg->netfn, msg->cmd);
+		return false;
+	}
+
+	if (msg->data_len < sizeof(pldm_hdr)) {
+		LOG_ERR("Received invalid data length");
+		return false;
+	}
+
+	pldm_hdr *hdr = (pldm_hdr *)msg->data;
+	bridge_store *hdr_info = pldm_find_mctp_inst_by_inst_id(hdr->inst_id);
+	if (!hdr_info) {
+		LOG_ERR("Given instant num %d can't get mctp header while ipmb response",
+			hdr->inst_id);
+		return false;
+	}
+
+	pldm_msg pmsg = { 0 };
+	pmsg.ext_params = hdr_info->ext_params;
+	memcpy(&pmsg.hdr, &msg->data[0], sizeof(pmsg.hdr));
+	pmsg.hdr.rq = PLDM_RESPONSE;
+
+	if (msg->completion_code == CC_CAN_NOT_RESPOND) {
+		pmsg.buf[0] = PLDM_ERROR;
+		pmsg.len = 1;
+	} else {
+		pmsg.buf = msg->data + sizeof(pmsg.hdr);
+		pmsg.len = msg->data_len - sizeof(pmsg.hdr);
+	}
+
+	LOG_HEXDUMP_INF(pmsg.buf, pmsg.len, "receive pldm rsp from ipmb:");
+
+	// Send response to PLDM/MCTP thread
+	mctp_pldm_send_msg(hdr_info->mctp_inst, &pmsg);
+
+	return true;
+}

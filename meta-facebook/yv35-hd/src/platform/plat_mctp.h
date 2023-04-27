@@ -17,6 +17,8 @@
 #ifndef _PLAT_MCTP_h
 #define _PLAT_MCTP_h
 
+#define CMD_OEM_1S_SEND_PLDM_TO_IPMB 0xAA /* TODO: Should confirm with BMC */
+
 /* init the mctp moduel for platform */
 void plat_mctp_init(void);
 void send_cmd_to_dev(struct k_timer *timer);

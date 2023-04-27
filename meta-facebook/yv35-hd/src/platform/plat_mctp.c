@@ -54,9 +54,6 @@ LOG_MODULE_REGISTER(plat_mctp);
 /* mctp endpoint */
 #define MCTP_EID_MPRO 0x10
 
-#define NETFN_OEM_PLDM_TO_IPMB 0xAA
-#define CMD_OEM_PLDM_TO_IPMB 0xAA
-
 K_TIMER_DEFINE(send_cmd_timer, send_cmd_to_dev, NULL);
 K_WORK_DEFINE(send_cmd_work, send_cmd_to_dev_handler);
 
@@ -318,10 +315,11 @@ static uint8_t mctp_msg_recv(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext_
 
 	case MCTP_MSG_TYPE_PLDM:
 		if (pldm_request_msg_need_bypass(buf, len) == true) {
+			/*
 			uint8_t seq_source = 0xFF;
 			ipmi_msg msg = { 0 };
-			msg = construct_ipmi_message(seq_source, NETFN_OEM_PLDM_TO_IPMB,
-						     CMD_OEM_PLDM_TO_IPMB, SELF, BMC_IPMB, len,
+			msg = construct_ipmi_message(seq_source, NETFN_OEM_1S_REQ,
+						     CMD_OEM_1S_SEND_PLDM_TO_IPMB, SELF, BMC_IPMB, len,
 						     buf);
 
 			ipmb_error ipmb_ret = ipmb_read(&msg, IPMB_inf_index_map[msg.InF_target]);
@@ -333,6 +331,34 @@ static uint8_t mctp_msg_recv(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext_
 			}
 
 			return mctp_send_msg(mctp_p, msg.data, msg.data_len, ext_params);
+*/
+			ipmi_msg bridge_msg = { 0 };
+			bridge_msg.seq_source = 0xff; // No seq for MPRO
+			bridge_msg.InF_source = MPRO_PLDM;
+			bridge_msg.InF_target =
+				BMC_IPMB; // default bypassing IPMI standard command to BMC
+			bridge_msg.netfn = NETFN_OEM_1S_REQ;
+			bridge_msg.cmd = CMD_OEM_1S_SEND_PLDM_TO_IPMB;
+			bridge_msg.data_len = len; // exclude netfn, cmd
+			memcpy(&bridge_msg.data[0], buf, bridge_msg.data_len);
+
+			ipmb_error status =
+				ipmb_send_request(&bridge_msg, IPMB_inf_index_map[BMC_IPMB]);
+			if (status != IPMB_ERROR_SUCCESS) {
+				LOG_ERR("Fail to send pldm bridge ipmb request msg with ret 0x%x",
+					status);
+				return MCTP_ERROR;
+			}
+
+			/* Record mctp relative info */
+			pldm_hdr *hdr = (pldm_hdr *)buf;
+			if (pldm_save_mctp_inst_from_ipmb_req(mctp_p, hdr->inst_id, ext_params) ==
+			    false) {
+				LOG_ERR("Failed to save bridge info via inst id %d", hdr->inst_id);
+				return MCTP_ERROR;
+			}
+
+			return MCTP_SUCCESS;
 		}
 
 		mctp_pldm_cmd_handler(mctp_p, buf, len, ext_params);

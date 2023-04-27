@@ -356,7 +356,6 @@ void IPMI_handler(void *arug0, void *arug1, void *arug2)
 #endif
 #ifdef ENABLE_SSIF
 		case HOST_SSIF_1:
-		case HOST_SSIF_2:
 			msg_cfg.buffer.netfn = (msg_cfg.buffer.netfn + 1) << 2;
 			if (ssif_set_data(msg_cfg.buffer.InF_source - HOST_SSIF_1, &msg_cfg) == false) {
 				LOG_ERR("Failed to write ssif response data");

@@ -17,6 +17,17 @@
 #ifndef _PLAT_PLDM_h
 #define _PLAT_PLDM_h
 
+#include "mctp.h"
+
+typedef struct _bridge_store {
+	mctp *mctp_inst;
+	mctp_ext_params ext_params;
+} bridge_store;
+
 bool pldm_request_msg_need_bypass(uint8_t *buf, uint32_t len);
+bool pldm_save_mctp_inst_from_ipmb_req(void *mctp_inst, uint8_t inst_num,
+				       mctp_ext_params ext_params);
+bridge_store *pldm_find_mctp_inst_by_inst_id(uint8_t inst_num);
+bool pldm_send_ipmb_rsp(ipmi_msg *msg);
 
 #endif /* _PLAT_PLDM_h */

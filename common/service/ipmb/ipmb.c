@@ -22,10 +22,6 @@
 #include "kcs.h"
 #endif
 
-#ifdef ENABLE_SSIF
-#include "ssif.h"
-#endif
-
 #include "libutil.h"
 #include "plat_def.h"
 #include "plat_ipmb.h"
@@ -38,6 +34,7 @@
 #include <zephyr.h>
 #include <logging/log.h>
 #include "plat_ipmb.h"
+#include "plat_pldm.h"
 
 #include "pldm.h"
 
@@ -528,6 +525,14 @@ void IPMB_TXTask(void *pvParameters, void *arvg0, void *arvg1)
 						       __func__);
 					} else if (current_msg_tx->buffer.InF_source == SELF) {
 						printf("[%s] Failed to send command\n", __func__);
+					} else if (current_msg_tx->buffer.InF_source == MPRO_PLDM) {
+						printf("[%s] Failed to send command from PLDM\n",
+						       __func__);
+						current_msg_tx->buffer.netfn =
+							current_msg_tx->buffer.netfn + 1;
+						current_msg_tx->buffer.completion_code =
+							CC_CAN_NOT_RESPOND;
+						pldm_send_ipmb_rsp(&current_msg_tx->buffer);
 					} else if ((current_msg_tx->buffer.InF_source & 0xF0) ==
 						   HOST_KCS_1) {
 						// the source is KCS if the bit[7:4] are 0101b.
@@ -563,18 +568,6 @@ void IPMB_TXTask(void *pvParameters, void *arvg0, void *arvg1)
 							  kcs_buff,
 							  current_msg_tx->buffer.data_len + 3);
 						SAFE_FREE(kcs_buff);
-#endif
-					} else if ((current_msg_tx->buffer.InF_source & 0xF0) ==
-						   HOST_SSIF_1) {
-#ifdef ENABLE_SSIF
-						LOG_ERR("Failed to send ssif message from %d to %d", current_msg_tx->buffer.InF_source, current_msg_tx->buffer.InF_target);
-						current_msg_tx->buffer.completion_code = CC_CAN_NOT_RESPOND;
-						current_msg_tx->buffer.netfn = (current_msg_tx->buffer.netfn + 1) << 2;
-						current_msg_tx->buffer.data_len = 0;
-
-						if (ssif_set_data(current_msg_tx->buffer.InF_source - HOST_SSIF_1, &current_msg_tx) == false) {
-							LOG_ERR("Failed to put SSIF msg to buffer");
-						}
 #endif
 					} else {
 						// Return the error code(node busy) to the source channel
@@ -763,19 +756,9 @@ void IPMB_RXTask(void *pvParameters, void *arvg0, void *arvg1)
 							  current_msg_rx->buffer.data_len + 3);
 						SAFE_FREE(kcs_buff);
 #endif
-					} else if ((current_msg_rx->buffer.InF_source & 0xF0) ==
-						   HOST_SSIF_1) {
-#ifdef ENABLE_SSIF
-						if (pal_immediate_respond_from_KCS(
-							    current_msg_rx->buffer.netfn & ~BIT(0),
-							    current_msg_rx->buffer.cmd)) {
-							goto cleanup;
-						}
-
-						if (ssif_set_data(current_msg_rx->buffer.InF_source - HOST_SSIF_1, &current_msg_rx) == false) {
-							LOG_ERR("Failed to put SSIF msg to buffer");
-						}
-#endif
+					} else if ((current_msg_rx->buffer.InF_source) ==
+						   MPRO_PLDM) {
+						pldm_send_ipmb_rsp(&current_msg_rx->buffer);
 					} else if (current_msg_rx->buffer.InF_source == ME_IPMB) {
 						ipmi_msg *bridge_msg =
 							(ipmi_msg *)malloc(sizeof(ipmi_msg));
@@ -892,7 +875,6 @@ void IPMB_RXTask(void *pvParameters, void *arvg0, void *arvg1)
 						       &current_msg_rx->buffer.data[0],
 						       current_msg_rx->buffer.data_len);
 					}
-
 
 					// Check BMC communication interface if use IPMB or not
 					if (!pal_is_interface_use_ipmb(

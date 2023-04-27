@@ -115,6 +115,7 @@ enum Channel_Target {
 	/* 21h-39h reserved. */
 	PLDM = 0x40,
 	MCTP = 0x41,
+	MPRO_PLDM = 0x42,
 	/* 41h-4Fh reserved. */
 	HOST_KCS_1 = 0x50,
 	HOST_KCS_2 = 0x51,
@@ -122,8 +123,7 @@ enum Channel_Target {
 	HOST_KCS_4 = 0x53,
 	/* 54h-5Fh are reserved for KCS */
 	HOST_SSIF_1 = 0x60,
-	HOST_SSIF_2 = 0x61,
-	/* 62h-6Fh are reserved for SSIF */
+	/* 61h-6Fh are reserved for SSIF */
 	RESERVED,
 };
 
