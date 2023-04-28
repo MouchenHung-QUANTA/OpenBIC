@@ -4,7 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
+ * 
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
@@ -13,35 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-/*
-  NAME: I2C TARGET DEVICE
-  FILE: hal_i2c_target.c
-  DESCRIPTION: There is 1 callback function "i2c_target_cb" for I2C target ISR handle and user APIs for user access.
-  AUTHOR: MouchenHung
-  DATE/VERSION: 2021.12.09 - v1.4.2
-  Note:
-    (1) Shall not modify code in this file!!!
-
-    (2) "hal_i2c_target.h" must be included!
-
-    (3) User APIs follow check-rule before doing task
-          [api]                               [.is_init] [.is_register]
-        * i2c_target_control                   X          X
-        * i2c_target_read                      O          X
-        * i2c_target_status_get                X          X
-        * i2c_target_status_print              X          X
-        * i2c_target_cfg_get                   O          X
-                                              (O: must equal 1, X: no need to check)
-
-    (4) I2C target function/api usage recommend
-        [ACTIVATE]
-          Use "i2c_target_control()" to register/modify/unregister target bus
-        [READ]
-          Use "i2c_target_read()" to read target queue message
-
-    (5) Target queue method: Zephyr api, unregister the bus while full msgq, register back while msgq get space.
-*/
 
 #include <zephyr.h>
 #include <stdio.h>
@@ -69,18 +40,10 @@ static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg);
 static int do_i2c_target_register(uint8_t bus_num);
 static int do_i2c_target_unregister(uint8_t bus_num);
 
-__weak void pal_do_something_before_read(void *arg)
+static bool do_something_while_rd_start(void *arg)
 {
-	CHECK_NULL_ARG(arg);
-
-#ifdef ENABLE_SSIF
-	struct i2c_target_data *data = (struct i2c_target_data *)arg;
-
-	if (data->wr_buffer_idx == 1)
-		ssif_collect_data(data->target_wr_msg.msg[0], data->i2c_bus);
-#endif
-
-	return;
+	ARG_UNUSED(arg);
+	return true;
 }
 
 static int i2c_target_write_requested(struct i2c_slave_config *config)
@@ -93,6 +56,7 @@ static int i2c_target_write_requested(struct i2c_slave_config *config)
 	data->target_wr_msg.msg_length = 0;
 	memset(data->target_wr_msg.msg, 0x0, MAX_I2C_TARGET_BUFF);
 	data->wr_buffer_idx = 0;
+	data->skip_msg_wr = false;
 
 	return 0;
 }
@@ -110,9 +74,6 @@ static int i2c_target_write_received(struct i2c_slave_config *config, uint8_t va
 	}
 	data->target_wr_msg.msg[data->wr_buffer_idx++] = val;
 
-	if (data->data_collect_func)
-		data->data_collect_func(data);
-
 	return 0;
 }
 
@@ -123,6 +84,11 @@ static int i2c_target_read_requested(struct i2c_slave_config *config, uint8_t *v
 
 	struct i2c_target_data *data;
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
+
+	if (data->rd_data_collect_func) {
+		if (data->rd_data_collect_func(data) == false)
+			data->skip_msg_wr = true;
+	}
 
 	if (!data->target_rd_msg.msg_length) {
 		LOG_WRN("Data not ready");
@@ -165,15 +131,23 @@ static int i2c_target_stop(struct i2c_slave_config *config)
 	struct i2c_target_data *data;
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
+	int ret = 1;
+
 	if (data->wr_buffer_idx) {
+		if (data->skip_msg_wr == true) {
+			ret = 0;
+			goto clean_up;
+		}
+
 		data->target_wr_msg.msg_length = data->wr_buffer_idx;
 
 		/* try to put new node to message queue */
-		uint8_t ret = k_msgq_put(&data->target_wr_msgq_id, &data->target_wr_msg, K_NO_WAIT);
-		if (ret) {
+		uint8_t status =
+			k_msgq_put(&data->target_wr_msgq_id, &data->target_wr_msg, K_NO_WAIT);
+		if (status) {
 			LOG_ERR("Can't put new node to message queue on bus[%d], cause of %d",
-				data->i2c_bus, ret);
-			return 1;
+				data->i2c_bus, status);
+			goto clean_up;
 		}
 
 		/* if target queue is full, unregister the bus target to prevent next message handle */
@@ -188,9 +162,14 @@ static int i2c_target_stop(struct i2c_slave_config *config)
 			LOG_WRN("Read buffer doesn't read complete");
 		}
 	}
-	data->rd_buffer_idx = 0;
 
-	return 0;
+	ret = 0;
+
+clean_up:
+	data->rd_buffer_idx = 0;
+	data->wr_buffer_idx = 0;
+
+	return ret;
 }
 
 static const struct i2c_slave_callbacks i2c_target_cb = {
@@ -206,7 +185,7 @@ static const struct i2c_slave_callbacks i2c_target_cb = {
   - Description: Get current status of i2c target.
   - Input:
       * bus_num: Bus number with zero base
-  - Return:
+  - Return: 
       * 0, if no error
       * others, get error(check "i2c_target_error_status")
 */
@@ -251,7 +230,7 @@ out:
   - Input:
       * bus_num: Bus number with zero base
       * cfg: cfg structure(controller name is not support!)
-  - Return:
+  - Return: 
       * 0, if no error
       * others, get error(check "i2c_target_api_error_status")
 */
@@ -281,7 +260,7 @@ uint8_t i2c_target_cfg_get(uint8_t bus_num, struct _i2c_target_config *cfg)
   - Description: Get current status of i2c target queue.
   - Input:
       * bus_num: Bus number with zero base
-  - Return:
+  - Return: 
       * 0, if no error
       * others, get error(check "i2c_target_api_error_status")
 */
@@ -317,7 +296,7 @@ uint8_t i2c_target_status_print(uint8_t bus_num)
       * *buff: Message that readed back from queue
       * buff_len: Length of buffer
       * *msg_len: Read-back message's length
-  - Return:
+  - Return: 
       * 0, if no error
       * others, get error(check "i2c_target_api_error_status")
 */
@@ -375,7 +354,7 @@ uint8_t i2c_target_read(uint8_t bus_num, uint8_t *buff, uint16_t buff_len, uint1
       * bus_num: Bus number with zero base
       * *buff: Message that put in queue
       * buff_len: Length of buffer
-  - Return:
+  - Return: 
       * 0, if no error
       * others, get error(check "i2c_target_api_error_status")
 */
@@ -412,7 +391,7 @@ uint8_t i2c_target_write(uint8_t bus_num, uint8_t *buff, uint16_t buff_len)
       * bus_num: Bus number with zero base
       * *cfg: Config settings structure
       * mode: check "i2c_target_api_control_mode"
-  - Return:
+  - Return: 
       * 0, if no error
       * others, get error(check "i2c_target_api_error_status")
 */
@@ -473,7 +452,7 @@ int i2c_target_control(uint8_t bus_num, struct _i2c_target_config *cfg,
       * *bus_name: Bus controler name with string(it's used to get binding from certain zephyr device tree driver)
       * target_address: Given a target adress for BIC itself
       * _max_msg_count: Maximum count of messages in message queue
-  - Return:
+  - Return: 
       * 0, if no error
       * others, get error(check "i2c_target_api_error_status")
 */
@@ -552,10 +531,10 @@ static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg)
 	data->max_msg_count = cfg->i2c_msg_count;
 	data->config.address = cfg->address >> 1; // to 7-bit target address
 
-	if (cfg->data_collect_func)
-		data->data_collect_func = cfg->data_collect_func;
+	if (cfg->rd_data_collect_func)
+		data->rd_data_collect_func = cfg->rd_data_collect_func;
 	else
-		data->data_collect_func = pal_do_something_before_read;
+		data->rd_data_collect_func = do_something_while_rd_start;
 
 	i2C_target_queue_buffer = malloc(data->max_msg_count * sizeof(struct i2c_msg_package));
 	if (!i2C_target_queue_buffer) {
@@ -585,7 +564,7 @@ unlock:
   - Description: Set config to register for enable i2c target.
   - Input:
       * bus_num: Bus number with zero base
-  - Return:
+  - Return: 
       * 0, if no error
       * others, get error(check "i2c_target_api_error_status")
 */
@@ -630,7 +609,7 @@ static int do_i2c_target_register(uint8_t bus_num)
   - Input:
       * bus_num: Bus number with zero base
       * mutex_flag: skip check if 1, otherwise 0
-  - Return:
+  - Return: 
       * 0, if no error
       * others, get error(check "i2c_target_api_error_status")
 */
@@ -661,52 +640,3 @@ static int do_i2c_target_unregister(uint8_t bus_num)
 
 	return I2C_TARGET_API_NO_ERR;
 }
-
-void cmd_target_register(const struct shell *shell, size_t argc, char **argv)
-{
-	if (argc != 3) {
-		shell_warn(shell, "Help: i2cterget register <bus> <register/unregister>");
-		return;
-	}
-
-	uint8_t bus = strtol(argv[1], NULL, 10);
-	uint8_t flag = strtol(argv[2], NULL, 10);
-
-	struct _i2c_target_config cfg;
-	memset(&cfg, 0, sizeof(cfg));
-	cfg.address = 0x40;
-	cfg.i2c_msg_count = 0x0A;
-
-	if (flag == 1) {
-		if (i2c_target_control(bus, &cfg, I2C_CONTROL_REGISTER) != I2C_TARGET_API_NO_ERR) {
-			shell_error(shell, "Failed to register target");
-		}
-	} else {
-		if (i2c_target_control(bus, &cfg, I2C_CONTROL_UNREGISTER) !=
-		    I2C_TARGET_API_NO_ERR) {
-			shell_error(shell, "Failed to unregister target");
-		}
-	}
-}
-
-void cmd_ssif_init(const struct shell *shell, size_t argc, char **argv)
-{
-	if (argc != 2) {
-		shell_warn(shell, "Help: i2cterget ssif_init <i2c_bus>");
-		return;
-	}
-
-	uint8_t bus = strtol(argv[1], NULL, 10);
-
-	shell_info(shell, "SSIF %d init!", bus);
-
-	ssif_device_init(&bus, 1);
-}
-
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_i2ctarget_cmds,
-			       SHELL_CMD(register, NULL, "REGISTER.", cmd_target_register),
-			       SHELL_CMD(ssif_init, NULL, "SSIF init.", cmd_ssif_init),
-
-			       SHELL_SUBCMD_SET_END);
-
-SHELL_CMD_REGISTER(i2ctarget, &sub_i2ctarget_cmds, "i2c target", NULL);

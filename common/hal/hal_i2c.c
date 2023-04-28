@@ -71,10 +71,10 @@ int i2c_addr_set(uint8_t i2c_bus, uint8_t i2c_addr)
 
 	i2c_addr = i2c_addr >> 1; // to 7-bit target address
 
-	uint32_t *addr = (uint32_t *)(AST_1030_I2C_BASE + (i2c_bus * AST_1030_I2C_REG_LEN));
+	uint32_t base = AST_1030_I2C_BASE + (i2c_bus * AST_1030_I2C_REG_LEN);
 	sys_write32(i2c_addr |
-		    (sys_read32(*addr + AST_I2CS_ADDR_CTRL) & ~AST_I2CS_ADDR1_MASK),
-		    *addr + AST_I2CS_ADDR_CTRL);
+		    (sys_read32(base + AST_I2CS_ADDR_CTRL) & ~AST_I2CS_ADDR1_MASK),
+		    base + AST_I2CS_ADDR_CTRL);
 
 	return 0;
 }

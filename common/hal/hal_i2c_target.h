@@ -32,8 +32,6 @@ struct __attribute__((__packed__)) i2c_msg_package {
 	uint8_t msg[MAX_I2C_TARGET_BUFF];
 };
 
-typedef void (*rd_data_gen_func)(void *arg);
-
 struct i2c_target_data {
 	uint8_t i2c_bus; // i2c bus number
 	const struct device *i2c_controller; // i2c controller for one target bus
@@ -44,17 +42,18 @@ struct i2c_target_data {
 	struct i2c_msg_package target_wr_msg; // message's buffer and length
 	struct k_msgq target_wr_msgq_id; // target write message queue of Zephyr api
 	uint16_t max_msg_count; // max message count for target write message queue
+	bool skip_msg_wr; // skip message write while target stop
 
 	/* TARGET READ - Not support pending messages storage */
 	uint32_t rd_buffer_idx; // message buffer index
 	struct i2c_msg_package target_rd_msg; // message's buffer and length
-	rd_data_gen_func data_collect_func; // prepare message for target read
+	bool (*rd_data_collect_func)(void *); // do something before read first byte
 };
 
 struct _i2c_target_config {
 	uint8_t address;
 	uint32_t i2c_msg_count;
-	rd_data_gen_func data_collect_func;
+	bool (*rd_data_collect_func)(void *);
 };
 
 struct i2c_target_device {
