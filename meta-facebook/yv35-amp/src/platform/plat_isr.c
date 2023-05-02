@@ -29,7 +29,6 @@
 #include "libutil.h"
 #include "logging/log.h"
 #include "plat_def.h"
-#include "plat_pmic.h"
 #include "util_worker.h"
 
 LOG_MODULE_REGISTER(plat_isr);

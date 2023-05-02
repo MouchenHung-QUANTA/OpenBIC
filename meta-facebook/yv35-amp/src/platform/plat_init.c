@@ -21,7 +21,6 @@
 #include "plat_class.h"
 #include "mpro.h"
 #include "plat_i2c.h"
-#include "plat_pmic.h"
 #include "util_worker.h"
 
 SCU_CFG scu_cfg[] = {
@@ -30,11 +29,6 @@ SCU_CFG scu_cfg[] = {
 	{ 0x7e6e2618, 0xdc000000 },
 	{ 0x7e6e261c, 0x00000F32 },
 };
-
-void pal_device_init()
-{
-	start_monitor_pmic_error_thread();
-}
 
 void pal_pre_init()
 {
@@ -57,10 +51,6 @@ void pal_set_sys_status()
 	set_DC_status(BMC_GPIOL1_SYS_PWRGD);
 	set_DC_on_delayed_status();
 	set_post_status(FM_BIOS_POST_CMPLT_BIC_N);
-	if (get_post_status()) {
-		set_tsi_threshold();
-		read_cpuid();
-	}
 	set_sys_ready_pin(BMC_GPIOD4_SW_HBLED);
 }
 
