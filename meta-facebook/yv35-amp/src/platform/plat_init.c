@@ -19,12 +19,9 @@
 #include "util_sys.h"
 #include "plat_gpio.h"
 #include "plat_class.h"
-#include "snoop.h"
-#include "pcc.h"
+#include "mpro.h"
 #include "plat_i2c.h"
 #include "plat_pmic.h"
-#include "plat_apml.h"
-#include "rg3mxxb12.h"
 #include "util_worker.h"
 
 SCU_CFG scu_cfg[] = {
@@ -44,6 +41,9 @@ void pal_pre_init()
 	init_platform_config();
 
 	scu_init(scu_cfg, sizeof(scu_cfg) / sizeof(SCU_CFG));
+	
+	mpro_init();
+
 	init_plat_worker(CONFIG_MAIN_THREAD_PRIORITY + 1); // work queue for low priority jobs
 }
 

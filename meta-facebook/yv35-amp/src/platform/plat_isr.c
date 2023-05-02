@@ -24,13 +24,12 @@
 #include "plat_class.h"
 #include "plat_i2c.h"
 #include "pmbus.h"
-#include "kcs.h"
-#include "pcc.h"
+#include "mpro.h"
+#include "ssif.h"
 #include "libutil.h"
 #include "logging/log.h"
 #include "plat_def.h"
 #include "plat_pmic.h"
-#include "plat_apml.h"
 #include "util_worker.h"
 
 LOG_MODULE_REGISTER(plat_isr);
@@ -166,7 +165,26 @@ void ISR_PLTRST()
 	isr_dbg_print(RST_PLTRST_BIC_N);
 }
 
+static void PROC_FAIL_handler(struct k_work *work)
+{
+	/* if have not received kcs and post code, add FRB3 event log. */
+	if ((get_ssif_ok() == false) && (get_4byte_postcode_ok() == false)) {
+		common_addsel_msg_t sel_msg;
+		sel_msg.InF_target = BMC_IPMB;
+		sel_msg.sensor_type = IPMI_SENSOR_TYPE_PROCESSOR;
+		sel_msg.sensor_number = SENSOR_NUM_PROC_FAIL;
+		sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
+		sel_msg.event_data1 = IPMI_EVENT_OFFSET_PROCESSOR_FRB3;
+		sel_msg.event_data2 = 0xFF;
+		sel_msg.event_data3 = 0xFF;
+		if (!common_add_sel_evt_record(&sel_msg)) {
+			LOG_ERR("Failed to assert FRE3 event log.");
+		}
+	}
+}
+
 K_WORK_DELAYABLE_DEFINE(set_DC_on_5s_work, set_DC_on_delayed_status);
+K_WORK_DELAYABLE_DEFINE(PROC_FAIL_work, PROC_FAIL_handler);
 #define DC_ON_5_SECOND 5
 #define PROC_FAIL_START_DELAY_SECOND 10
 #define READ_PMIC_CRITICAL_ERROR_MS 100
@@ -175,12 +193,23 @@ void ISR_DC_ON()
 	/* TODO: Add postcode relatice code */
 	set_DC_status(BMC_GPIOL1_SYS_PWRGD);
 	if (get_DC_status() == true) {
+		reset_mpro_postcode_buffer();
 		k_work_schedule(&set_DC_on_5s_work, K_SECONDS(DC_ON_5_SECOND));
+		k_work_schedule_for_queue(&plat_work_q, &PROC_FAIL_work,
+					  K_SECONDS(PROC_FAIL_START_DELAY_SECOND));
 	} else {
+		if (k_work_cancel_delayable(&PROC_FAIL_work) != 0) {
+			LOG_ERR("Failed to cancel proc_fail delay work.");
+		}
+		reset_ssif_ok();
+		reset_4byte_postcode_ok();
+
 		if (k_work_cancel_delayable(&set_DC_on_5s_work) != 0) {
 			LOG_ERR("Failed to cancel set dc on delay work.");
 		}
 		set_DC_on_delayed_status();
+
+		/* TODO: Should read PMIC error while DC off */
 	}
 }
 

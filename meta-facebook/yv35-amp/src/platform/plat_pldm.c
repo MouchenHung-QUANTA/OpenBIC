@@ -30,6 +30,7 @@
 #include "pldm.h"
 #include "ipmi.h"
 #include "sensor.h"
+#include "mpro.h"
 #include "plat_hook.h"
 #include "plat_mctp.h"
 #include "plat_gpio.h"
@@ -98,8 +99,9 @@ bool pldm_request_msg_need_bypass(uint8_t *buf, uint32_t len)
 	return true;
 }
 
-uint8_t pldm_platform_event_message(void *mctp_inst, uint8_t *buf, uint16_t len, uint8_t instance_id,
-				uint8_t *resp, uint16_t *resp_len, void *ext_params)
+uint8_t pldm_platform_event_message(void *mctp_inst, uint8_t *buf, uint16_t len,
+				    uint8_t instance_id, uint8_t *resp, uint16_t *resp_len,
+				    void *ext_params)
 {
 	CHECK_NULL_ARG_WITH_RETURN(mctp_inst, PLDM_ERROR);
 	CHECK_NULL_ARG_WITH_RETURN(buf, PLDM_ERROR);
@@ -173,7 +175,17 @@ static bool mpro_postcode_collect(uint8_t *buf, uint16_t len)
 	CHECK_ARG_WITH_RETURN(buf, false);
 
 	LOG_HEXDUMP_INF(buf, len, "* postcode: ");
-	/* TODO: Collect data to  */
+
+	if (len < 4) {
+		LOG_ERR("Received invalid length postcode data");
+		return false;
+	}
+
+	uint32_t postcode = 0;
+	for (int i = 0; i < len; i++)
+		postcode |= (buf[i] << (i * 8));
+
+	mpro_postcode_insert(postcode);
 
 	return true;
 }
