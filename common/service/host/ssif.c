@@ -42,6 +42,8 @@ LOG_MODULE_REGISTER(ssif);
 ssif_dev *ssif;
 static uint8_t ssif_channel_cnt = 0;
 
+static bool proc_ssif_ok = false;
+
 bool ssif_set_data(uint8_t channel, ipmi_msg_cfg *msg_cfg)
 {
 	CHECK_NULL_ARG_WITH_RETURN(msg_cfg, false);
@@ -82,6 +84,16 @@ bool ssif_set_data(uint8_t channel, ipmi_msg_cfg *msg_cfg)
 		LOG_ERR("SSIF[%d] mutex unlock failed", channel);
 
 	return true;
+}
+
+bool get_ssif_ok()
+{
+	return proc_ssif_ok;
+}
+
+void reset_ssif_ok()
+{
+	proc_ssif_ok = false;
 }
 
 ssif_dev *ssif_inst_get_by_bus(uint8_t bus)
@@ -621,6 +633,8 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 			ssif_error_record(ssif_inst->index, SSIF_STATUS_TARGET_WR_RD_ERROR);
 			goto cold_reset;
 		}
+
+		proc_ssif_ok = true;
 
 		if (rlen == 0) {
 			LOG_ERR("SSIF[%d] received invalid length of message", ssif_inst->index);

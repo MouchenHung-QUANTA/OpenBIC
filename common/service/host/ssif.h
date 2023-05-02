@@ -157,6 +157,8 @@ bool ssif_set_data(uint8_t channel, ipmi_msg_cfg *msg_cfg);
 void ssif_error_record(uint8_t channel, ssif_err_status_t errcode);
 ssif_dev *ssif_inst_get_by_bus(uint8_t bus);
 void pal_ssif_alert_trigger();
+bool get_ssif_ok();
+void reset_ssif_ok();
 
 #endif /* ENABLE_SSIF */
 
