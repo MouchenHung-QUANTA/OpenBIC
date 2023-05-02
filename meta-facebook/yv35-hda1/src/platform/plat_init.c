@@ -14,13 +14,16 @@
  * limitations under the License.
  */
 
+#include <stdlib.h>
 #include "hal_gpio.h"
 #include "power_status.h"
 #include "util_sys.h"
 #include "plat_gpio.h"
 #include "plat_class.h"
 #include "mpro.h"
+#include "ssif.h"
 #include "plat_i2c.h"
+#include "plat_mctp.h"
 #include "util_worker.h"
 
 SCU_CFG scu_cfg[] = {
@@ -52,7 +55,23 @@ void pal_pre_init()
 
 void pal_post_init()
 {
-	return;
+	plat_mctp_init();
+
+	/* only create 1 ssif channel */
+	struct ssif_init_cfg *cfg = (struct ssif_init_cfg *)malloc(1 * sizeof(struct ssif_init_cfg));
+	if (!cfg) {
+		printk("Failed to malloc ssif cfg list\n");
+		return;
+	}
+
+	cfg[0].i2c_bus = I2C_BUS4;
+	cfg[0].addr = 0x20;
+	cfg[0].target_msgq_cnt = 0x0A;
+
+	ssif_device_init(cfg, 1);
+
+	if (ssif_inst_get_by_bus(I2C_BUS4))
+		gpio_set(BMC_GPIOC3_OK, GPIO_HIGH);
 }
 
 void pal_set_sys_status()

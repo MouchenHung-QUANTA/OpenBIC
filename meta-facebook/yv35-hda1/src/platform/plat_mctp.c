@@ -54,7 +54,6 @@ LOG_MODULE_REGISTER(plat_mctp);
 /* mctp endpoint */
 #define MCTP_EID_MPRO 0x10
 
-K_TIMER_DEFINE(send_cmd_timer, send_cmd_to_dev, NULL);
 K_WORK_DEFINE(send_cmd_work, send_cmd_to_dev_handler);
 
 typedef struct _mctp_smbus_port {
@@ -432,10 +431,4 @@ void plat_mctp_init(void)
 
 		mctp_start(p->mctp_inst);
 	}
-
-	/* TODO: Only send command to device when DC on */
-	/*
-	if (is_mb_dc_on())
-*/
-	k_timer_start(&send_cmd_timer, K_MSEC(5000), K_NO_WAIT);
 }
