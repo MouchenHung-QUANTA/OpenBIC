@@ -37,6 +37,7 @@
 #include <string.h>
 #include <zephyr.h>
 #include "plat_ipmb.h"
+#include "plat_pldm.h"
 
 #include "pldm.h"
 #include <logging/log.h>
@@ -521,6 +522,13 @@ void IPMB_TXTask(void *pvParameters, void *arvg0, void *arvg1)
 						LOG_ERR("The request message is from RESERVED");
 					} else if (current_msg_tx->buffer.InF_source == SELF) {
 						LOG_ERR("Failed to send command");
+					} else if (current_msg_tx->buffer.InF_source == MPRO_PLDM) {
+						LOG_ERR("Failed to send command from PLDM");
+						current_msg_tx->buffer.netfn =
+							current_msg_tx->buffer.netfn + 1;
+						current_msg_tx->buffer.completion_code =
+							CC_CAN_NOT_RESPOND;
+						pldm_send_ipmb_rsp(&current_msg_tx->buffer);
 					} else if ((current_msg_tx->buffer.InF_source & 0xF0) ==
 						   HOST_KCS_1) {
 						// the source is KCS if the bit[7:4] are 0101b.
@@ -763,6 +771,9 @@ void IPMB_RXTask(void *pvParameters, void *arvg0, void *arvg1)
 							LOG_ERR("Failed to put SSIF msg to buffer");
 						}
 #endif
+					} else if ((current_msg_rx->buffer.InF_source) ==
+						   MPRO_PLDM) {
+						pldm_send_ipmb_rsp(&current_msg_rx->buffer);
 					} else if (current_msg_rx->buffer.InF_source == ME_IPMB) {
 						ipmi_msg *bridge_msg =
 							(ipmi_msg *)malloc(sizeof(ipmi_msg));

@@ -435,6 +435,86 @@ uint8_t pldm_set_event_receiver(void *mctp_inst, uint8_t *buf, uint16_t len, uin
 	return PLDM_SUCCESS;
 }
 
+/**
+ * @brief PLDM event length check function
+ *
+ * Check given event data length meet with spec.
+ *
+ * @param buf message data start from event class type
+ * @param len Length of buf in bytes
+ *
+ * @return PLDM_BASE return value 
+ */
+uint8_t pldm_event_len_check(uint8_t *buf, uint16_t len)
+{
+	CHECK_ARG_WITH_RETURN(buf, PLDM_ERROR);
+
+	if (len == 0)
+		return PLDM_ERROR_INVALID_LENGTH;
+
+	uint8_t *p = buf;
+
+	uint8_t event_class = p[0];
+	p++;
+	len--;
+
+	switch (event_class) {
+	case PLDM_SENSOR_EVENT:
+		/* exclude sensorID, sensorEventClass */
+		if ((len - 3) <= 0) {
+			return PLDM_ERROR_INVALID_LENGTH;
+		}
+
+		uint8_t sensor_event_class = p[0];
+		p++;
+		len--;
+		if (sensor_event_class == PLDM_SENSOR_OP_STATE) {
+			if (len != sizeof(struct pldm_sensor_event_op_exp_data))
+				return PLDM_ERROR_INVALID_LENGTH;
+		} else if (sensor_event_class == PLDM_STATE_SENSOR_STATE) {
+			if (len != sizeof(struct pldm_sensor_event_state_exp_data))
+				return PLDM_ERROR_INVALID_LENGTH;
+		} else if (sensor_event_class == PLDM_NUMERIC_SENSOR_STATE) {
+			if (len < sizeof(struct pldm_sensor_event_numeric_exp_data))
+				return PLDM_ERROR_INVALID_LENGTH;
+		} else {
+			return PLDM_ERROR;
+		}
+		break;
+
+	default:
+		LOG_WRN("Given event class 0x%x not supported", event_class);
+		return PLDM_ERROR;
+	}
+
+	return PLDM_SUCCESS;
+}
+
+__weak uint8_t pldm_platform_event_message(void *mctp_inst, uint8_t *buf, uint16_t len, uint8_t instance_id,
+				uint8_t *resp, uint16_t *resp_len, void *ext_params)
+{
+	CHECK_NULL_ARG_WITH_RETURN(mctp_inst, PLDM_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(buf, PLDM_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(resp, PLDM_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(resp_len, PLDM_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(ext_params, PLDM_ERROR);
+
+	struct pldm_platform_event_message_req *req_p =
+		(struct pldm_platform_event_message_req *)buf;
+	struct pldm_platform_event_message_resp *res_p =
+		(struct pldm_platform_event_message_resp *)resp;
+
+	LOG_INF("Recieved event class 0x%x", req_p->event_class);
+	LOG_HEXDUMP_WRN(req_p->event_data, len - 3, "event data:");
+
+	res_p->completion_code = PLDM_ERROR_UNSUPPORTED_PLDM_CMD;
+	res_p->platform_event_status = 0x00;
+
+	*resp_len = 2;
+
+	return PLDM_SUCCESS;
+}
+
 void set_effecter_state_gpio_handler(const uint8_t *buf, uint16_t len, uint8_t *resp,
 				     uint16_t *resp_len, uint8_t gpio_pin)
 {
@@ -633,6 +713,7 @@ uint8_t pldm_get_state_effecter_states(void *mctp_inst, uint8_t *buf, uint16_t l
 static pldm_cmd_handler pldm_monitor_cmd_tbl[] = {
 	{ PLDM_MONITOR_CMD_CODE_GET_SENSOR_READING, pldm_get_sensor_reading },
 	{ PLDM_MONITOR_CMD_CODE_SET_EVENT_RECEIVER, pldm_set_event_receiver },
+	{ PLDM_MONITOR_CMD_CODE_PLATFORM_EVENT_MESSAGE, pldm_platform_event_message },
 	{ PLDM_MONITOR_CMD_CODE_SET_STATE_EFFECTER_STATES, pldm_set_state_effecter_states },
 	{ PLDM_MONITOR_CMD_CODE_GET_STATE_EFFECTER_STATES, pldm_get_state_effecter_states },
 };
