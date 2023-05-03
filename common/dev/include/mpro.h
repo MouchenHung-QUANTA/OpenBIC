@@ -21,7 +21,7 @@
 
 uint16_t copy_mpro_read_buffer(uint16_t start, uint16_t length, uint8_t *buffer,
 			       uint16_t buffer_len);
-void mpro_init();
+void mpro_postcode_read_init();
 void mpro_postcode_insert(uint32_t postcode);
 void reset_mpro_postcode_buffer();
 bool get_4byte_postcode_ok();

@@ -134,6 +134,14 @@
 #define SENSOR_NUM_VR_OCP 0x71
 #define SENSOR_NUM_PMIC_ERROR 0xB4
 
+/* MPRO SENSOR NUMBER MAPPING */
+struct plat_mpro_sensor_mapping {
+    uint8_t sensor_num;
+    uint16_t mpro_sensor_num;
+};
+
+extern struct plat_mpro_sensor_mapping mpro_sensor_map[];
+
 uint8_t plat_get_config_size();
 void load_sensor_config(void);
 

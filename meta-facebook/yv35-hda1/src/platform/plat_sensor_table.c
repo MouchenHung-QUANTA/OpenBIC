@@ -28,6 +28,10 @@
 
 LOG_MODULE_REGISTER(plat_sensor_table);
 
+struct plat_mpro_sensor_mapping mpro_sensor_map[] = {
+    {}
+};
+
 sensor_poll_time_cfg diff_poll_time_sensor_table[] = {
 	// sensor_number, last_access_time
 	{ SENSOR_NUM_VOL_ADC4_P3V_BAT, 0 },

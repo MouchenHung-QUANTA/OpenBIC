@@ -20,6 +20,9 @@
 #include <logging/log.h>
 #include "ipmi.h"
 #include "ipmb.h"
+#include "sensor.h"
+#include "mctp.h"
+#include "pldm.h"
 
 LOG_MODULE_REGISTER(mpro);
 
@@ -123,7 +126,7 @@ void mpro_postcode_insert(uint32_t postcode)
 	k_sem_give(&get_postcode_sem);
 }
 
-void mpro_init()
+void mpro_postcode_read_init()
 {
 	k_sem_init(&get_postcode_sem, 0, 1);
 
@@ -147,4 +150,68 @@ bool get_4byte_postcode_ok()
 void reset_4byte_postcode_ok()
 {
 	proc_4byte_postcode_ok = false;
+}
+
+uint8_t mpro_read(uint8_t sensor_num, int *reading)
+{
+	if (!reading || (sensor_num > SENSOR_NUM_MAX)) {
+		return SENSOR_UNSPECIFIED_ERROR;
+	}
+
+	/* TODO: Should mapping sensor number to mpro sensor number */
+
+	uint8_t mpro_eid = sensor_config[sensor_config_index_map[sensor_num]].port;
+	mctp *mctp_inst = NULL;
+	mctp_ext_params ext_params = { 0 };
+	if (get_mctp_info_by_eid(mpro_eid, &mctp_inst, &ext_params) == false) {
+		LOG_ERR("Failed to get mctp info by Mpro eid 0x%x", mpro_eid);
+		return SENSOR_UNSPECIFIED_ERROR;
+	}
+
+	pldm_msg pmsg = { 0 };
+	pmsg.hdr.msg_type = MCTP_MSG_TYPE_PLDM;
+	pmsg.hdr.pldm_type = PLDM_TYPE_PLAT_MON_CTRL;
+	pmsg.hdr.cmd = PLDM_MONITOR_CMD_CODE_GET_SENSOR_READING;
+	pmsg.hdr.rq = PLDM_REQUEST;
+
+	struct pldm_get_sensor_reading_req req = {0};
+	struct pldm_get_sensor_reading_resp res = {0};
+	req.sensor_id = sensor_num;
+	req.rearm_event_state = 0;
+	pmsg.len = sizeof(req);
+	memcpy(pmsg.buf, (uint8_t*)&req, pmsg.len);
+
+	uint16_t resp_len = mctp_pldm_read(mctp_inst, &pmsg, (uint8_t *)&res, sizeof(res));
+	if (resp_len == 0) {
+		LOG_ERR("Failed to get mpro sensor #%d reading", sensor_num);
+		return SENSOR_FAIL_TO_ACCESS;
+	}
+
+	if (res.completion_code != PLDM_SUCCESS) {
+		LOG_ERR("Get Mpro sensor #0x%x with bad cc 0x%x", sensor_num, res.completion_code);
+		return SENSOR_FAIL_TO_ACCESS;
+	}
+
+	if (res.sensor_operational_state != PLDM_SENSOR_ENABLED) {
+		LOG_ERR("Mpro sensor #%d in abnormal op state 0x%x", sensor_num, res.sensor_operational_state);
+		return SENSOR_NOT_ACCESSIBLE;
+	}
+
+	LOG_INF("mpro sensor#0x%x", sensor_num);
+	LOG_HEXDUMP_INF(res.present_reading, resp_len - 7, "");
+
+	sensor_val *sval = (sensor_val *)reading;
+	sval->integer = 0;
+	sval->fraction = 0;
+	return SENSOR_READ_SUCCESS;
+}
+
+uint8_t mpro_init(uint8_t sensor_num)
+{
+	if (sensor_num > SENSOR_NUM_MAX) {
+		return SENSOR_INIT_UNSPECIFIED_ERROR;
+	}
+
+	sensor_config[sensor_config_index_map[sensor_num]].read = mpro_read;
+	return SENSOR_INIT_SUCCESS;
 }
