@@ -123,6 +123,30 @@ static uint8_t get_mctp_route_info(uint8_t dest_endpoint, void **mctp_inst,
 	return ret;
 }
 
+uint8_t get_mctp_info(uint8_t dest_endpoint, mctp **mctp_inst, mctp_ext_params *ext_params)
+{
+	CHECK_NULL_ARG_WITH_RETURN(mctp_inst, MCTP_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(ext_params, MCTP_ERROR);
+
+	uint8_t rc = MCTP_ERROR;
+	uint32_t i;
+
+	for (i = 0; i < ARRAY_SIZE(mctp_route_tbl); i++) {
+		mctp_route_entry *p = mctp_route_tbl + i;
+		if (!p) {
+			return MCTP_ERROR;
+		}
+		if (p->endpoint == dest_endpoint) {
+			*mctp_inst = find_mctp_by_smbus(p->bus);
+			ext_params->type = MCTP_MEDIUM_TYPE_SMBUS;
+			ext_params->smbus_ext_params.addr = p->addr;
+			rc = MCTP_SUCCESS;
+			break;
+		}
+	}
+	return rc;
+}
+
 static void set_endpoint_resp_handler(void *args, uint8_t *buf, uint16_t len)
 {
 	if (!buf || !len)
@@ -139,11 +163,6 @@ static void set_endpoint_resp_timeout(void *args)
 
 static void set_dev_endpoint(void)
 {
-	/*
-	// TODO: CPU present pin check
-	if (gpio_get(CPU_PRESENT_PIN))
-		continue;
-*/
 	mctp_route_entry *p = mctp_route_tbl;
 
 	for (uint8_t j = 0; j < ARRAY_SIZE(smbus_port); j++) {
@@ -172,8 +191,6 @@ static void set_dev_endpoint(void)
 		mctp_ctrl_send_msg(find_mctp_by_smbus(p->bus), &msg);
 	}
 }
-
-//Victor test
 
 static void set_tid(void)
 {
@@ -341,7 +358,8 @@ static uint8_t mctp_msg_recv(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext_
 			bridge_msg.data_len = len; // exclude netfn, cmd
 			memcpy(&bridge_msg.data[0], buf, bridge_msg.data_len);
 
-			LOG_HEXDUMP_INF(&bridge_msg.data[0], bridge_msg.data_len, "Bridging pldm req msg:");
+			LOG_HEXDUMP_INF(&bridge_msg.data[0], bridge_msg.data_len,
+					"Bridging pldm req msg:");
 
 			ipmb_error status =
 				ipmb_send_request(&bridge_msg, IPMB_inf_index_map[BMC_IPMB]);
