@@ -23,6 +23,7 @@
 #include "sensor.h"
 #include "mctp.h"
 #include "pldm.h"
+#include "mpro.h"
 
 LOG_MODULE_REGISTER(mpro);
 
