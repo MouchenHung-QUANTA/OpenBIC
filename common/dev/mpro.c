@@ -38,9 +38,6 @@ static uint16_t mpro_read_len = 0, mpro_read_index = 0;
 static bool proc_4byte_postcode_ok = false;
 static struct k_sem get_postcode_sem;
 
-struct plat_mpro_sensor_mapping mpro_sensor_map[];
-const int MPRO_MAP_TAB_SIZE;
-
 uint16_t copy_mpro_read_buffer(uint16_t start, uint16_t length, uint8_t *buffer,
 			       uint16_t buffer_len)
 {
@@ -220,11 +217,13 @@ uint8_t mpro_read(uint8_t sensor_num, int *reading)
 	LOG_INF("mpro sensor#0x%x", mpro_sensor_num);
 	LOG_HEXDUMP_INF(res.present_reading, resp_len - 7, "");
 
-	//float reading = pldm_sensor_cal(res.present_reading, resp_len - 7, res.sensor_data_size, )
+	pldm_sensor_pdr_parm parm = {0};
+	memcpy(&parm, &mpro_sensor_map[map_idx].cal_parm, sizeof(parm));
+	float val = pldm_sensor_cal(res.present_reading, resp_len - 7, res.sensor_data_size, parm);
 
 	sensor_val *sval = (sensor_val *)reading;
-	sval->integer = 0;
-	sval->fraction = 0;
+	sval->integer = (int)val & 0xFFFF;
+	sval->fraction = (val - sval->integer) * 1000;
 
 	return SENSOR_READ_SUCCESS;
 }

@@ -18,7 +18,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 #include "sensor.h"
 #include "pldm.h"
 #include "hal_gpio.h"
@@ -111,7 +110,7 @@ float pldm_sensor_cal(uint8_t *buf, uint8_t len, pldm_sensor_readings_data_type_
 		goto exit;
 	}
 
-	val = (parm.resolution * val + parm.ofst) * pow(10, parm.unit_modifier);
+	val = (parm.resolution * val + parm.ofst) * power(10, parm.unit_modifier);
 
 exit:
 	return val;
