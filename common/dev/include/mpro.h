@@ -18,6 +18,7 @@
 #define MPRO_H
 
 #include <stdint.h>
+#include "pldm_monitor.h"
 
 enum mpro_sensor_num_table {
 	MPRO_SENSOR_NUM_TMP_VRD0 = 71,
@@ -74,6 +75,16 @@ enum mpro_sensor_num_table {
 	MPRO_SENSOR_NUM_CUR_VRD8,
 	MPRO_SENSOR_NUM_STA_VRD8,
 };
+
+/* Y = (mX + b) * 10^r */
+struct plat_mpro_sensor_mapping {
+    uint8_t sensor_num;
+    uint16_t mpro_sensor_num;
+	pldm_sensor_pdr_parm cal_parm;
+};
+
+extern struct plat_mpro_sensor_mapping mpro_sensor_map[];
+extern const int MPRO_MAP_TAB_SIZE;
 
 uint16_t copy_mpro_read_buffer(uint16_t start, uint16_t length, uint8_t *buffer,
 			       uint16_t buffer_len);

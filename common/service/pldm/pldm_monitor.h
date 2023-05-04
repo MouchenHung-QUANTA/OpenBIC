@@ -154,6 +154,13 @@ enum pldm_oem_platform_completion_codes {
 	PLDM_OEM_GPIO_EFFECTER_VALUE_UNKNOWN = 0x85,
 };
 
+/* Y = (mX + b) * 10^r */
+typedef struct _pldm_sensor_pdr_parm {
+	float resolution; // from PDR (m)
+	float ofst; // from PDR (b)
+	int8_t unit_modifier; // from PDR (r)
+} pldm_sensor_pdr_parm;
+
 struct pldm_get_sensor_reading_req {
 	uint16_t sensor_id;
 	uint8_t rearm_event_state;
@@ -329,6 +336,7 @@ uint8_t plat_pldm_get_state_effecter_state_handler(const uint8_t *buf, uint16_t 
 						   uint16_t *resp_len);
 
 uint8_t pldm_event_len_check(uint8_t *buf, uint16_t len);
+float pldm_sensor_cal(uint8_t *buf, uint8_t len, pldm_sensor_readings_data_type_t data_type, pldm_sensor_pdr_parm parm);
 
 #ifdef __cplusplus
 }

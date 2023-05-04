@@ -18,6 +18,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include "sensor.h"
 #include "pldm.h"
 #include "hal_gpio.h"
@@ -63,6 +64,57 @@ static uint8_t get_sensor_data_size(pldm_sensor_readings_data_type_t data_type)
 		LOG_ERR("Unsupported data type, (%d)", data_type);
 		return 0;
 	}
+}
+
+float pldm_sensor_cal(uint8_t *buf, uint8_t len, pldm_sensor_readings_data_type_t data_type, pldm_sensor_pdr_parm parm)
+{
+	CHECK_NULL_ARG_WITH_RETURN(buf, 0);
+
+	float val = 0;
+
+	switch (data_type) {
+	case PLDM_SENSOR_DATA_SIZE_UINT8:
+	case PLDM_SENSOR_DATA_SIZE_SINT8:
+		if (len != PLDM_MONITOR_SENSOR_DATA_SIZE_INT8) {
+			LOG_ERR("Buffer length not mach with given type");
+			goto exit;
+		}
+		if (data_type == PLDM_SENSOR_DATA_SIZE_UINT8)
+			val = (uint8_t)*buf;
+		else
+			val = (int8_t)*buf;
+		break;
+	case PLDM_SENSOR_DATA_SIZE_UINT16:
+	case PLDM_SENSOR_DATA_SIZE_SINT16:
+		if (len != PLDM_MONITOR_SENSOR_DATA_SIZE_INT16) {
+			LOG_ERR("Buffer length not mach with given type");
+			goto exit;
+		}
+		if (data_type == PLDM_SENSOR_DATA_SIZE_UINT16)
+			val = (uint16_t)(buf[0] | (buf[1] << 8));
+		else
+			val = (int16_t)(buf[0] | (buf[1] << 8));
+		break;
+	case PLDM_SENSOR_DATA_SIZE_UINT32:
+	case PLDM_SENSOR_DATA_SIZE_SINT32:
+		if (len != PLDM_MONITOR_SENSOR_DATA_SIZE_INT32) {
+			LOG_ERR("Buffer length not mach with given type");
+			goto exit;
+		}
+		if (data_type == PLDM_SENSOR_DATA_SIZE_UINT32)
+			val = (uint32_t)(buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24));
+		else
+			val = (int32_t)(buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24));
+		break;
+	default:
+		LOG_ERR("Unsupported data type, (%d)", data_type);
+		goto exit;
+	}
+
+	val = (parm.resolution * val + parm.ofst) * pow(10, parm.unit_modifier);
+
+exit:
+	return val;
 }
 
 uint8_t pldm_get_sensor_reading(void *mctp_inst, uint8_t *buf, uint16_t len, uint8_t instance_id,
