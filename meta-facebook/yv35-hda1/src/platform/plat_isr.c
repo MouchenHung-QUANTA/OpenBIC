@@ -173,7 +173,7 @@ void ISR_PLTRST()
 
 static void PROC_FAIL_handler(struct k_work *work)
 {
-	/* if have not received kcs and post code, add FRB3 event log. */
+	/* if have not received ssif and post code, add FRB3 event log. */
 	if ((get_ssif_ok() == false) && (get_4byte_postcode_ok() == false)) {
 		common_addsel_msg_t sel_msg;
 		sel_msg.InF_target = BMC_IPMB;
@@ -196,7 +196,6 @@ K_WORK_DELAYABLE_DEFINE(PROC_FAIL_work, PROC_FAIL_handler);
 #define READ_PMIC_CRITICAL_ERROR_MS 100
 void ISR_DC_ON()
 {
-	/* TODO: Add postcode relatice code */
 	set_DC_status(BMC_GPIOL1_SYS_PWRGD);
 	if (get_DC_status() == true) {
 		reset_mpro_postcode_buffer();
