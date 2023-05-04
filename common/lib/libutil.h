@@ -91,5 +91,6 @@ I2C_MSG construct_i2c_message(uint8_t bus_id, uint8_t address, uint8_t tx_len, u
 
 void reverse_array(uint8_t arr[], uint8_t size);
 int ascii_to_val(uint8_t ascii_byte);
+double power(double x, double y);
 
 #endif

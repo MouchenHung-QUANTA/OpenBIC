@@ -90,3 +90,19 @@ int ascii_to_val(uint8_t ascii_byte)
 	else
 		return -1;
 }
+
+double power(double x, double y)
+{
+	double result = 1;
+
+	if (y < 0) {
+		y = -y;
+		while (y--)
+			result /= x;
+	} else {
+		while (y--)
+			result *= x;
+	}
+
+	return result;
+}
