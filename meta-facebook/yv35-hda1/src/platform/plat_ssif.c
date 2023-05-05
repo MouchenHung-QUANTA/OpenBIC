@@ -22,7 +22,7 @@
 #include "ssif.h"
 
 struct ssif_init_cfg ssif_cfg_table[] = {
-	{SSIF_I2C_BUS, SSIF_I2C_ADDR, 0x0A},
+	{ SSIF_I2C_BUS, SSIF_I2C_ADDR, 0x0A },
 };
 
 void ssif_init(void)

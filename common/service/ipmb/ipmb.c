@@ -568,12 +568,18 @@ void IPMB_TXTask(void *pvParameters, void *arvg0, void *arvg1)
 					} else if ((current_msg_tx->buffer.InF_source & 0xF0) ==
 						   HOST_SSIF_1) {
 #ifdef ENABLE_SSIF
-						LOG_ERR("Failed to send ssif message from %d to %d", current_msg_tx->buffer.InF_source, current_msg_tx->buffer.InF_target);
-						current_msg_tx->buffer.completion_code = CC_CAN_NOT_RESPOND;
-						current_msg_tx->buffer.netfn = (current_msg_tx->buffer.netfn + 1) << 2;
+						LOG_ERR("Failed to send ssif message from %d to %d",
+							current_msg_tx->buffer.InF_source,
+							current_msg_tx->buffer.InF_target);
+						current_msg_tx->buffer.completion_code =
+							CC_CAN_NOT_RESPOND;
+						current_msg_tx->buffer.netfn =
+							(current_msg_tx->buffer.netfn + 1) << 2;
 						current_msg_tx->buffer.data_len = 0;
 
-						if (ssif_set_data(current_msg_tx->buffer.InF_source - HOST_SSIF_1, current_msg_tx) == false) {
+						if (ssif_set_data(current_msg_tx->buffer.InF_source -
+									  HOST_SSIF_1,
+								  current_msg_tx) == false) {
 							LOG_ERR("Failed to put SSIF msg to buffer");
 						}
 #endif
@@ -767,7 +773,9 @@ void IPMB_RXTask(void *pvParameters, void *arvg0, void *arvg1)
 							goto cleanup;
 						}
 
-						if (ssif_set_data(current_msg_rx->buffer.InF_source - HOST_SSIF_1, current_msg_rx) == false) {
+						if (ssif_set_data(current_msg_rx->buffer.InF_source -
+									  HOST_SSIF_1,
+								  current_msg_rx) == false) {
 							LOG_ERR("Failed to put SSIF msg to buffer");
 						}
 #endif

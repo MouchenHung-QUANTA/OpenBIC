@@ -150,7 +150,6 @@ static void kcs_read_task(void *arvg0, void *arvg1, void *arvg2)
 				memcpy(&bridge_msg.data[0], &ibuf[2], bridge_msg.data_len);
 			}
 
-
 			// Check BMC communication interface if use IPMB or not
 			if (!pal_is_interface_use_ipmb(IPMB_inf_index_map[BMC_IPMB])) {
 				int ret = 0;
@@ -174,8 +173,9 @@ static void kcs_read_task(void *arvg0, void *arvg1, void *arvg2)
 				kcs_buff[2] = bridge_msg.completion_code;
 				memcpy(&kcs_buff[3], &bridge_msg.data, bridge_msg.data_len);
 
-				if(!pal_immediate_respond_from_HOST(req->netfn, req->cmd)) {
-					kcs_write(kcs_inst->index, kcs_buff, 3 + bridge_msg.data_len);
+				if (!pal_immediate_respond_from_HOST(req->netfn, req->cmd)) {
+					kcs_write(kcs_inst->index, kcs_buff,
+						  3 + bridge_msg.data_len);
 				}
 
 				SAFE_FREE(kcs_buff);

@@ -47,7 +47,7 @@ void pal_pre_init()
 	init_platform_config();
 
 	scu_init(scu_cfg, sizeof(scu_cfg) / sizeof(SCU_CFG));
-	
+
 	mpro_postcode_read_init();
 
 	init_plat_worker(CONFIG_MAIN_THREAD_PRIORITY + 1); // work queue for low priority jobs

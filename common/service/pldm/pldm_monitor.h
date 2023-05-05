@@ -336,7 +336,8 @@ uint8_t plat_pldm_get_state_effecter_state_handler(const uint8_t *buf, uint16_t 
 						   uint16_t *resp_len);
 
 uint8_t pldm_event_len_check(uint8_t *buf, uint16_t len);
-float pldm_sensor_cal(uint8_t *buf, uint8_t len, pldm_sensor_readings_data_type_t data_type, pldm_sensor_pdr_parm parm);
+float pldm_sensor_cal(uint8_t *buf, uint8_t len, pldm_sensor_readings_data_type_t data_type,
+		      pldm_sensor_pdr_parm parm);
 
 #ifdef __cplusplus
 }

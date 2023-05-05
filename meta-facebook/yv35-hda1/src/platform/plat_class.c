@@ -51,11 +51,12 @@ struct ADC_INFO {
 	int shift;
 };
 
-struct ADC_INFO adc_info[NUMBER_OF_ADC_CHANNEL] = {
-	{ 0x10, 0 },  { 0x10, 16 },  { 0x14, 0 },  { 0x14, 16 },  { 0x18, 0 },	{ 0x18, 16 },
-	{ 0x1C, 0 },  { 0x1C, 16 },  { 0x110, 0 }, { 0x110, 16 }, { 0x114, 0 }, { 0x114, 16 },
-	{ 0x118, 0 }, { 0x118, 16 }, { 0x11C, 0 }, { 0x11C, 16 }
-};
+struct ADC_INFO adc_info[NUMBER_OF_ADC_CHANNEL] = { { 0x10, 0 },   { 0x10, 16 },  { 0x14, 0 },
+						    { 0x14, 16 },  { 0x18, 0 },   { 0x18, 16 },
+						    { 0x1C, 0 },   { 0x1C, 16 },  { 0x110, 0 },
+						    { 0x110, 16 }, { 0x114, 0 },  { 0x114, 16 },
+						    { 0x118, 0 },  { 0x118, 16 }, { 0x11C, 0 },
+						    { 0x11C, 16 } };
 
 enum ADC_REF_VOL_SELECTION {
 	REF_VOL_2_5V = 0x0, // 2.5V reference voltage selection
@@ -80,7 +81,7 @@ enum CONDITION {
 };
 
 struct _1OU_CARD_MAPPING_TABLE _1ou_card_mapping_table[] = {
-	{ 0.3, LOWER, TYPE_1OU_SI_TEST_CARD },	 { 0.5, RANGE, TYPE_1OU_EXP_WITH_6_M2 },
+	{ 0.3, LOWER, TYPE_1OU_SI_TEST_CARD },   { 0.5, RANGE, TYPE_1OU_EXP_WITH_6_M2 },
 	{ 0.75, RANGE, TYPE_1OU_RAINBOW_FALLS }, { 1.0, RANGE, TYPE_1OU_VERNAL_FALLS_WITH_TI },
 	{ 1.26, RANGE, TYPE_1OU_WAIMANO_FALLS }, { 1.5, RANGE, TYPE_1OU_EXP_WITH_NIC },
 	{ 2.0, RANGE, TYPE_1OU_EXP_WITH_E1S },

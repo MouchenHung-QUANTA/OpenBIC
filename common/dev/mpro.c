@@ -160,7 +160,7 @@ uint8_t mpro_read(uint8_t sensor_num, int *reading)
 	}
 
 	int map_idx = 0;
-	for (; map_idx<MPRO_MAP_TAB_SIZE; map_idx++) {
+	for (; map_idx < MPRO_MAP_TAB_SIZE; map_idx++) {
 		if (sensor_num == mpro_sensor_map[map_idx].sensor_num)
 			break;
 	}
@@ -191,12 +191,12 @@ uint8_t mpro_read(uint8_t sensor_num, int *reading)
 	pmsg.hdr.cmd = PLDM_MONITOR_CMD_CODE_GET_SENSOR_READING;
 	pmsg.hdr.rq = PLDM_REQUEST;
 
-	struct pldm_get_sensor_reading_req req = {0};
-	struct pldm_get_sensor_reading_resp res = {0};
+	struct pldm_get_sensor_reading_req req = { 0 };
+	struct pldm_get_sensor_reading_resp res = { 0 };
 	req.sensor_id = mpro_sensor_num;
 	req.rearm_event_state = 0;
 	pmsg.len = sizeof(req);
-	memcpy(pmsg.buf, (uint8_t*)&req, pmsg.len);
+	memcpy(pmsg.buf, (uint8_t *)&req, pmsg.len);
 
 	uint16_t resp_len = mctp_pldm_read(mctp_inst, &pmsg, (uint8_t *)&res, sizeof(res));
 	if (resp_len == 0) {
@@ -205,19 +205,21 @@ uint8_t mpro_read(uint8_t sensor_num, int *reading)
 	}
 
 	if (res.completion_code != PLDM_SUCCESS) {
-		LOG_ERR("Get Mpro sensor #%d with bad cc 0x%x", mpro_sensor_num, res.completion_code);
+		LOG_ERR("Get Mpro sensor #%d with bad cc 0x%x", mpro_sensor_num,
+			res.completion_code);
 		return SENSOR_FAIL_TO_ACCESS;
 	}
 
 	if (res.sensor_operational_state != PLDM_SENSOR_ENABLED) {
-		LOG_ERR("Mpro sensor #%d in abnormal op state 0x%x", mpro_sensor_num, res.sensor_operational_state);
+		LOG_ERR("Mpro sensor #%d in abnormal op state 0x%x", mpro_sensor_num,
+			res.sensor_operational_state);
 		return SENSOR_NOT_ACCESSIBLE;
 	}
 
 	LOG_INF("mpro sensor#0x%x", mpro_sensor_num);
 	LOG_HEXDUMP_INF(res.present_reading, resp_len - 7, "");
 
-	pldm_sensor_pdr_parm parm = {0};
+	pldm_sensor_pdr_parm parm = { 0 };
 	memcpy(&parm, &mpro_sensor_map[map_idx].cal_parm, sizeof(parm));
 	float val = pldm_sensor_cal(res.present_reading, resp_len - 7, res.sensor_data_size, parm);
 

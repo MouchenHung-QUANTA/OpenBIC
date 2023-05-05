@@ -65,7 +65,8 @@ static uint8_t get_sensor_data_size(pldm_sensor_readings_data_type_t data_type)
 	}
 }
 
-float pldm_sensor_cal(uint8_t *buf, uint8_t len, pldm_sensor_readings_data_type_t data_type, pldm_sensor_pdr_parm parm)
+float pldm_sensor_cal(uint8_t *buf, uint8_t len, pldm_sensor_readings_data_type_t data_type,
+		      pldm_sensor_pdr_parm parm)
 {
 	CHECK_NULL_ARG_WITH_RETURN(buf, 0);
 
@@ -541,8 +542,9 @@ uint8_t pldm_event_len_check(uint8_t *buf, uint16_t len)
 	return PLDM_SUCCESS;
 }
 
-__weak uint8_t pldm_platform_event_message(void *mctp_inst, uint8_t *buf, uint16_t len, uint8_t instance_id,
-				uint8_t *resp, uint16_t *resp_len, void *ext_params)
+__weak uint8_t pldm_platform_event_message(void *mctp_inst, uint8_t *buf, uint16_t len,
+					   uint8_t instance_id, uint8_t *resp, uint16_t *resp_len,
+					   void *ext_params)
 {
 	CHECK_NULL_ARG_WITH_RETURN(mctp_inst, PLDM_ERROR);
 	CHECK_NULL_ARG_WITH_RETURN(buf, PLDM_ERROR);

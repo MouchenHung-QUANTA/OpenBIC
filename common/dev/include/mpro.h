@@ -23,7 +23,7 @@
 enum mpro_sensor_num_table {
 	/* DIMM sensor 1 ~ 70 */
 	MPRO_SENSOR_NUM_PWR_DRAM = 1, // total power consumed by all DRAMs
-	
+
 	MPRO_SENSOR_NUM_TMP_DIMM0 = 3,
 	MPRO_SENSOR_NUM_STA_DIMM0,
 	MPRO_SENSOR_NUM_TMP_DIMM1,
@@ -133,8 +133,8 @@ enum mpro_sensor_num_table {
 
 /* Y = (mX + b) * 10^r */
 struct plat_mpro_sensor_mapping {
-    uint8_t sensor_num;
-    uint16_t mpro_sensor_num;
+	uint8_t sensor_num;
+	uint16_t mpro_sensor_num;
 	pldm_sensor_pdr_parm cal_parm;
 };
 
