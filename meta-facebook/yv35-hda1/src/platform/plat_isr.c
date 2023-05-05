@@ -30,6 +30,7 @@
 #include "logging/log.h"
 #include "plat_def.h"
 #include "plat_mctp.h"
+#include "plat_hook.h"
 #include "util_worker.h"
 
 LOG_MODULE_REGISTER(plat_isr);
@@ -80,8 +81,10 @@ void ISR_MPRO_BOOT_OK()
 	isr_dbg_print(S0_BMC_GPIOA5_FW_BOOT_OK);
 
 	/* Only send command to device when MPRO ready */
-	if ((get_DC_status() == true) && (gpio_get(S0_BMC_GPIOA5_FW_BOOT_OK) == GPIO_HIGH))
-		k_timer_start(&send_cmd_timer, K_MSEC(5000), K_NO_WAIT);
+	if ((get_DC_status() == true) && (gpio_get(S0_BMC_GPIOA5_FW_BOOT_OK) == GPIO_HIGH)) {
+		set_mpro_status(S0_BMC_GPIOA5_FW_BOOT_OK);
+		k_timer_start(&send_cmd_timer, K_MSEC(1000), K_NO_WAIT);
+	}
 }
 
 void ISR_MPRO_HB()

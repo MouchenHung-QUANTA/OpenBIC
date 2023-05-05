@@ -44,16 +44,6 @@ LOG_MODULE_REGISTER(plat_mctp);
 #define MCTP_IC_SHIFT 7
 #define MCTP_IC_MASK 0x80
 
-/* i2c 8 bit address */
-#define I2C_ADDR_BIC 0x40
-#define I2C_ADDR_MPRO 0x9E
-
-/* i2c dev bus */
-#define I2C_BUS_MPRO I2C_BUS6
-
-/* mctp endpoint */
-#define MCTP_EID_MPRO 0x10
-
 K_WORK_DEFINE(send_cmd_work, send_cmd_to_dev_handler);
 
 typedef struct _mctp_smbus_port {

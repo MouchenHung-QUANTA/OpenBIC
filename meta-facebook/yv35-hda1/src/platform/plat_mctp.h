@@ -17,6 +17,18 @@
 #ifndef _PLAT_MCTP_h
 #define _PLAT_MCTP_h
 
+#include "plat_i2c.h"
+
+/* i2c 8 bit address */
+#define I2C_ADDR_BIC 0x40
+#define I2C_ADDR_MPRO 0x9E
+
+/* i2c dev bus */
+#define I2C_BUS_MPRO I2C_BUS6
+
+/* mctp endpoint */
+#define MCTP_EID_MPRO 0x10
+
 #define CMD_OEM_1S_SEND_PLDM_TO_IPMB 0xAA /* TODO: Should confirm with BMC */
 
 /* init the mctp moduel for platform */
