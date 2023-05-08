@@ -301,43 +301,43 @@ sensor_cfg plat_sensor_config[] = {
 };
 
 sensor_cfg adm1278_sensor_config_table[] = {
-	{ SENSOR_NUM_VOL_HSCIN, sensor_dev_adm1278, I2C_BUS5, ADM1278_ADDR, PMBUS_READ_VIN,
+	{ SENSOR_NUM_VOL_HSCIN, sensor_dev_adm1278, I2C_BUS2, ADM1278_ADDR, PMBUS_READ_VIN,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &adm1278_init_args[0] },
-	{ SENSOR_NUM_CUR_HSCOUT, sensor_dev_adm1278, I2C_BUS5, ADM1278_ADDR, PMBUS_READ_IOUT,
+	{ SENSOR_NUM_CUR_HSCOUT, sensor_dev_adm1278, I2C_BUS2, ADM1278_ADDR, PMBUS_READ_IOUT,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, post_adm1278_cur_read, NULL, &adm1278_init_args[0] },
-	{ SENSOR_NUM_PWR_HSCIN, sensor_dev_adm1278, I2C_BUS5, ADM1278_ADDR, PMBUS_READ_PIN,
+	{ SENSOR_NUM_PWR_HSCIN, sensor_dev_adm1278, I2C_BUS2, ADM1278_ADDR, PMBUS_READ_PIN,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, post_adm1278_pwr_read, NULL, &adm1278_init_args[0] },
 };
 
 sensor_cfg ltc4282_sensor_config_table[] = {
-	{ SENSOR_NUM_VOL_HSCIN, sensor_dev_ltc4282, I2C_BUS5, LTC4282_ADDR, LTC4282_VSOURCE_OFFSET,
+	{ SENSOR_NUM_VOL_HSCIN, sensor_dev_ltc4282, I2C_BUS2, LTC4282_ADDR, LTC4282_VSOURCE_OFFSET,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &ltc4282_init_args[0] },
-	{ SENSOR_NUM_CUR_HSCOUT, sensor_dev_ltc4282, I2C_BUS5, LTC4282_ADDR, LTC4282_VSENSE_OFFSET,
+	{ SENSOR_NUM_CUR_HSCOUT, sensor_dev_ltc4282, I2C_BUS2, LTC4282_ADDR, LTC4282_VSENSE_OFFSET,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, post_ltc4282_cur_read, NULL, &ltc4282_init_args[0] },
-	{ SENSOR_NUM_PWR_HSCIN, sensor_dev_ltc4282, I2C_BUS5, LTC4282_ADDR, LTC4282_POWER_OFFSET,
+	{ SENSOR_NUM_PWR_HSCIN, sensor_dev_ltc4282, I2C_BUS2, LTC4282_ADDR, LTC4282_POWER_OFFSET,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, post_ltc4282_pwr_read, NULL, &ltc4282_init_args[0] },
 };
 
 sensor_cfg mp5990_sensor_config_table[] = {
-	{ SENSOR_NUM_VOL_HSCIN, sensor_dev_mp5990, I2C_BUS5, MP5990_ADDR, PMBUS_READ_VIN,
+	{ SENSOR_NUM_VOL_HSCIN, sensor_dev_mp5990, I2C_BUS2, MP5990_ADDR, PMBUS_READ_VIN,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &mp5990_init_args[0] },
-	{ SENSOR_NUM_CUR_HSCOUT, sensor_dev_mp5990, I2C_BUS5, MP5990_ADDR, PMBUS_READ_IOUT,
+	{ SENSOR_NUM_CUR_HSCOUT, sensor_dev_mp5990, I2C_BUS2, MP5990_ADDR, PMBUS_READ_IOUT,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, post_mp5990_cur_read, NULL, &mp5990_init_args[0] },
-	{ SENSOR_NUM_PWR_HSCIN, sensor_dev_mp5990, I2C_BUS5, MP5990_ADDR, PMBUS_READ_PIN,
+	{ SENSOR_NUM_PWR_HSCIN, sensor_dev_mp5990, I2C_BUS2, MP5990_ADDR, PMBUS_READ_PIN,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, post_mp5990_pwr_read, NULL, &mp5990_init_args[0] },
 };
 
 sensor_cfg mp5990_temp_sensor_config_table[] = {
-	{ SENSOR_NUM_TEMP_HSC, sensor_dev_mp5990, I2C_BUS5, MP5990_ADDR, PMBUS_READ_TEMPERATURE_1,
+	{ SENSOR_NUM_TEMP_HSC, sensor_dev_mp5990, I2C_BUS2, MP5990_ADDR, PMBUS_READ_TEMPERATURE_1,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &mp5990_init_args[0] },
 };
@@ -389,13 +389,18 @@ uint8_t pal_get_extend_sensor_config()
 	uint8_t hsc_module = get_hsc_module();
 	switch (hsc_module) {
 	case HSC_MODULE_ADM1278:
+		LOG_INF("HSC vendor: ADM1278");
 		extend_sensor_config_size += ARRAY_SIZE(adm1278_sensor_config_table);
 		break;
 	case HSC_MODULE_LTC4282:
+		LOG_INF("HSC vendor: LTC4282");
 		extend_sensor_config_size += ARRAY_SIZE(ltc4282_sensor_config_table);
 		break;
 	case HSC_MODULE_MP5990:
+		LOG_INF("HSC vendor: MP5990");
 		extend_sensor_config_size += ARRAY_SIZE(mp5990_sensor_config_table);
+		/* MP5990 can read HSC temperature */
+		extend_sensor_config_size += ARRAY_SIZE(mp5990_temp_sensor_config_table);
 		break;
 	default:
 		LOG_ERR("Unsupported HSC module, HSC module: 0x%x", hsc_module);
