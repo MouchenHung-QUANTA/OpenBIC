@@ -199,7 +199,11 @@ K_WORK_DELAYABLE_DEFINE(PROC_FAIL_work, PROC_FAIL_handler);
 #define READ_PMIC_CRITICAL_ERROR_MS 100
 void ISR_DC_ON()
 {
+	isr_dbg_print(BMC_GPIOL1_SYS_PWRGD);
+
 	set_DC_status(BMC_GPIOL1_SYS_PWRGD);
+	return;
+
 	if (get_DC_status() == true) {
 		reset_mpro_postcode_buffer();
 		k_work_schedule(&set_DC_on_5s_work, K_SECONDS(DC_ON_5_SECOND));
@@ -223,6 +227,8 @@ void ISR_DC_ON()
 
 void ISR_HSC_THROTTLE()
 {
+	isr_dbg_print(IRQ_HSC_ALERT1_N);
+
 	common_addsel_msg_t sel_msg;
 	static bool is_hsc_throttle_assert = false; // Flag for filt out fake alert
 	if (1) {
@@ -256,6 +262,8 @@ void ISR_HSC_THROTTLE()
 
 void ISR_MB_THROTTLE()
 {
+	isr_dbg_print(FAST_PROCHOT_N);
+
 	/* FAST_PROCHOT_N glitch workaround
 	 * FAST_PROCHOT_N has a glitch and causes BIC to record MB_throttle deassertion SEL.
 	 * Ignore this by checking whether MB_throttle is asserted before recording the deassertion.
@@ -285,25 +293,10 @@ void ISR_MB_THROTTLE()
 	}
 }
 
-void ISR_SOC_THMALTRIP()
-{
-	common_addsel_msg_t sel_msg;
-	if (1) {
-		sel_msg.InF_target = BMC_IPMB;
-		sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
-		sel_msg.sensor_type = IPMI_OEM_SENSOR_TYPE_SYS_STA;
-		sel_msg.sensor_number = SENSOR_NUM_SYSTEM_STATUS;
-		sel_msg.event_data1 = IPMI_OEM_EVENT_OFFSET_SYS_THERMAL_TRIP;
-		sel_msg.event_data2 = 0xFF;
-		sel_msg.event_data3 = 0xFF;
-		if (!common_add_sel_evt_record(&sel_msg)) {
-			LOG_ERR("Failed to add SOC Thermal trip sel.");
-		}
-	}
-}
-
 void ISR_SYS_THROTTLE()
 {
+	isr_dbg_print(FM_CPU_BIC_PROCHOT_LVT3_N);
+
 	/* Same as MB_THROTTLE, glitch of FAST_PROCHOT_N will affect FM_CPU_BIC_PROCHOT_LVT3_N.
 	 * Ignore the fake event by checking whether SYS_throttle is asserted before recording the deassertion.
 	 */
@@ -335,6 +328,8 @@ void ISR_SYS_THROTTLE()
 
 void ISR_HSC_OC()
 {
+	isr_dbg_print(FM_HSC_TIMER);
+
 	common_addsel_msg_t sel_msg;
 	if (1) {
 		if (gpio_get(FM_HSC_TIMER) == GPIO_LOW) {
@@ -356,6 +351,8 @@ void ISR_HSC_OC()
 
 void ISR_UV_DETECT()
 {
+	isr_dbg_print(IRQ_UV_DETECT_N);
+
 	common_addsel_msg_t sel_msg;
 	if (1) {
 		if (gpio_get(IRQ_UV_DETECT_N) == GPIO_HIGH) {
