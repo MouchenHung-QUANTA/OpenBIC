@@ -115,7 +115,7 @@ uint8_t pldm_platform_event_message(void *mctp_inst, uint8_t *buf, uint16_t len,
 		(struct pldm_platform_event_message_resp *)resp;
 
 	LOG_INF("Recieved event class 0x%x", req_p->event_class);
-	LOG_HEXDUMP_WRN(req_p->event_data, len - 3, "event data:");
+	LOG_HEXDUMP_INF(req_p->event_data, len - 3, "event data:");
 
 	uint8_t ret_cc = PLDM_SUCCESS;
 
@@ -147,9 +147,9 @@ uint8_t pldm_platform_event_message(void *mctp_inst, uint8_t *buf, uint16_t len,
 			goto exit;
 		}
 
-		if (event_sensor_sup_lst[i].event_handler_func(&req_p->event_data[3], len - 5) ==
+		if (event_sensor_sup_lst[i].event_handler_func(req_p->event_data, len - 3) ==
 		    false) {
-			LOG_ERR("Event class 0x%x sensor id 0x%x lost handler got error",
+			LOG_ERR("Event class 0x%x sensor id 0x%x got error",
 				req_p->event_class, sensor_id);
 			goto exit;
 		}
@@ -172,18 +172,18 @@ exit:
 
 static bool mpro_postcode_collect(uint8_t *buf, uint16_t len)
 {
-	CHECK_ARG_WITH_RETURN(buf, false);
+	CHECK_NULL_ARG_WITH_RETURN(buf, false);
 
-	LOG_HEXDUMP_INF(buf, len, "* postcode: ");
-
-	if (len < 4) {
+	if ((len-6) != 4) {
 		LOG_ERR("Received invalid length postcode data");
 		return false;
 	}
 
+	LOG_HEXDUMP_INF(&buf[6], len-6, "* postcode: ");
+
 	uint32_t postcode = 0;
-	for (int i = 0; i < len; i++)
-		postcode |= (buf[i] << (i * 8));
+	for (int i = 6; i < len; i++)
+		postcode |= (buf[i] << ((i-6) * 8));
 
 	mpro_postcode_insert(postcode);
 
@@ -197,7 +197,7 @@ static bridge_store store_table[PLDM_MAX_INSTID_COUNT];
 bool pldm_save_mctp_inst_from_ipmb_req(void *mctp_inst, uint8_t inst_num,
 				       mctp_ext_params ext_params)
 {
-	CHECK_ARG_WITH_RETURN(mctp_inst, false);
+	CHECK_NULL_ARG_WITH_RETURN(mctp_inst, false);
 
 	if (inst_num >= PLDM_MAX_INSTID_COUNT) {
 		LOG_ERR("Invalid instance number %d", inst_num);

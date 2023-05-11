@@ -24,7 +24,7 @@
 #define I2C_ADDR_MPRO 0x9E
 
 /* i2c dev bus */
-#define I2C_BUS_MPRO I2C_BUS13
+#define I2C_BUS_MPRO I2C_BUS14
 
 /* mctp endpoint */
 #define MCTP_EID_MPRO 0x10

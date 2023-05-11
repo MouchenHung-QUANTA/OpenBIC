@@ -141,7 +141,7 @@ static void set_endpoint_resp_handler(void *args, uint8_t *buf, uint16_t len)
 {
 	if (!buf || !len)
 		return;
-	LOG_HEXDUMP_WRN(buf, len, __func__);
+	LOG_HEXDUMP_INF(buf, len, "set device eid:");
 }
 
 static void set_endpoint_resp_timeout(void *args)
@@ -214,7 +214,6 @@ static void set_tid(void)
 		LOG_ERR("mctp_pldm_read fail");
 	}
 
-	LOG_HEXDUMP_INF(resp_buf, resp_len, "set tid");
 	struct _set_tid_resp *resp = (struct _set_tid_resp *)resp_buf;
 	LOG_INF("set tid receiver response = 0x%x", resp->completion_code);
 }
@@ -394,6 +393,8 @@ void send_cmd_to_dev_handler(struct k_work *work)
 	set_event_receiver();
 
 	event_message_buffer_size();
+
+	set_mpro_status(S0_BMC_GPIOA5_FW_BOOT_OK);
 }
 
 void send_cmd_to_dev(struct k_timer *timer)
