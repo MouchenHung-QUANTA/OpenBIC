@@ -368,10 +368,9 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 								ssif_inst->current_ipmi_msg.buffer.data_len,
 								ssif_inst->current_ipmi_msg.buffer.data);
 				ipmb_error ipmb_ret = ipmb_read(&msg, IPMB_inf_index_map[msg.InF_target]);
-				if ((ipmb_ret != IPMB_ERROR_SUCCESS) ||
-					(msg.completion_code != CC_SUCCESS)) {
-					LOG_ERR("SSIF[%d] Failed to send SSIF msg to BMC with ret: 0x%x CC: 0x%x\n",
-						ssif_inst->index, ipmb_ret, msg.completion_code);
+				if (ipmb_ret != IPMB_ERROR_SUCCESS) {
+					LOG_ERR("SSIF[%d] Failed to send SSIF msg to BMC with ret: 0x%x",
+						ssif_inst->index, ipmb_ret);
 					break;
 				}
 
