@@ -83,6 +83,8 @@ void ISR_MPRO_BOOT_OK()
 	/* Only send command to device when MPRO ready */
 	if (gpio_get(S0_BMC_GPIOA5_FW_BOOT_OK) == GPIO_HIGH) {
 		k_timer_start(&send_cmd_timer, K_MSEC(3000), K_NO_WAIT);
+	} else {
+		set_mpro_status(S0_BMC_GPIOA5_FW_BOOT_OK);
 	}
 }
 
