@@ -81,9 +81,8 @@ void ISR_MPRO_BOOT_OK()
 	isr_dbg_print(S0_BMC_GPIOA5_FW_BOOT_OK);
 
 	/* Only send command to device when MPRO ready */
-	if ((get_DC_status() == true) && (gpio_get(S0_BMC_GPIOA5_FW_BOOT_OK) == GPIO_HIGH)) {
-		set_mpro_status(S0_BMC_GPIOA5_FW_BOOT_OK);
-		k_timer_start(&send_cmd_timer, K_MSEC(1000), K_NO_WAIT);
+	if (gpio_get(S0_BMC_GPIOA5_FW_BOOT_OK) == GPIO_HIGH) {
+		k_timer_start(&send_cmd_timer, K_MSEC(3000), K_NO_WAIT);
 	}
 }
 
@@ -200,9 +199,7 @@ K_WORK_DELAYABLE_DEFINE(PROC_FAIL_work, PROC_FAIL_handler);
 void ISR_DC_ON()
 {
 	isr_dbg_print(BMC_GPIOL1_SYS_PWRGD);
-
 	set_DC_status(BMC_GPIOL1_SYS_PWRGD);
-	return;
 
 	if (get_DC_status() == true) {
 		reset_mpro_postcode_buffer();
