@@ -347,7 +347,7 @@ void OEM_1S_GET_HSC_STATUS(ipmi_msg *msg)
 	I2C_MSG i2c_msg;
 	uint8_t retry = 5;
 
-	i2c_msg.bus = I2C_BUS5;
+	i2c_msg.bus = I2C_BUS2;
 	i2c_msg.tx_len = 1;
 	i2c_msg.rx_len = 1;
 
