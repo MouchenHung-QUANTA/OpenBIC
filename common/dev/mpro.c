@@ -159,15 +159,15 @@ uint8_t mpro_read(uint8_t sensor_num, int *reading)
 		return SENSOR_UNSPECIFIED_ERROR;
 	}
 
+	if (MPRO_MAP_TAB_SIZE == 0) {
+		LOG_ERR("Mpro table mpro_sensor_map not exist");
+		return SENSOR_UNSPECIFIED_ERROR;
+	}
+
 	int map_idx = 0;
 	for (; map_idx < MPRO_MAP_TAB_SIZE; map_idx++) {
 		if (sensor_num == mpro_sensor_map[map_idx].sensor_num)
 			break;
-	}
-
-	if (!map_idx) {
-		LOG_ERR("Mpro table mpro_sensor_map not exist");
-		return SENSOR_UNSPECIFIED_ERROR;
 	}
 
 	if (map_idx == MPRO_MAP_TAB_SIZE) {
@@ -176,14 +176,7 @@ uint8_t mpro_read(uint8_t sensor_num, int *reading)
 	}
 
 	uint16_t mpro_sensor_num = mpro_sensor_map[map_idx].mpro_sensor_num;
-
 	uint8_t mpro_eid = sensor_config[sensor_config_index_map[sensor_num]].port;
-	mctp *mctp_inst = NULL;
-	mctp_ext_params ext_params = { 0 };
-	if (get_mctp_info_by_eid(mpro_eid, &mctp_inst, &ext_params) == false) {
-		LOG_ERR("Failed to get mctp info by Mpro eid 0x%x", mpro_eid);
-		return SENSOR_UNSPECIFIED_ERROR;
-	}
 
 	pldm_msg pmsg = { 0 };
 	pmsg.hdr.msg_type = MCTP_MSG_TYPE_PLDM;
@@ -192,36 +185,44 @@ uint8_t mpro_read(uint8_t sensor_num, int *reading)
 	pmsg.hdr.rq = PLDM_REQUEST;
 
 	struct pldm_get_sensor_reading_req req = { 0 };
-	struct pldm_get_sensor_reading_resp res = { 0 };
 	req.sensor_id = mpro_sensor_num;
 	req.rearm_event_state = 0;
 	pmsg.len = sizeof(req);
 	memcpy(pmsg.buf, (uint8_t *)&req, pmsg.len);
 
-	uint16_t resp_len = mctp_pldm_read(mctp_inst, &pmsg, (uint8_t *)&res, sizeof(res));
+	mctp *mctp_inst = NULL;
+	if (get_mctp_info_by_eid(mpro_eid, &mctp_inst, &pmsg.ext_params) == false) {
+		LOG_ERR("Failed to get mctp info by Mpro eid 0x%x", mpro_eid);
+		return SENSOR_UNSPECIFIED_ERROR;
+	}
+
+	uint8_t resp_buf[PLDM_MAX_DATA_SIZE] = { 0 };
+	uint16_t resp_len = mctp_pldm_read(mctp_inst, &pmsg, resp_buf, sizeof(resp_buf));
 	if (resp_len == 0) {
 		LOG_ERR("Failed to get mpro sensor #%d reading", mpro_sensor_num);
 		return SENSOR_FAIL_TO_ACCESS;
 	}
 
-	if (res.completion_code != PLDM_SUCCESS) {
+	struct pldm_get_sensor_reading_resp *res = (struct pldm_get_sensor_reading_resp *)resp_buf;
+
+	if (res->completion_code != PLDM_SUCCESS) {
 		LOG_ERR("Get Mpro sensor #%d with bad cc 0x%x", mpro_sensor_num,
-			res.completion_code);
+			res->completion_code);
 		return SENSOR_FAIL_TO_ACCESS;
 	}
 
-	if (res.sensor_operational_state != PLDM_SENSOR_ENABLED) {
+	if (res->sensor_operational_state != PLDM_SENSOR_ENABLED) {
 		LOG_ERR("Mpro sensor #%d in abnormal op state 0x%x", mpro_sensor_num,
-			res.sensor_operational_state);
+			res->sensor_operational_state);
 		return SENSOR_NOT_ACCESSIBLE;
 	}
 
-	LOG_INF("mpro sensor#0x%x", mpro_sensor_num);
-	LOG_HEXDUMP_INF(res.present_reading, resp_len - 7, "");
+	LOG_DBG("mpro sensor#%d", mpro_sensor_num);
+	LOG_HEXDUMP_DBG(res->present_reading, resp_len - 7, "");
 
 	pldm_sensor_pdr_parm parm = { 0 };
 	memcpy(&parm, &mpro_sensor_map[map_idx].cal_parm, sizeof(parm));
-	float val = pldm_sensor_cal(res.present_reading, resp_len - 7, res.sensor_data_size, parm);
+	float val = pldm_sensor_cal(res->present_reading, resp_len - 7, res->sensor_data_size, parm);
 
 	sensor_val *sval = (sensor_val *)reading;
 	sval->integer = (int)val & 0xFFFF;
@@ -236,7 +237,7 @@ uint8_t mpro_init(uint8_t sensor_num)
 		return SENSOR_INIT_UNSPECIFIED_ERROR;
 	}
 
-	if (!MPRO_MAP_TAB_SIZE) {
+	if (MPRO_MAP_TAB_SIZE == 0) {
 		LOG_ERR("Mpro table mpro_sensor_map not exist");
 		return SENSOR_INIT_UNSPECIFIED_ERROR;
 	}
