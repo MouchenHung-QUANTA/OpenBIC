@@ -358,29 +358,31 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 			}
 
 			LOG_INF("sending SSIF command to BMC...");
+			do {
+				uint8_t seq_source = 0xFF;
+				ipmi_msg msg;
+				msg = construct_ipmi_message(seq_source,
+								ssif_inst->current_ipmi_msg.buffer.netfn,
+								ssif_inst->current_ipmi_msg.buffer.cmd, SELF,
+								BMC_IPMB,
+								ssif_inst->current_ipmi_msg.buffer.data_len,
+								ssif_inst->current_ipmi_msg.buffer.data);
+				ipmb_error ipmb_ret = ipmb_read(&msg, IPMB_inf_index_map[msg.InF_target]);
+				if ((ipmb_ret != IPMB_ERROR_SUCCESS) ||
+					(msg.completion_code != CC_SUCCESS)) {
+					LOG_ERR("SSIF[%d] Failed to send SSIF msg to BMC with ret: 0x%x CC: 0x%x\n",
+						ssif_inst->index, ipmb_ret, msg.completion_code);
+					break;
+				}
 
-			uint8_t seq_source = 0xFF;
-			ipmi_msg msg;
-			msg = construct_ipmi_message(seq_source,
-						     ssif_inst->current_ipmi_msg.buffer.netfn,
-						     ssif_inst->current_ipmi_msg.buffer.cmd, SELF,
-						     BMC_IPMB,
-						     ssif_inst->current_ipmi_msg.buffer.data_len,
-						     ssif_inst->current_ipmi_msg.buffer.data);
-			ipmb_error ipmb_ret = ipmb_read(&msg, IPMB_inf_index_map[msg.InF_target]);
-			if ((ipmb_ret != IPMB_ERROR_SUCCESS) ||
-			    (msg.completion_code != CC_SUCCESS)) {
-				LOG_ERR("SSIF[%d] Failed to send SSIF msg to BMC with ret: 0x%x CC: 0x%x\n",
-					ssif_inst->index, ipmb_ret, msg.completion_code);
-			}
-
-			ipmi_msg_cfg ssif_rsp = { 0 };
-			ssif_rsp.buffer = msg;
-			ssif_rsp.buffer.netfn = ssif_rsp.buffer.netfn << 2;
-			if (ssif_set_data(ssif_inst->index, &ssif_rsp) == false) {
-				LOG_ERR("SSIF[%d] failed to write ssif response data",
-					ssif_inst->index);
-			}
+				ipmi_msg_cfg ssif_rsp = { 0 };
+				ssif_rsp.buffer = msg;
+				ssif_rsp.buffer.netfn = ssif_rsp.buffer.netfn << 2;
+				if (ssif_set_data(ssif_inst->index, &ssif_rsp) == false) {
+					LOG_ERR("SSIF[%d] failed to write ssif response data",
+						ssif_inst->index);
+				}
+			} while (1);
 		}
 
 		if (k_sem_take(&ssif_inst->rsp_buff_sem, K_MSEC(1500)) != 0) {
