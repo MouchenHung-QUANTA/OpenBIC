@@ -20,7 +20,7 @@
 #include "version.h"
 
 #define PLATFORM_NAME "Yosemite V3.5"
-#define PROJECT_NAME "Ampare"
+#define PROJECT_NAME "Half Dome Ampere One"
 #define PROJECT_STAGE POC
 
 /*
@@ -28,9 +28,10 @@
  * 0x02 Baseboard
  * 0x03 Rainbow Falls
  * 0x04 Half Dome
+ * 0x06 Half Dome Ampere One
  * 0x10 Ampere(TODO)
  */
-#define BOARD_ID 0x10
+#define BOARD_ID 0x06
 #define DEVICE_ID 0x00
 #define DEVICE_REVISION 0x80
 
@@ -44,10 +45,10 @@
 
 #define BIC_FW_YEAR_MSB 0x20
 #define BIC_FW_YEAR_LSB 0x23
-#define BIC_FW_WEEK 0x17
-#define BIC_FW_VER 0x01
-#define BIC_FW_platform_0 0x61 // char: a
-#define BIC_FW_platform_1 0x70 // char: p
-#define BIC_FW_platform_2 0x00 // char: '\0'
+#define BIC_FW_WEEK 0x19
+#define BIC_FW_VER 0xF0
+#define BIC_FW_platform_0 0x68 // char: h
+#define BIC_FW_platform_1 0x64 // char: d
+#define BIC_FW_platform_2 0x61 // char: a
 
 #endif
