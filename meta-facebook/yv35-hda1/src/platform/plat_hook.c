@@ -194,23 +194,3 @@ bool post_mp5990_pwr_read(uint8_t sensor_num, void *args, int *reading)
 
 	return true;
 }
-
-/**************************************************************************************************
- *  SENSOR ACCESS FUNC
- **************************************************************************************************/
-static bool is_mpro_ready = false;
-void set_mpro_status(uint8_t gpio_num)
-{
-	is_mpro_ready = (gpio_get(gpio_num) == 1) ? true : false;
-	LOG_WRN("MPRO_STATUS: %s", (is_mpro_ready) ? "on" : "off");
-}
-
-bool get_mpro_status()
-{
-	return is_mpro_ready;
-}
-
-bool mpro_access(uint8_t sensor_num)
-{
-	return get_mpro_status();
-}

@@ -26,6 +26,7 @@
 #include "plat_i2c.h"
 #include "plat_class.h"
 #include "plat_mctp.h"
+#include "plat_power_status.h"
 
 LOG_MODULE_REGISTER(plat_sensor_table);
 

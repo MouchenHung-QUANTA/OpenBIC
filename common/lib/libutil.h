@@ -52,7 +52,7 @@
 
 #define CHECK_NULL_ARG_WITH_RETURN(arg_ptr, ret_val)                                               \
 	if (arg_ptr == NULL) {                                                                     \
-		LOG_DBG("Parameter \"" #arg_ptr "\" passed in as NULL");                           \
+		LOG_INF("Parameter \"" #arg_ptr "\" passed in as NULL");                           \
 		return ret_val;                                                                    \
 	}
 

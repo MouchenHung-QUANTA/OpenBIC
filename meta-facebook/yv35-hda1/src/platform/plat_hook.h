@@ -45,11 +45,4 @@ bool post_ltc4282_pwr_read(uint8_t sensor_num, void *args, int *reading);
 bool post_mp5990_cur_read(uint8_t sensor_num, void *args, int *reading);
 bool post_mp5990_pwr_read(uint8_t sensor_num, void *args, int *reading);
 
-/**************************************************************************************************
- *  SENSOR ACCESS FUNC
- **************************************************************************************************/
-void set_mpro_status(uint8_t gpio_num);
-bool get_mpro_status();
-bool mpro_access(uint8_t sensor_num);
-
 #endif

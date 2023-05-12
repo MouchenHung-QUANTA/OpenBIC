@@ -72,7 +72,8 @@ int i2c_addr_set(uint8_t i2c_bus, uint8_t i2c_addr)
 	i2c_addr = i2c_addr >> 1; // to 7-bit target address
 
 	uint32_t base = AST_1030_I2C_BASE + (i2c_bus * AST_1030_I2C_REG_LEN);
-	sys_write32(i2c_addr | (sys_read32(base + AST_I2CS_ADDR_CTRL) & ~AST_I2CS_ADDR1_MASK),
+	sys_write32(i2c_addr |
+		    (sys_read32(base + AST_I2CS_ADDR_CTRL) & ~AST_I2CS_ADDR1_MASK),
 		    base + AST_I2CS_ADDR_CTRL);
 
 	return 0;
@@ -137,8 +138,10 @@ int i2c_master_read(I2C_MSG *msg, uint8_t retry)
 		}
 	}
 
-	if (i > retry)
-		LOG_ERR("I2C %d master read retry reach max with ret %d", msg->bus, ret);
+	if (i > retry) {
+		if (msg->bus != 0)
+			LOG_ERR("I2C %d master read retry reach max with ret %d", msg->bus, ret);
+	}
 
 exit:
 	SAFE_FREE(txbuf);

@@ -36,7 +36,6 @@ void ISR_SYS_RST_BMC();
 void ISR_CPU_SPI_ACCESS();
 void ISR_SALT4();
 void ISR_SALT7();
-void ISR_SALT12();
 
 void ISR_DC_ON();
 void ISR_SLP3();

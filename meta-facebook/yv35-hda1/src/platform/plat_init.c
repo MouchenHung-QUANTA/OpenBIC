@@ -24,7 +24,7 @@
 #include "plat_i2c.h"
 #include "plat_mctp.h"
 #include "plat_ssif.h"
-#include "plat_hook.h"
+#include "plat_power_status.h"
 #include "util_worker.h"
 
 SCU_CFG scu_cfg[] = {
@@ -45,6 +45,8 @@ SCU_CFG scu_cfg[] = {
 
 void pal_pre_init()
 {
+	bic_heart_beat_init();
+
 	init_platform_config();
 
 	scu_init(scu_cfg, sizeof(scu_cfg) / sizeof(SCU_CFG));
@@ -66,8 +68,8 @@ void pal_set_sys_status()
 	set_DC_status(BMC_GPIOL1_SYS_PWRGD);
 	set_DC_on_delayed_status();
 	set_post_status(FM_BIOS_POST_CMPLT_BIC_N);
-	set_sys_ready_pin(BMC_GPIOD4_SW_HBLED);
-	set_mpro_status(S0_BMC_GPIOA5_FW_BOOT_OK);
+	//set_sys_ready_pin(BMC_GPIOO2_READY);
+	set_mpro_status();
 }
 
 #define DEF_PROJ_GPIO_PRIORITY 78

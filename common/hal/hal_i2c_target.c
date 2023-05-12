@@ -20,6 +20,7 @@
 #include <string.h>
 #include <drivers/i2c.h>
 #include "hal_i2c_target.h"
+#include "hal_gpio.h"
 #include "libutil.h"
 #include <shell/shell.h>
 #include "ssif.h"
@@ -85,6 +86,8 @@ static int i2c_target_read_requested(struct i2c_slave_config *config, uint8_t *v
 	struct i2c_target_data *data;
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
+	pal_ssif_alert_trigger(GPIO_HIGH);
+
 	if (data->rd_data_collect_func) {
 		if (data->rd_data_collect_func(data) == false)
 			data->skip_msg_wr = true;
@@ -94,7 +97,7 @@ static int i2c_target_read_requested(struct i2c_slave_config *config, uint8_t *v
 		LOG_WRN("Data not ready");
 		return 1;
 	}
-
+	LOG_INF("out");
 	data->rd_buffer_idx = 0;
 	*val = data->target_rd_msg.msg[data->rd_buffer_idx++];
 
@@ -105,6 +108,8 @@ static int i2c_target_read_processed(struct i2c_slave_config *config, uint8_t *v
 {
 	CHECK_NULL_ARG_WITH_RETURN(config, 1);
 	CHECK_NULL_ARG_WITH_RETURN(val, 1);
+
+	LOG_INF("process...");
 
 	struct i2c_target_data *data;
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
@@ -133,9 +138,15 @@ static int i2c_target_stop(struct i2c_slave_config *config)
 
 	int ret = 1;
 
+	if (data->i2c_bus == 3)
+		LOG_INF("end 1");
 	if (data->wr_buffer_idx) {
+		if (data->i2c_bus == 3)
+			LOG_INF("end 2");
 		if (data->skip_msg_wr == true) {
 			ret = 0;
+			if (data->i2c_bus == 3)
+				LOG_INF("end 3");
 			goto clean_up;
 		}
 
@@ -147,11 +158,15 @@ static int i2c_target_stop(struct i2c_slave_config *config)
 		if (status) {
 			LOG_ERR("Can't put new node to message queue on bus[%d], cause of %d",
 				data->i2c_bus, status);
+				if (data->i2c_bus == 3)
+					LOG_INF("end 4");
 			goto clean_up;
 		}
 
 		/* if target queue is full, unregister the bus target to prevent next message handle */
 		if (!k_msgq_num_free_get(&data->target_wr_msgq_id)) {
+			if (data->i2c_bus == 3)
+				LOG_INF("end 5");
 			LOG_DBG("Target queue is full, unregister bus[%d]", data->i2c_bus);
 			do_i2c_target_unregister(data->i2c_bus);
 		}
@@ -166,6 +181,8 @@ static int i2c_target_stop(struct i2c_slave_config *config)
 	ret = 0;
 
 clean_up:
+	if (data->i2c_bus == 3)
+		LOG_INF("end!!!");
 	data->rd_buffer_idx = 0;
 	data->wr_buffer_idx = 0;
 
@@ -361,7 +378,7 @@ uint8_t i2c_target_read(uint8_t bus_num, uint8_t *buff, uint16_t buff_len, uint1
 uint8_t i2c_target_write(uint8_t bus_num, uint8_t *buff, uint16_t buff_len)
 {
 	CHECK_NULL_ARG_WITH_RETURN(buff, I2C_TARGET_API_INPUT_ERR);
-
+	LOG_INF("wr1!");
 	/* check input, support while bus target is unregistered */
 	uint8_t target_status = i2c_target_status_get(bus_num);
 	if (target_status &
@@ -370,14 +387,14 @@ uint8_t i2c_target_write(uint8_t bus_num, uint8_t *buff, uint16_t buff_len)
 			target_status);
 		return I2C_TARGET_API_BUS_GET_FAIL;
 	}
-
+	LOG_INF("wr2!");
 	struct i2c_target_data *data = &i2c_target_device_global[bus_num].data;
 
 	if (buff_len > MAX_I2C_TARGET_BUFF) {
 		LOG_WRN("Given data length %d over limit %d", buff_len, MAX_I2C_TARGET_BUFF);
 		buff_len = MAX_I2C_TARGET_BUFF;
 	}
-
+	LOG_INF("wr3!");
 	memcpy(data->target_rd_msg.msg, buff, buff_len);
 	data->target_rd_msg.msg_length = buff_len;
 

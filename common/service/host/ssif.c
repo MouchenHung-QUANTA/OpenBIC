@@ -31,6 +31,7 @@
 #include "libutil.h"
 #include "plat_i2c.h"
 #include "hal_i2c_target.h"
+#include "hal_gpio.h"
 
 LOG_MODULE_REGISTER(ssif);
 
@@ -126,7 +127,7 @@ void ssif_error_record(uint8_t channel, ssif_err_status_t errcode)
 	}
 }
 
-__weak void pal_ssif_alert_trigger()
+__weak void pal_ssif_alert_trigger(uint8_t status)
 {
 	return;
 }
@@ -381,7 +382,7 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 					LOG_ERR("SSIF[%d] failed to write ssif response data",
 						ssif_inst->index);
 				}
-			} while (1);
+			} while (0);
 		}
 
 		if (k_sem_take(&ssif_inst->rsp_buff_sem, K_MSEC(1500)) != 0) {
@@ -390,10 +391,10 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 			return false;
 		}
 
-		LOG_DBG("SSIF[%d] ipmi rsp netfn 0x%x, cmd 0x%x, cc 0x%x, data length %d:",
+		LOG_INF("SSIF[%d] ipmi rsp netfn 0x%x, cmd 0x%x, cc 0x%x, data length %d:",
 			ssif_inst->index, ssif_inst->rsp_buff[0], ssif_inst->rsp_buff[1],
 			ssif_inst->rsp_buff[2], ssif_inst->rsp_buf_len - 3);
-		LOG_HEXDUMP_DBG(ssif_inst->rsp_buff + 3, ssif_inst->rsp_buf_len - 3, "");
+		LOG_HEXDUMP_INF(ssif_inst->rsp_buff + 3, ssif_inst->rsp_buf_len - 3, "");
 
 		/* unlock i2c bus address */
 		if (ssif_inst->addr_lock == true) {
@@ -406,7 +407,7 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 		}
 
 		/* Let HOST know data ready by i2c alert pin */
-		pal_ssif_alert_trigger();
+		pal_ssif_alert_trigger(GPIO_LOW);
 		break;
 
 	case SSIF_COLLECT_DATA: {
@@ -478,6 +479,7 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 				ssif_error_record(ssif_inst->index, SSIF_STATUS_TARGET_WR_RD_ERROR);
 				return false;
 			}
+			LOG_INF("complete!");
 
 			ssif_state_machine(ssif_inst, next_status);
 		} else {
@@ -566,7 +568,7 @@ static void ssif_timeout_monitor(void *dummy0, void *dummy1, void *dummy2)
 
 	while (1) {
 		k_msleep(SSIF_STATUS_CHECK_PER_MS);
-
+/*
 		for (int idx = 0; idx < ssif_channel_cnt; idx++) {
 			if (ssif[idx].addr_lock == false)
 				continue;
@@ -582,7 +584,7 @@ static void ssif_timeout_monitor(void *dummy0, void *dummy1, void *dummy2)
 				}
 				ssif_reset(&ssif[idx]);
 			}
-		}
+		}*/
 	}
 }
 
@@ -627,6 +629,7 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 	memset(&ssif_inst->current_ipmi_msg, 0, sizeof(ssif_inst->current_ipmi_msg));
 
 	while (1) {
+		LOG_INF("reading...");
 		uint8_t rdata[SSIF_BUFF_SIZE] = { 0 };
 		uint16_t rlen = 0;
 		rc = i2c_target_read(ssif_inst->i2c_bus, rdata, sizeof(rdata), &rlen);
@@ -635,6 +638,8 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 			ssif_error_record(ssif_inst->index, SSIF_STATUS_TARGET_WR_RD_ERROR);
 			goto cold_reset;
 		}
+
+		LOG_INF("reading get!!!");
 
 		proc_ssif_ok = true;
 

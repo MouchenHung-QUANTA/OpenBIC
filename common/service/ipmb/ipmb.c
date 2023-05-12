@@ -666,13 +666,10 @@ void IPMB_RXTask(void *pvParameters, void *arvg0, void *arvg1)
 		}
 
 		if (rx_len > 0) {
-			if (DEBUG_IPMB) {
-				LOG_DBG("Received an IPMB message from bus(%d) data[%d](",
+			if (0) {
+				LOG_INF("Received an IPMB message from bus(%d) data[%d](",
 					ipmb_cfg.bus, rx_len);
-				for (i = 0; i < rx_len; i++) {
-					LOG_DBG("0x%x ", ipmb_buffer_rx[i + 1]);
-				}
-				LOG_DBG(")");
+				LOG_HEXDUMP_INF(&ipmb_buffer_rx[i + 1], rx_len, "");
 			}
 
 			/* Perform a checksum test on the message, if it doesn't pass, just ignore
