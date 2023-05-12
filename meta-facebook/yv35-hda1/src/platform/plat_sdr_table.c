@@ -1853,7 +1853,7 @@ SDR_Full_sensor plat_sdr_table[] = {
 		0x00, // reserved
 		0x00, // OEM
 		IPMI_SDR_STRING_TYPE_ASCII_8, // ID len, should be same as "size of struct"
-		"MB_ADC_P0V8_D2D_VOLT_V",
+		"MB_ADC_EXT_VREF_ADC_S0_VOLT_V",
 	},
 	{
 		// ADC9 - P3V3_M2 Voltage
