@@ -15,15 +15,22 @@
  */
 
 #include <stdint.h>
-#include "plat_def.h"
+#include <logging/log.h>
 #include "plat_ssif.h"
 #include "plat_i2c.h"
 #include "plat_gpio.h"
 #include "ssif.h"
 
+LOG_MODULE_REGISTER(plat_ssif);
 struct ssif_init_cfg ssif_cfg_table[] = {
 	{ SSIF_I2C_BUS, SSIF_I2C_ADDR, 0x0A },
 };
+
+void pal_ssif_alert_trigger(uint8_t status)
+{
+	LOG_INF("trigger %d", status);
+	gpio_set(BIC_SALT12_L, status);
+}
 
 void ssif_init(void)
 {
