@@ -120,7 +120,7 @@ uint8_t pldm_platform_event_message(void *mctp_inst, uint8_t *buf, uint16_t len,
 	uint8_t ret_cc = PLDM_SUCCESS;
 
 	uint8_t ret = pldm_event_len_check(&req_p->event_class, len - 2);
-	if (ret == PLDM_ERROR_INVALID_LENGTH) {
+	if (ret != PLDM_SUCCESS) {
 		ret_cc = ret;
 		goto exit;
 	}
