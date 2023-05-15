@@ -30,7 +30,7 @@
 #include "pldm.h"
 #include "ipmi.h"
 #include "sensor.h"
-#include "plat_hook.h"
+#include "plat_power_status.h"
 #include "plat_mctp.h"
 #include "plat_pldm.h"
 #include "plat_gpio.h"
@@ -394,7 +394,7 @@ void send_cmd_to_dev_handler(struct k_work *work)
 
 	event_message_buffer_size();
 
-	set_mpro_status(S0_BMC_GPIOA5_FW_BOOT_OK);
+	set_mpro_status();
 }
 
 void send_cmd_to_dev(struct k_timer *timer)
