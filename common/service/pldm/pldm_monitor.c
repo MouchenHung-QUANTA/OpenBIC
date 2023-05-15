@@ -499,7 +499,7 @@ uint8_t pldm_set_event_receiver(void *mctp_inst, uint8_t *buf, uint16_t len, uin
  */
 uint8_t pldm_event_len_check(uint8_t *buf, uint16_t len)
 {
-	CHECK_ARG_WITH_RETURN(buf, PLDM_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(buf, PLDM_ERROR);
 
 	if (len == 0)
 		return PLDM_ERROR_INVALID_LENGTH;
