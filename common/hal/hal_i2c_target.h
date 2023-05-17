@@ -48,12 +48,16 @@ struct i2c_target_data {
 	uint32_t rd_buffer_idx; // message buffer index
 	struct i2c_msg_package target_rd_msg; // message's buffer and length
 	bool (*rd_data_collect_func)(void *); // do something before read first byte
+
+	/* TARGET STOP */
+	void (*pre_stop_func)(void *); // do something before handle data while stop
 };
 
 struct _i2c_target_config {
 	uint8_t address;
 	uint32_t i2c_msg_count;
 	bool (*rd_data_collect_func)(void *);
+	void (*pre_stop_func)(void *);
 };
 
 struct i2c_target_device {

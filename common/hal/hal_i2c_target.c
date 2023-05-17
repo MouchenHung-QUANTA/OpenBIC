@@ -20,6 +20,7 @@
 #include <string.h>
 #include <drivers/i2c.h>
 #include "hal_i2c_target.h"
+#include "hal_gpio.h"
 #include "libutil.h"
 #include <shell/shell.h>
 #include "ssif.h"
@@ -46,6 +47,37 @@ static bool do_something_while_rd_start(void *arg)
 	return true;
 }
 
+static void do_something_while_stop_start(void *arg)
+{
+	ARG_UNUSED(arg);
+}
+
+extern K_KERNEL_STACK_ARRAY_DEFINE(z_interrupt_stacks, CONFIG_MP_NUM_CPUS, CONFIG_ISR_STACK_SIZE);
+
+void isr_stack_usage(void)
+{
+	uint8_t *buf;
+	size_t size, unused;
+
+	for (int i = 0; i < CONFIG_MP_NUM_CPUS; i++) {
+		buf = Z_KERNEL_STACK_BUFFER(z_interrupt_stacks[i]);
+		size = K_KERNEL_STACK_SIZEOF(z_interrupt_stacks[i]);
+
+		unused = 0;
+
+		for (size_t i = 0; i < size; i++) {
+			if (buf[i] == 0xAAU) {
+				unused++;
+			} else {
+				break;
+			}
+		}
+
+		LOG_INF("%p IRQ %02d     (real size %zu):\tunused %zu\tusage %zu / %zu (%zu %%)", 
+			&z_interrupt_stacks[i], i, size, unused, size - unused, size, ((size - unused) * 100U) / size);
+	}
+}
+
 static int i2c_target_write_requested(struct i2c_slave_config *config)
 {
 	CHECK_NULL_ARG_WITH_RETURN(config, 1);
@@ -57,7 +89,13 @@ static int i2c_target_write_requested(struct i2c_slave_config *config)
 	memset(data->target_wr_msg.msg, 0x0, MAX_I2C_TARGET_BUFF);
 	data->wr_buffer_idx = 0;
 	data->skip_msg_wr = false;
-
+/*
+	if (data->i2c_bus == 3) {
+		i2c_addr_set(data->i2c_bus, 0);
+		pal_ssif_alert_trigger(GPIO_LOW);
+		pal_ssif_alert_trigger(GPIO_HIGH);
+	}
+*/
 	return 0;
 }
 
@@ -74,6 +112,29 @@ static int i2c_target_write_received(struct i2c_slave_config *config, uint8_t va
 	}
 	data->target_wr_msg.msg[data->wr_buffer_idx++] = val;
 
+	if (data->i2c_bus == 3) {
+		LOG_INF("wr rcv [0x%x]", val);
+		if (data->wr_buffer_idx == 1) {
+			if ((data->target_wr_msg.msg[0] == 2) || (data->target_wr_msg.msg[0] == 8) ) {
+				pal_ssif_alert_trigger(GPIO_LOW);
+				i2c_addr_set(data->i2c_bus, 0);
+				pal_ssif_alert_trigger(GPIO_HIGH);
+			}
+		}
+	}
+
+/*
+	if (data->i2c_bus == 3) {
+		//LOG_INF("[0x%x]", val);
+		if (data->wr_buffer_idx == 1) {
+			if ((data->target_wr_msg.msg[0] != 2) && (data->target_wr_msg.msg[0] != 8) ) {
+				LOG_INF("set back...");
+
+				i2c_addr_set(data->i2c_bus, 0x20);
+			}
+		}
+	}
+*/
 	return 0;
 }
 
@@ -132,7 +193,10 @@ static int i2c_target_stop(struct i2c_slave_config *config)
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
 	int ret = 1;
-
+/*
+	if (data->pre_stop_func)
+		data->pre_stop_func(data);
+*/
 	if (data->wr_buffer_idx) {
 		if (data->skip_msg_wr == true) {
 			ret = 0;
@@ -159,7 +223,8 @@ static int i2c_target_stop(struct i2c_slave_config *config)
 
 	if (data->rd_buffer_idx) {
 		if (data->target_rd_msg.msg_length - data->rd_buffer_idx) {
-			LOG_WRN("Read buffer doesn't read complete");
+			int left_byte = data->target_rd_msg.msg_length - data->rd_buffer_idx;
+			LOG_WRN("Read buffer still remain %d bytes", left_byte);
 		}
 	}
 
@@ -535,6 +600,11 @@ static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg)
 		data->rd_data_collect_func = cfg->rd_data_collect_func;
 	else
 		data->rd_data_collect_func = do_something_while_rd_start;
+
+	if (cfg->pre_stop_func)
+		data->pre_stop_func = cfg->pre_stop_func;
+	else
+		data->pre_stop_func = do_something_while_stop_start;
 
 	i2C_target_queue_buffer = malloc(data->max_msg_count * sizeof(struct i2c_msg_package));
 	if (!i2C_target_queue_buffer) {
