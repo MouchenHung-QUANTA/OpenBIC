@@ -114,8 +114,8 @@ uint8_t pldm_platform_event_message(void *mctp_inst, uint8_t *buf, uint16_t len,
 	struct pldm_platform_event_message_resp *res_p =
 		(struct pldm_platform_event_message_resp *)resp;
 
-	LOG_INF("Recieved event class 0x%x", req_p->event_class);
-	LOG_HEXDUMP_INF(req_p->event_data, len - 3, "event data:");
+	LOG_DBG("Recieved event class 0x%x", req_p->event_class);
+	LOG_HEXDUMP_DBG(req_p->event_data, len - 3, "event data:");
 
 	uint8_t ret_cc = PLDM_SUCCESS;
 
