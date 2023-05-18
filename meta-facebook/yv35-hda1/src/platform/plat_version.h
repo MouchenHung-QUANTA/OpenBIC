@@ -31,7 +31,7 @@
  * 0x06 Half Dome Ampere One
  * 0x10 Ampere(TODO)
  */
-#define BOARD_ID 0x06
+#define BOARD_ID 0x0A
 #define DEVICE_ID 0x00
 #define DEVICE_REVISION 0x80
 
