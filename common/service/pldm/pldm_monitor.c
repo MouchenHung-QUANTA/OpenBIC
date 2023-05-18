@@ -506,7 +506,7 @@ uint8_t pldm_event_len_check(uint8_t *buf, uint16_t len)
 
 	uint8_t *p = buf;
 
-	uint8_t event_class = p[0];
+	uint8_t event_class = *p;
 	p++;
 	len--;
 
@@ -517,9 +517,11 @@ uint8_t pldm_event_len_check(uint8_t *buf, uint16_t len)
 			return PLDM_ERROR_INVALID_LENGTH;
 		}
 
-		uint8_t sensor_event_class = p[0];
-		p++;
-		len--;
+		p+=2;
+		len-=2;
+
+		uint8_t sensor_event_class = *p;
+		
 		if (sensor_event_class == PLDM_SENSOR_OP_STATE) {
 			if (len != sizeof(struct pldm_sensor_event_op_exp_data))
 				return PLDM_ERROR_INVALID_LENGTH;
@@ -530,6 +532,7 @@ uint8_t pldm_event_len_check(uint8_t *buf, uint16_t len)
 			if (len < sizeof(struct pldm_sensor_event_numeric_exp_data))
 				return PLDM_ERROR_INVALID_LENGTH;
 		} else {
+			LOG_ERR("Received invalid sensor event class 0x%x", sensor_event_class);
 			return PLDM_ERROR;
 		}
 		break;
