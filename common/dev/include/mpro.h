@@ -20,6 +20,8 @@
 #include <stdint.h>
 #include "pldm_monitor.h"
 
+#define MAX_MPRO_DIMM_NUM 16
+
 enum mpro_sensor_num_table {
 	/* DIMM sensor 1 ~ 70 */
 	MPRO_SENSOR_NUM_PWR_DRAM = 1, // total power consumed by all DRAMs

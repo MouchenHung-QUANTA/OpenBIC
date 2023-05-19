@@ -153,6 +153,71 @@ void reset_4byte_postcode_ok()
 	proc_4byte_postcode_ok = false;
 }
 
+bool check_dimm_status(void *mctp_p, uint8_t index, mctp_ext_params ext_params)
+{
+	CHECK_NULL_ARG_WITH_RETURN(mctp_p, false);
+
+	if (index >= MAX_MPRO_DIMM_NUM) {
+		LOG_ERR("Invalid dimm index");
+		return false;
+	}
+
+	uint16_t mpro_sensor_num = 2 * index + MPRO_SENSOR_NUM_STA_DIMM0;
+
+	pldm_msg pmsg = { 0 };
+	pmsg.hdr.msg_type = MCTP_MSG_TYPE_PLDM;
+	pmsg.hdr.pldm_type = PLDM_TYPE_PLAT_MON_CTRL;
+	pmsg.hdr.cmd = PLDM_MONITOR_CMD_CODE_GET_SENSOR_READING;
+	pmsg.hdr.rq = PLDM_REQUEST;
+
+	struct pldm_get_sensor_reading_req req = { 0 };
+	req.sensor_id = mpro_sensor_num;
+	req.rearm_event_state = 0;
+	pmsg.len = sizeof(req);
+	memcpy(pmsg.buf, (uint8_t *)&req, pmsg.len);
+
+	pmsg.ext_params = ext_params;
+
+	uint8_t resp_buf[PLDM_MAX_DATA_SIZE] = { 0 };
+	uint16_t resp_len = mctp_pldm_read(mctp_p, &pmsg, resp_buf, sizeof(resp_buf));
+	if (resp_len == 0) {
+		LOG_ERR("Failed to get dimm%d status", index);
+		return false;
+	}
+
+	struct pldm_get_sensor_reading_resp *res = (struct pldm_get_sensor_reading_resp *)resp_buf;
+
+	if (res->completion_code != PLDM_SUCCESS) {
+		LOG_ERR("Get dimm%d status with bad cc 0x%x", index,
+			res->completion_code);
+		return false;
+	}
+
+	if (res->sensor_operational_state != PLDM_SENSOR_ENABLED) {
+		LOG_ERR("Dimm%d status in abnormal op state 0x%x", index,
+			res->sensor_operational_state);
+		return false;
+	}
+
+	if (res->sensor_data_size != PLDM_SENSOR_DATA_SIZE_SINT32) {
+		LOG_ERR("Dimm%d status get invalid data size type %d", index, res->sensor_data_size);
+		return false;
+	}
+
+	int32_t dimm_status;
+	memcpy(&dimm_status, &res->present_reading, sizeof(dimm_status));
+
+	/* Check dimm installed and no error */
+	if (dimm_status != 0x01000000) {
+		/* Skip logging if dimm not installed */
+		if (dimm_status != 0x02000000)
+			LOG_WRN("Dimm%d in abnormal status 0x%x", index, dimm_status);
+		return false;
+	}
+
+	return true;
+}
+
 uint8_t mpro_read(uint8_t sensor_num, int *reading)
 {
 	if (!reading || (sensor_num > SENSOR_NUM_MAX)) {
@@ -178,6 +243,19 @@ uint8_t mpro_read(uint8_t sensor_num, int *reading)
 	uint16_t mpro_sensor_num = mpro_sensor_map[map_idx].mpro_sensor_num;
 	uint8_t mpro_eid = sensor_config[sensor_config_index_map[sensor_num]].port;
 
+	mctp *mctp_inst = NULL;
+	mctp_ext_params ext_params = {0};
+	if (get_mctp_info_by_eid(mpro_eid, &mctp_inst, &ext_params) == false) {
+		LOG_ERR("Failed to get mctp info by Mpro eid 0x%x", mpro_eid);
+		return SENSOR_UNSPECIFIED_ERROR;
+	}
+/*
+	if ( (mpro_sensor_num >= MPRO_SENSOR_NUM_TMP_DIMM0) && (mpro_sensor_num <= MPRO_SENSOR_NUM_TMP_DIMM15)) {
+		if (check_dimm_status(mctp_inst, (mpro_sensor_num - MPRO_SENSOR_NUM_TMP_DIMM0)/2, ext_params) == false) {
+			return SENSOR_NOT_ACCESSIBLE;
+		}
+	}
+*/
 	pldm_msg pmsg = { 0 };
 	pmsg.hdr.msg_type = MCTP_MSG_TYPE_PLDM;
 	pmsg.hdr.pldm_type = PLDM_TYPE_PLAT_MON_CTRL;
@@ -190,11 +268,7 @@ uint8_t mpro_read(uint8_t sensor_num, int *reading)
 	pmsg.len = sizeof(req);
 	memcpy(pmsg.buf, (uint8_t *)&req, pmsg.len);
 
-	mctp *mctp_inst = NULL;
-	if (get_mctp_info_by_eid(mpro_eid, &mctp_inst, &pmsg.ext_params) == false) {
-		LOG_ERR("Failed to get mctp info by Mpro eid 0x%x", mpro_eid);
-		return SENSOR_UNSPECIFIED_ERROR;
-	}
+	pmsg.ext_params = ext_params;
 
 	uint8_t resp_buf[PLDM_MAX_DATA_SIZE] = { 0 };
 	uint16_t resp_len = mctp_pldm_read(mctp_inst, &pmsg, resp_buf, sizeof(resp_buf));
@@ -212,7 +286,9 @@ uint8_t mpro_read(uint8_t sensor_num, int *reading)
 	}
 
 	if (res->sensor_operational_state != PLDM_SENSOR_ENABLED) {
-		LOG_ERR("Mpro sensor #%d in abnormal op state 0x%x", mpro_sensor_num,
+		/* skip dimm not installed case */
+		if (res->sensor_operational_state != PLDM_SENSOR_UNAVAILABLE)
+			LOG_DBG("Mpro sensor #%d in abnormal op state 0x%x", mpro_sensor_num,
 			res->sensor_operational_state);
 		return SENSOR_NOT_ACCESSIBLE;
 	}
