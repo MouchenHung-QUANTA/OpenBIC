@@ -43,8 +43,6 @@ struct _pldm_cmd_sup_lst {
 	uint8_t cmd;
 };
 
-#define PLDM_EVENT_NUM_POSTCODE 0xAF
-
 struct _pldm_sensor_event_sup_lst {
 	uint16_t sensor_id;
 	uint8_t sensor_event_class;
@@ -52,9 +50,18 @@ struct _pldm_sensor_event_sup_lst {
 };
 
 static bool mpro_postcode_collect(uint8_t *buf, uint16_t len);
+static bool print_event(uint8_t *buf, uint16_t len);
 
 static struct _pldm_sensor_event_sup_lst event_sensor_sup_lst[] = {
-	{ PLDM_EVENT_NUM_POSTCODE, PLDM_NUMERIC_SENSOR_STATE, mpro_postcode_collect },
+	{ MPRO_SENSOR_NUM_STA_OVERALL_BOOT, PLDM_NUMERIC_SENSOR_STATE, mpro_postcode_collect },
+	{ MPRO_SENSOR_NUM_STA_DIMM0, PLDM_NUMERIC_SENSOR_STATE, print_event },
+	{ MPRO_SENSOR_NUM_STA_DIMM2, PLDM_NUMERIC_SENSOR_STATE, print_event },
+	{ MPRO_SENSOR_NUM_STA_DIMM4, PLDM_NUMERIC_SENSOR_STATE, print_event },
+	{ MPRO_SENSOR_NUM_STA_DIMM6, PLDM_NUMERIC_SENSOR_STATE, print_event },
+	{ MPRO_SENSOR_NUM_STA_DIMM8, PLDM_NUMERIC_SENSOR_STATE, print_event },
+	{ MPRO_SENSOR_NUM_STA_DIMM10, PLDM_NUMERIC_SENSOR_STATE, print_event },
+	{ MPRO_SENSOR_NUM_STA_DIMM12, PLDM_NUMERIC_SENSOR_STATE, print_event },
+	{ MPRO_SENSOR_NUM_STA_DIMM14, PLDM_NUMERIC_SENSOR_STATE, print_event },
 };
 
 struct _pldm_cmd_sup_lst pldm_cmd_sup_tbl[] = {
@@ -75,11 +82,15 @@ bool pldm_request_msg_need_bypass(uint8_t *buf, uint32_t len)
 	if (!hdr->rq)
 		return false;
 
-	for (int i = 0; i < ARRAY_SIZE(pldm_cmd_sup_tbl); i++) {
+	int i = 0;
+	for (; i < ARRAY_SIZE(pldm_cmd_sup_tbl); i++) {
 		if ((hdr->pldm_type == pldm_cmd_sup_tbl[i].pldm_type) &&
 		    (hdr->cmd == pldm_cmd_sup_tbl[i].cmd))
-			return false;
+			break;
 	}
+
+	if (i == ARRAY_SIZE(pldm_cmd_sup_tbl))
+		return true;
 
 	/* Filter some commands with certain data */
 	if ((hdr->pldm_type == PLDM_TYPE_PLAT_MON_CTRL) &&
@@ -190,6 +201,15 @@ static bool mpro_postcode_collect(uint8_t *buf, uint16_t len)
 	return true;
 }
 
+static bool print_event(uint8_t *buf, uint16_t len)
+{
+	CHECK_NULL_ARG_WITH_RETURN(buf, false);
+
+	LOG_HEXDUMP_INF(buf, len, "*cpu event: ");
+
+	return true;
+}
+
 #define PLDM_MAX_INSTID_COUNT 32
 static uint32_t inst_table_for_ipmb;
 static bridge_store store_table[PLDM_MAX_INSTID_COUNT];
@@ -203,12 +223,12 @@ bool pldm_save_mctp_inst_from_ipmb_req(void *mctp_inst, uint8_t inst_num,
 		LOG_ERR("Invalid instance number %d", inst_num);
 		return false;
 	}
-
+/*
 	if (!(inst_table_for_ipmb & BIT(inst_num))) {
 		LOG_ERR("Instant id %d has been used!", inst_num);
 		return false;
 	}
-
+*/
 	WRITE_BIT(inst_table_for_ipmb, inst_num, 1);
 	store_table[inst_num].mctp_inst = (mctp *)mctp_inst;
 	store_table[inst_num].ext_params = ext_params;

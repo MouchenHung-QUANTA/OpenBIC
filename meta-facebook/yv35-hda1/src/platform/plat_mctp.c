@@ -350,6 +350,9 @@ static uint8_t mctp_msg_recv(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext_
 			LOG_HEXDUMP_INF(&bridge_msg.data[0], bridge_msg.data_len,
 					"Bridging pldm req msg:");
 
+			/* TODO: not support in EVT1 */
+			return MCTP_SUCCESS;
+
 			ipmb_error status =
 				ipmb_send_request(&bridge_msg, IPMB_inf_index_map[BMC_IPMB]);
 			if (status != IPMB_ERROR_SUCCESS) {
