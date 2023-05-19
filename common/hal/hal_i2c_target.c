@@ -113,7 +113,7 @@ static int i2c_target_write_received(struct i2c_slave_config *config, uint8_t va
 	data->target_wr_msg.msg[data->wr_buffer_idx++] = val;
 
 	if (data->i2c_bus == 3) {
-		LOG_INF("wr rcv [0x%x]", val);
+		//LOG_INF("wr rcv [0x%x]", val);
 		if (data->wr_buffer_idx == 1) {
 			if ((data->target_wr_msg.msg[0] == 2) || (data->target_wr_msg.msg[0] == 8) ) {
 				pal_ssif_alert_trigger(GPIO_LOW);
