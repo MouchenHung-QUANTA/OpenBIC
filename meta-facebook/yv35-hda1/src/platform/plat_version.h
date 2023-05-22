@@ -21,7 +21,7 @@
 
 #define PLATFORM_NAME "Yosemite V3.5"
 #define PROJECT_NAME "Half Dome Ampere One"
-#define PROJECT_STAGE POC
+#define PROJECT_STAGE EVT
 
 /*
  * 0x01 Crater Lake
