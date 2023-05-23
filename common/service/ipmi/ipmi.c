@@ -20,6 +20,7 @@
 #include <logging/log.h>
 #include "cmsis_os2.h"
 #include "ipmi.h"
+#include "plat_def.h"
 
 #ifdef CONFIG_IPMI_KCS_ASPEED
 #include "kcs.h"
