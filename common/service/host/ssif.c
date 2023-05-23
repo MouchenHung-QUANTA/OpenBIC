@@ -586,13 +586,12 @@ static void ssif_bus_drop(void *arg)
 			}
 
 			pal_ssif_alert_trigger(GPIO_LOW);
-			pal_ssif_alert_trigger(GPIO_HIGH);
-
 			if (ssif_lock_ctl(ssif_inst, true) == false) {
 				LOG_ERR("Could not lock address");
 				ssif_error_record(ssif_inst->index, SSIF_STATUS_ADDR_LOCK_ERR);
 				return;
 			}
+			pal_ssif_alert_trigger(GPIO_HIGH);
 		}
 	}
 }
