@@ -73,8 +73,9 @@ void isr_stack_usage(void)
 			}
 		}
 
-		LOG_INF("%p IRQ %02d     (real size %zu):\tunused %zu\tusage %zu / %zu (%zu %%)", 
-			&z_interrupt_stacks[i], i, size, unused, size - unused, size, ((size - unused) * 100U) / size);
+		LOG_INF("%p IRQ %02d     (real size %zu):\tunused %zu\tusage %zu / %zu (%zu %%)",
+			&z_interrupt_stacks[i], i, size, unused, size - unused, size,
+			((size - unused) * 100U) / size);
 	}
 }
 
@@ -89,13 +90,7 @@ static int i2c_target_write_requested(struct i2c_slave_config *config)
 	memset(data->target_wr_msg.msg, 0x0, MAX_I2C_TARGET_BUFF);
 	data->wr_buffer_idx = 0;
 	data->skip_msg_wr = false;
-/*
-	if (data->i2c_bus == 3) {
-		i2c_addr_set(data->i2c_bus, 0);
-		pal_ssif_alert_trigger(GPIO_LOW);
-		pal_ssif_alert_trigger(GPIO_HIGH);
-	}
-*/
+
 	return 0;
 }
 
@@ -111,7 +106,7 @@ static int i2c_target_write_received(struct i2c_slave_config *config, uint8_t va
 		return 1;
 	}
 	data->target_wr_msg.msg[data->wr_buffer_idx++] = val;
-
+	/*
 	if (data->i2c_bus == 3) {
 		//LOG_INF("wr rcv [0x%x]", val);
 		if (data->wr_buffer_idx == 1) {
@@ -119,18 +114,6 @@ static int i2c_target_write_received(struct i2c_slave_config *config, uint8_t va
 				pal_ssif_alert_trigger(GPIO_LOW);
 				i2c_addr_set(data->i2c_bus, 0);
 				pal_ssif_alert_trigger(GPIO_HIGH);
-			}
-		}
-	}
-
-/*
-	if (data->i2c_bus == 3) {
-		//LOG_INF("[0x%x]", val);
-		if (data->wr_buffer_idx == 1) {
-			if ((data->target_wr_msg.msg[0] != 2) && (data->target_wr_msg.msg[0] != 8) ) {
-				LOG_INF("set back...");
-
-				i2c_addr_set(data->i2c_bus, 0x20);
 			}
 		}
 	}
@@ -193,10 +176,10 @@ static int i2c_target_stop(struct i2c_slave_config *config)
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
 	int ret = 1;
-/*
+
 	if (data->pre_stop_func)
 		data->pre_stop_func(data);
-*/
+
 	if (data->wr_buffer_idx) {
 		if (data->skip_msg_wr == true) {
 			ret = 0;

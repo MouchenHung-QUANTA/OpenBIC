@@ -28,7 +28,7 @@ struct ssif_init_cfg ssif_cfg_table[] = {
 
 void pal_ssif_alert_trigger(uint8_t status)
 {
-	LOG_INF("trigger %d", status);
+	LOG_DBG("trigger %d", status);
 	gpio_set(BIC_SALT12_L, status);
 }
 
