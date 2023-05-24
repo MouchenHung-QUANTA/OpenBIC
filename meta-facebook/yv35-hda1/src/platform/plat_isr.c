@@ -106,11 +106,54 @@ void ISR_CPU_REBOOT_ACK()
 void ISR_CPU_OVERTEMP()
 {
 	isr_dbg_print(S0_BMC_GPIOB6_OVERTEMP_L);
+
+	common_addsel_msg_t sel_msg;
+	static bool is_thermal_trip_assert = 0;
+	if (gpio_get(S0_BMC_GPIOB6_OVERTEMP_L) == GPIO_LOW) {
+		if ((get_post_status() == true) && (is_thermal_trip_assert == false)) {
+			sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
+			is_thermal_trip_assert = true;
+		}
+	} else if (gpio_get(S0_BMC_GPIOB6_OVERTEMP_L) && (is_thermal_trip_assert == true)) {
+		sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
+		is_thermal_trip_assert = false;
+	} else {
+		return;
+	}
+
+	sel_msg.InF_target = BMC_IPMB;
+	sel_msg.sensor_type = IPMI_OEM_SENSOR_TYPE_SYS_STA;
+	sel_msg.sensor_number = SENSOR_NUM_SYSTEM_STATUS;
+	sel_msg.event_data1 = IPMI_OEM_EVENT_OFFSET_SYS_THERMAL_TRIP;
+	sel_msg.event_data2 = 0xFF;
+	sel_msg.event_data3 = 0xFF;
+	if (!common_add_sel_evt_record(&sel_msg)) {
+		LOG_ERR("Thermal trip addsel fail");
+	}
 }
 
 void ISR_CPU_HIGHTEMP()
 {
 	isr_dbg_print(S0_BMC_GPIOB7_HIGHTEMP_L);
+
+	common_addsel_msg_t sel_msg;
+	if (gpio_get(BMC_GPIOL1_SYS_PWRGD) == GPIO_HIGH) {
+		if (gpio_get(S0_BMC_GPIOB7_HIGHTEMP_L) == GPIO_HIGH) {
+			sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
+		} else {
+			sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
+		}
+
+		sel_msg.InF_target = BMC_IPMB;
+		sel_msg.sensor_type = IPMI_OEM_SENSOR_TYPE_SYS_STA;
+		sel_msg.sensor_number = SENSOR_NUM_SYSTEM_STATUS;
+		sel_msg.event_data1 = IPMI_OEM_EVENT_OFFSET_SYS_THROTTLE;
+		sel_msg.event_data2 = 0xFF;
+		sel_msg.event_data3 = 0xFF;
+		if (!common_add_sel_evt_record(&sel_msg)) {
+			LOG_ERR("System Throttle addsel fail");
+		}
+	}
 }
 
 void ISR_CPU_SYS_AUTH_FAIL()
@@ -133,11 +176,58 @@ void ISR_POST_COMPLETE()
 void ISR_VRHOT()
 {
 	isr_dbg_print(S0_BMC_GPIOF3_VRHOT_L);
+
+	common_addsel_msg_t sel_msg;
+	static bool is_vr_hot_assert = false; // Flag for filt out fake alert
+
+	if ((gpio_get(S0_BMC_GPIOF3_VRHOT_L) == GPIO_HIGH) && (is_vr_hot_assert == true)) {
+		sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
+		is_vr_hot_assert = false;
+	} else if ((gpio_get(S0_BMC_GPIOF3_VRHOT_L) == GPIO_LOW) && (is_vr_hot_assert == false)) {
+		sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
+		is_vr_hot_assert = true;
+	} else { // Fake alert
+		return;
+	}
+
+	sel_msg.InF_target = BMC_IPMB;
+	sel_msg.sensor_type = IPMI_OEM_SENSOR_TYPE_VR;
+	sel_msg.sensor_number = SENSOR_NUM_VR_HOT;
+	sel_msg.event_data1 = 0xFF;
+	sel_msg.event_data2 = 0xFF;
+	sel_msg.event_data3 = 0xFF;
+	if (!common_add_sel_evt_record(&sel_msg)) {
+		LOG_ERR("Failed to add VR hot sel.");
+	}
 }
 
 void ISR_VRFAULT()
 {
 	isr_dbg_print(S0_BMC_GPIOF4_VRD_FAULT_L);
+
+	common_addsel_msg_t sel_msg;
+	static bool is_vr_fault_assert = false; // Flag for filt out fake alert
+
+	if ((gpio_get(S0_BMC_GPIOF4_VRD_FAULT_L) == GPIO_HIGH) && (is_vr_fault_assert == true)) {
+		sel_msg.event_type = IPMI_OEM_EVENT_TYPE_DEASSERT;
+		is_vr_fault_assert = false;
+	} else if ((gpio_get(S0_BMC_GPIOF4_VRD_FAULT_L) == GPIO_LOW) &&
+		   (is_vr_fault_assert == false)) {
+		sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
+		is_vr_fault_assert = true;
+	} else { // Fake alert
+		return;
+	}
+
+	sel_msg.InF_target = BMC_IPMB;
+	sel_msg.sensor_type = IPMI_OEM_SENSOR_TYPE_VR;
+	sel_msg.sensor_number = SENSOR_NUM_VR_FAULT;
+	sel_msg.event_data1 = 0xFF;
+	sel_msg.event_data2 = 0xFF;
+	sel_msg.event_data3 = 0xFF;
+	if (!common_add_sel_evt_record(&sel_msg)) {
+		LOG_ERR("Failed to add VR fault sel.");
+	}
 }
 
 void ISR_AC_STATUS()
