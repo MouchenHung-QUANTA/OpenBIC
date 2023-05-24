@@ -59,6 +59,34 @@ static void isr_dbg_print(uint8_t gpio_num)
 	}
 }
 
+static void send_gpio_interrupt(uint8_t gpio_num)
+{
+	ipmb_error status;
+	ipmi_msg msg;
+	uint8_t gpio_val;
+
+	gpio_val = gpio_get(gpio_num);
+	LOG_INF("Send gpio interrupt to BMC, gpio number(%d) status(%d)", gpio_num, gpio_val);
+
+	msg.data_len = 5;
+	msg.InF_source = SELF;
+	msg.InF_target = BMC_IPMB;
+	msg.netfn = NETFN_OEM_1S_REQ;
+	msg.cmd = CMD_OEM_1S_SEND_INTERRUPT_TO_BMC;
+
+	msg.data[0] = IANA_ID & 0xFF;
+	msg.data[1] = (IANA_ID >> 8) & 0xFF;
+	msg.data[2] = (IANA_ID >> 16) & 0xFF;
+	msg.data[3] = gpio_num;
+	msg.data[4] = gpio_val;
+
+	status = ipmb_read(&msg, IPMB_inf_index_map[msg.InF_target]);
+	if (status != IPMB_ERROR_SUCCESS) {
+		LOG_ERR("Failed to send GPIO interrupt event to BMC, gpio number(%d) status(%d)",
+			gpio_num, status);
+	}
+}
+
 void ISR_CPU_PRSNT()
 {
 	isr_dbg_print(CPU0_BMC_GPIOA0_PRESENT_L);
@@ -67,6 +95,7 @@ void ISR_CPU_PRSNT()
 void ISR_CPU_FAULT_ALERT()
 {
 	isr_dbg_print(S0_BMC_GPIOA2_FAULT_ALERT);
+	send_gpio_interrupt(S0_BMC_GPIOA2_FAULT_ALERT);
 }
 
 void ISR_CPU_JTAG_CMPL2()
@@ -96,11 +125,13 @@ void ISR_MPRO_HB()
 void ISR_CPU_SHD_ACK()
 {
 	isr_dbg_print(S0_BMC_GPIOB0_SHD_ACK_L);
+	send_gpio_interrupt(S0_BMC_GPIOB0_SHD_ACK_L);
 }
 
 void ISR_CPU_REBOOT_ACK()
 {
 	isr_dbg_print(S0_BMC_GPIOB4_REBOOT_ACK_L);
+	send_gpio_interrupt(S0_BMC_GPIOB4_REBOOT_ACK_L);
 }
 
 void ISR_CPU_OVERTEMP()
@@ -159,17 +190,46 @@ void ISR_CPU_HIGHTEMP()
 void ISR_CPU_SYS_AUTH_FAIL()
 {
 	isr_dbg_print(S0_BMC_GPIOE1_SYS_AUTH_FAILURE_L);
+
+	common_addsel_msg_t sel_msg;
+	if ((gpio_get(CPU0_BMC_GPIOA0_PRESENT_L) == GPIO_LOW) &&
+	    (gpio_get(BMC_GPIOL1_SYS_PWRGD) == GPIO_HIGH)) {
+		sel_msg.InF_target = BMC_IPMB;
+		sel_msg.sensor_type = IPMI_OEM_SENSOR_TYPE_SYS_STA;
+		sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
+		sel_msg.sensor_number = SENSOR_NUM_SYSTEM_STATUS;
+		sel_msg.event_data1 = IPMI_OEM_EVENT_OFFSET_AMP_SYS_AUTH_FAIL;
+		sel_msg.event_data2 = 0xFF;
+		sel_msg.event_data3 = 0xFF;
+		if (!common_add_sel_evt_record(&sel_msg)) {
+			LOG_ERR("System auth fail addsel fail");
+		}
+	}
 }
 
 void ISR_CPU_SPI_AUTH_FAIL()
 {
 	isr_dbg_print(CPLD_BMC_GPIOE2_S0_SPI_AUTH_FAIL_L);
+
+	common_addsel_msg_t sel_msg;
+	if ((gpio_get(CPU0_BMC_GPIOA0_PRESENT_L) == GPIO_LOW) &&
+	    (gpio_get(BMC_GPIOL1_SYS_PWRGD) == GPIO_HIGH)) {
+		sel_msg.InF_target = BMC_IPMB;
+		sel_msg.sensor_type = IPMI_OEM_SENSOR_TYPE_SYS_STA;
+		sel_msg.event_type = IPMI_EVENT_TYPE_SENSOR_SPECIFIC;
+		sel_msg.sensor_number = SENSOR_NUM_SYSTEM_STATUS;
+		sel_msg.event_data1 = IPMI_OEM_EVENT_OFFSET_AMP_SPI_AUTH_FAIL;
+		sel_msg.event_data2 = 0xFF;
+		sel_msg.event_data3 = 0xFF;
+		if (!common_add_sel_evt_record(&sel_msg)) {
+			LOG_ERR("Spi auth fail addsel fail");
+		}
+	}
 }
 
 void ISR_POST_COMPLETE()
 {
 	isr_dbg_print(FM_BIOS_POST_CMPLT_BIC_N);
-
 	set_post_status(FM_BIOS_POST_CMPLT_BIC_N);
 }
 
