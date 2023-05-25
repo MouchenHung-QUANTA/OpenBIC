@@ -308,8 +308,6 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 {
 	CHECK_NULL_ARG_WITH_RETURN(ssif_inst, false);
 
-	static uint16_t remain_data_len = 0;
-
 	switch (action) {
 	case SSIF_SEND_IPMI:
 		/* Message to BIC */
@@ -420,42 +418,42 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 		if (ssif_inst->rsp_buf_len) {
 			switch (smb_cmd) {
 			case SSIF_RD_START: {
-				remain_data_len = ssif_inst->rsp_buf_len;
+				ssif_inst->remain_data_len = ssif_inst->rsp_buf_len;
 				ssif_inst->cur_rd_blck = 0;
-				if (remain_data_len > SSIF_MAX_IPMI_DATA_SIZE) {
+				if (ssif_inst->remain_data_len > SSIF_MAX_IPMI_DATA_SIZE) {
 					wdata[1] = (SSIF_MULTI_RD_KEY >> 8) & 0xFF;
 					wdata[2] = SSIF_MULTI_RD_KEY & 0xFF;
 					memcpy(wdata + 3, ssif_inst->rsp_buff,
 					       SSIF_MAX_IPMI_DATA_SIZE - 2);
 					wdata_len = SSIF_MAX_IPMI_DATA_SIZE;
 					next_status = SSIF_STATUS_WAIT_FOR_RD_NEXT;
-					remain_data_len -= (SSIF_MAX_IPMI_DATA_SIZE - 2);
+					ssif_inst->remain_data_len -= (SSIF_MAX_IPMI_DATA_SIZE - 2);
 				} else {
 					memcpy(wdata + 1, ssif_inst->rsp_buff,
 					       ssif_inst->rsp_buf_len);
 					wdata_len = ssif_inst->rsp_buf_len;
 					next_status = SSIF_STATUS_WAIT_FOR_WR_START;
-					remain_data_len = 0;
+					ssif_inst->remain_data_len = 0;
 				}
 				break;
 			}
 
 			case SSIF_RD_NEXT: {
-				if (remain_data_len > (SSIF_MAX_IPMI_DATA_SIZE - 1)) {
+				if (ssif_inst->remain_data_len > (SSIF_MAX_IPMI_DATA_SIZE - 1)) {
 					wdata[1] = ssif_inst->cur_rd_blck;
 					wdata_len = SSIF_MAX_IPMI_DATA_SIZE;
 					next_status = SSIF_STATUS_WAIT_FOR_RD_NEXT;
 				} else {
 					wdata[1] = 0xFF;
-					wdata_len = remain_data_len + 1;
+					wdata_len = ssif_inst->remain_data_len + 1;
 					ssif_state_machine(ssif_inst, SSIF_STATUS_RD_END);
 					next_status = SSIF_STATUS_WAIT_FOR_WR_START;
 				}
 				memcpy(wdata + 2,
-				       ssif_inst->rsp_buff +
-					       (ssif_inst->rsp_buf_len - remain_data_len),
+				       ssif_inst->rsp_buff + (ssif_inst->rsp_buf_len -
+							      ssif_inst->remain_data_len),
 				       wdata_len - 1);
-				remain_data_len -= (wdata_len - 1);
+				ssif_inst->remain_data_len -= (wdata_len - 1);
 				ssif_inst->cur_rd_blck++;
 				break;
 			}
@@ -574,7 +572,8 @@ static void ssif_bus_drop(void *arg)
 
 	struct i2c_target_data *data = (struct i2c_target_data *)arg;
 
-	if (data->wr_buffer_idx != 1) {
+	/* Only check fisrt byte from received data */
+	if (data->wr_buffer_idx == 1) {
 		uint8_t smb_cmd = data->target_wr_msg.msg[0];
 		/* Drop bus if write last message and wait for next read */
 		if ((smb_cmd == SSIF_WR_SINGLE) || (smb_cmd == SSIF_WR_MULTI_END)) {
@@ -835,7 +834,7 @@ void ssif_device_init(struct ssif_init_cfg *config, uint8_t size)
 		cfg.address = config[i].addr;
 		cfg.i2c_msg_count = config[i].target_msgq_cnt;
 		cfg.rd_data_collect_func = ssif_write_data;
-		cfg.pre_stop_func = ssif_bus_drop;
+		cfg.post_wr_rcv_func = ssif_bus_drop;
 
 		if (i2c_target_control(config[i].i2c_bus, &cfg, I2C_CONTROL_REGISTER) !=
 		    I2C_TARGET_API_NO_ERR) {

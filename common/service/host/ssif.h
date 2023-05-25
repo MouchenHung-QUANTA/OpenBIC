@@ -106,7 +106,8 @@ typedef struct _ssif_dev {
 	struct k_mutex rsp_buff_mutex;
 	struct k_sem rsp_buff_sem;
 	uint8_t rsp_buff[IPMI_MSG_MAX_LENGTH];
-	uint16_t rsp_buf_len;
+	uint16_t rsp_buf_len; // Length of collected data
+	uint16_t remain_data_len; // Length of remain data
 	ipmi_msg_cfg current_ipmi_msg;
 	uint16_t cur_rd_blck; // for multi-read middle/end
 

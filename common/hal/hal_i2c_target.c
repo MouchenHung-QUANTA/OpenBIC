@@ -47,7 +47,7 @@ static bool do_something_while_rd_start(void *arg)
 	return true;
 }
 
-static void do_something_while_stop_start(void *arg)
+static void do_something_after_wr_rcv(void *arg)
 {
 	ARG_UNUSED(arg);
 }
@@ -106,18 +106,10 @@ static int i2c_target_write_received(struct i2c_slave_config *config, uint8_t va
 		return 1;
 	}
 	data->target_wr_msg.msg[data->wr_buffer_idx++] = val;
-	/*
-	if (data->i2c_bus == 3) {
-		//LOG_INF("wr rcv [0x%x]", val);
-		if (data->wr_buffer_idx == 1) {
-			if ((data->target_wr_msg.msg[0] == 2) || (data->target_wr_msg.msg[0] == 8) ) {
-				pal_ssif_alert_trigger(GPIO_LOW);
-				i2c_addr_set(data->i2c_bus, 0);
-				pal_ssif_alert_trigger(GPIO_HIGH);
-			}
-		}
-	}
-*/
+
+	if (data->post_wr_rcv_func)
+		data->post_wr_rcv_func(data);
+
 	return 0;
 }
 
@@ -176,9 +168,6 @@ static int i2c_target_stop(struct i2c_slave_config *config)
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
 	int ret = 1;
-
-	if (data->pre_stop_func)
-		data->pre_stop_func(data);
 
 	if (data->wr_buffer_idx) {
 		if (data->skip_msg_wr == true) {
@@ -584,10 +573,10 @@ static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg)
 	else
 		data->rd_data_collect_func = do_something_while_rd_start;
 
-	if (cfg->pre_stop_func)
-		data->pre_stop_func = cfg->pre_stop_func;
+	if (cfg->post_wr_rcv_func)
+		data->post_wr_rcv_func = cfg->post_wr_rcv_func;
 	else
-		data->pre_stop_func = do_something_while_stop_start;
+		data->post_wr_rcv_func = do_something_after_wr_rcv;
 
 	i2C_target_queue_buffer = malloc(data->max_msg_count * sizeof(struct i2c_msg_package));
 	if (!i2C_target_queue_buffer) {
