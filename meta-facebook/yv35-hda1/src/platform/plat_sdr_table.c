@@ -1524,12 +1524,12 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SENSOR_UNIT_VOL, // base unit
 		0x00, // modifier unit
 		IPMI_SDR_LINEAR_LINEAR, // linearization
-		0x00, // [7:0] M bits
+		0x01, // [7:0] M bits
 		0x00, // [9:8] M bits, tolerance
 		0x00, // [7:0] B bits
 		0x00, // [9:8] B bits, tolerance
 		0x00, // [7:4] accuracy , [3:2] accuracy exp, [1:0] sensor direction
-		0x00, // Rexp, Bexp
+		0xE0, // Rexp, Bexp
 		0x00, // analog characteristic
 		0x00, // nominal reading
 		0x00, // normal maximum
@@ -1537,10 +1537,10 @@ SDR_Full_sensor plat_sdr_table[] = {
 		0x00, // sensor maximum reading
 		0x00, // sensor minimum reading
 		0x00, // UNRT
-		0x00, // UCT
+		0x50, // UCT
 		0x00, // UNCT
 		0x00, // LNRT
-		0x00, // LCT
+		0x5A, // LCT
 		0x00, // LNCT
 		0x00, // positive-going threshold
 		0x00, // negative-going threshold
@@ -1646,12 +1646,12 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SENSOR_UNIT_VOL, // base unit
 		0x00, // modifier unit
 		IPMI_SDR_LINEAR_LINEAR, // linearization
-		0x00, // [7:0] M bits
+		0x23, // [7:0] M bits
 		0x00, // [9:8] M bits, tolerance
 		0x00, // [7:0] B bits
 		0x00, // [9:8] B bits, tolerance
 		0x00, // [7:4] accuracy , [3:2] accuracy exp, [1:0] sensor direction
-		0x00, // Rexp, Bexp
+		0xD0, // Rexp, Bexp
 		0x00, // analog characteristic
 		0x00, // nominal reading
 		0x00, // normal maximum
@@ -1659,10 +1659,10 @@ SDR_Full_sensor plat_sdr_table[] = {
 		0x00, // sensor maximum reading
 		0x00, // sensor minimum reading
 		0x00, // UNRT
-		0x00, // UCT
+		0x20, // UCT
 		0x00, // UNCT
 		0x00, // LNRT
-		0x00, // LCT
+		0x15, // LCT
 		0x00, // LNCT
 		0x00, // positive-going threshold
 		0x00, // negative-going threshold
@@ -1768,12 +1768,12 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SENSOR_UNIT_VOL, // base unit
 		0x00, // modifier unit
 		IPMI_SDR_LINEAR_LINEAR, // linearization
-		0x00, // [7:0] M bits
+		0x05, // [7:0] M bits
 		0x00, // [9:8] M bits, tolerance
 		0x00, // [7:0] B bits
 		0x00, // [9:8] B bits, tolerance
 		0x00, // [7:4] accuracy , [3:2] accuracy exp, [1:0] sensor direction
-		0x00, // Rexp, Bexp
+		0xD0, // Rexp, Bexp
 		0x00, // analog characteristic
 		0x00, // nominal reading
 		0x00, // normal maximum
@@ -1781,10 +1781,10 @@ SDR_Full_sensor plat_sdr_table[] = {
 		0x00, // sensor maximum reading
 		0x00, // sensor minimum reading
 		0x00, // UNRT
-		0x00, // UCT
+		0xAA, // UCT
 		0x00, // UNCT
 		0x00, // LNRT
-		0x00, // LCT
+		0x96, // LCT
 		0x00, // LNCT
 		0x00, // positive-going threshold
 		0x00, // negative-going threshold
@@ -1829,12 +1829,12 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SENSOR_UNIT_VOL, // base unit
 		0x00, // modifier unit
 		IPMI_SDR_LINEAR_LINEAR, // linearization
-		0x00, // [7:0] M bits
+		0x05, // [7:0] M bits
 		0x00, // [9:8] M bits, tolerance
 		0x00, // [7:0] B bits
 		0x00, // [9:8] B bits, tolerance
 		0x00, // [7:4] accuracy , [3:2] accuracy exp, [1:0] sensor direction
-		0x00, // Rexp, Bexp
+		0xD0, // Rexp, Bexp
 		0x00, // analog characteristic
 		0x00, // nominal reading
 		0x00, // normal maximum
@@ -1842,10 +1842,10 @@ SDR_Full_sensor plat_sdr_table[] = {
 		0x00, // sensor maximum reading
 		0x00, // sensor minimum reading
 		0x00, // UNRT
-		0x00, // UCT
+		0x98, // UCT
 		0x00, // UNCT
 		0x00, // LNRT
-		0x00, // LCT
+		0x80, // LCT
 		0x00, // LNCT
 		0x00, // positive-going threshold
 		0x00, // negative-going threshold
@@ -2012,12 +2012,12 @@ SDR_Full_sensor plat_sdr_table[] = {
 		IPMI_SENSOR_UNIT_VOL, // base unit
 		0x00, // modifier unit
 		IPMI_SDR_LINEAR_LINEAR, // linearization
-		0x00, // [7:0] M bits
+		0x01, // [7:0] M bits
 		0x00, // [9:8] M bits, tolerance
 		0x00, // [7:0] B bits
 		0x00, // [9:8] B bits, tolerance
 		0x00, // [7:4] accuracy , [3:2] accuracy exp, [1:0] sensor direction
-		0x00, // Rexp, Bexp
+		0xE0, // Rexp, Bexp
 		0x00, // analog characteristic
 		0x00, // nominal reading
 		0x00, // normal maximum
@@ -2025,10 +2025,10 @@ SDR_Full_sensor plat_sdr_table[] = {
 		0x00, // sensor maximum reading
 		0x00, // sensor minimum reading
 		0x00, // UNRT
-		0x00, // UCT
+		0x5A, // UCT
 		0x00, // UNCT
 		0x00, // LNRT
-		0x00, // LCT
+		0x50, // LCT
 		0x00, // LNCT
 		0x00, // positive-going threshold
 		0x00, // negative-going threshold
