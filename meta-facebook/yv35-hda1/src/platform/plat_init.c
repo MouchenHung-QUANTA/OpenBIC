@@ -38,9 +38,9 @@ SCU_CFG scu_cfg[] = {
 	/* Set GPIOM/N/O/P internal pull-up/down after gpio init */
 	{ 0x7e6e261c, 0x00000032 },
 	/* Set GPIOQ/R/S/T internal pull-up/down after gpio init */
-	{ 0x7e6e2630, 0x80000000 },
+	{ 0x7e6e2630, 0xFF000000 },
 	/* Set GPIOU/V/X internal pull-up/down after gpio init */
-	{ 0x7e6e2634, 0x00000080 },
+	{ 0x7e6e2634, 0x000000FF },
 };
 
 void pal_pre_init()
@@ -68,7 +68,7 @@ void pal_set_sys_status()
 	set_DC_status(BMC_GPIOL1_SYS_PWRGD);
 	set_DC_on_delayed_status();
 	set_post_status(FM_BIOS_POST_CMPLT_BIC_N);
-	//set_sys_ready_pin(BMC_GPIOO2_READY);
+	set_sys_ready_pin(BMC_GPIOO2_READY);
 	set_mpro_status();
 }
 
