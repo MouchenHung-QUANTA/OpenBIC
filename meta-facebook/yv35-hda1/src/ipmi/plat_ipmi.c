@@ -26,6 +26,10 @@
 #include "util_spi.h"
 #include "plat_spi.h"
 #include "plat_sensor_table.h"
+#include "ipmb.h"
+#include "mctp.h"
+#include "pldm.h"
+#include "plat_mctp.h"
 #include "sensor.h"
 #include "pmbus.h"
 
@@ -35,9 +39,11 @@ bool pal_request_msg_to_BIC_from_HOST(uint8_t netfn, uint8_t cmd)
 {
 	if (netfn == NETFN_OEM_1S_REQ) {
 		if ((cmd == CMD_OEM_1S_FW_UPDATE) || (cmd == CMD_OEM_1S_RESET_BMC) ||
-			(cmd == CMD_OEM_1S_GET_BIC_STATUS) || (cmd == CMD_OEM_1S_RESET_BIC) ||
-			(cmd == CMD_OEM_1S_GET_BIC_FW_INFO) || (cmd == CMD_OEM_1S_GET_DIMM_I3C_MUX_SELECTION) ||
-			(cmd == CMD_OEM_1S_TEST_MULTI_READ_SSIF) || (cmd == CMD_OEM_1S_TEST_MULTI_WRITE_SSIF))
+		    (cmd == CMD_OEM_1S_GET_BIC_STATUS) || (cmd == CMD_OEM_1S_RESET_BIC) ||
+		    (cmd == CMD_OEM_1S_GET_BIC_FW_INFO) ||
+		    (cmd == CMD_OEM_1S_GET_DIMM_I3C_MUX_SELECTION) ||
+		    (cmd == CMD_OEM_1S_TEST_MULTI_READ_SSIF) ||
+		    (cmd == CMD_OEM_1S_TEST_MULTI_WRITE_SSIF))
 			return true;
 	}
 
@@ -126,6 +132,36 @@ int pal_record_bios_fw_version(uint8_t *buf, uint8_t size)
 	return 0;
 }
 
+static void mpro_resp_handler(void *args, uint8_t *buf, uint16_t len)
+{
+	CHECK_NULL_ARG(args);
+	CHECK_NULL_ARG(buf);
+
+	LOG_HEXDUMP_DBG(buf, len, "mpro rsp:");
+
+	ipmi_msg *msg = (ipmi_msg *)args;
+
+	if (!len)
+		return;
+
+	msg->data_len = 0;
+	msg->InF_source = BMC_IPMB;
+	msg->netfn = NETFN_OEM_1S_REQ;
+	msg->cmd = CMD_OEM_1S_MSG_OUT;
+	msg->completion_code = CC_SUCCESS;
+	msg->data_len = len + 3;
+	msg->data[2] = (IANA_ID >> 16) & 0xFF;
+	msg->data[1] = (IANA_ID >> 8) & 0xFF;
+	msg->data[0] = IANA_ID & 0xFF;
+
+	memcpy(&msg->data[3], buf, len);
+
+	ipmb_error status = ipmb_send_response(msg, IPMB_inf_index_map[msg->InF_source]);
+	if (status != IPMB_ERROR_SUCCESS) {
+		LOG_ERR("OEM_MSG_OUT send IPMB resp fail status: %x", status);
+	}
+}
+
 void OEM_1S_GET_BIOS_VERSION(ipmi_msg *msg)
 {
 	CHECK_NULL_ARG(msg);
@@ -203,6 +239,47 @@ void OEM_1S_MSG_OUT(ipmi_msg *msg)
 	case EXP4_IPMB:
 		target_IF = EXP3_IPMB;
 		break;
+	case MPRO_PLDM:
+		if (msg->data_len < 3) {
+			msg->completion_code = CC_INVALID_LENGTH;
+			return;
+		}
+
+		pldm_msg pmsg = { 0 };
+		pmsg.hdr.msg_type = MCTP_MSG_TYPE_PLDM;
+		pmsg.hdr.rq = PLDM_REQUEST;
+		pmsg.hdr.pldm_type = msg->data[1];
+		pmsg.hdr.cmd = msg->data[2];
+		pmsg.len = msg->data_len - 3;
+		if (pmsg.len)
+			pmsg.buf = &msg->data[3];
+
+		LOG_DBG("*Bridge pldm command 0x%x 0x%x", pmsg.hdr.pldm_type, pmsg.hdr.cmd);
+		LOG_HEXDUMP_DBG(pmsg.buf, pmsg.len, "mpro req:");
+
+		ipmi_msg save = { 0 };
+		memcpy(&save, msg, sizeof(ipmi_msg));
+
+		pmsg.recv_resp_cb_fn = mpro_resp_handler;
+		pmsg.recv_resp_cb_args = &save;
+		pmsg.timeout_cb_fn = NULL;
+		pmsg.timeout_cb_fn_args = NULL;
+
+		mctp *mctp_inst = NULL;
+		if (get_mctp_info_by_eid(MCTP_EID_MPRO, &mctp_inst, &pmsg.ext_params) == false) {
+			LOG_ERR("Failed to get mctp info by eid 0x%x", MCTP_EID_MPRO);
+			msg->completion_code = CC_UNSPECIFIED_ERROR;
+			return;
+		}
+
+		if (mctp_pldm_send_msg(mctp_inst, &pmsg) != PLDM_SUCCESS) {
+			LOG_ERR("Failed to send mctp-pldm request command to mpro");
+			msg->completion_code = CC_BRIDGE_MSG_ERR;
+			return;
+		}
+
+		return;
+
 	default:
 		break;
 	}
