@@ -163,7 +163,7 @@
 	gpio_name_to_num(BMC_GPION4_DEBUG_MODE) \
 	gpio_name_to_num(S0_BMC_GPIOM1_DDR_SAVE) \
 	gpio_name_to_num(BMC_GPION6_WD_DISABLE_L) \
-	gpio_name_to_num(BMC_GPIOD3_EXT_HIGH_TEMP_L)
+	gpio_name_to_num(BMC_GPION7_EXT_HIGH_TEMP_L)
 
 #define name_gpioO \
 	gpio_name_to_num(BMC_GPIOO0_S01_SPECIAL_BOOT) \
