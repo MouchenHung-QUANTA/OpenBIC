@@ -149,9 +149,9 @@ static void mpro_resp_handler(void *args, uint8_t *buf, uint16_t len)
 	msg->cmd = CMD_OEM_1S_MSG_OUT;
 	msg->completion_code = CC_SUCCESS;
 	msg->data_len = len + 3;
-	msg->data[2] = (IANA_ID >> 16) & 0xFF;
-	msg->data[1] = (IANA_ID >> 8) & 0xFF;
 	msg->data[0] = IANA_ID & 0xFF;
+	msg->data[1] = (IANA_ID >> 8) & 0xFF;
+	msg->data[2] = (IANA_ID >> 16) & 0xFF;
 
 	memcpy(&msg->data[3], buf, len);
 

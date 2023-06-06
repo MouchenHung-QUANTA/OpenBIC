@@ -253,7 +253,7 @@ bool pldm_send_ipmb_rsp(ipmi_msg *msg)
 	CHECK_NULL_ARG_WITH_RETURN(msg, false);
 
 	if ((msg->netfn != (NETFN_OEM_1S_REQ + 1)) || (msg->cmd != CMD_OEM_1S_SEND_PLDM_TO_IPMB)) {
-		LOG_ERR("Non-support NetFn 0x%x and Cmd 0x%x", msg->netfn, msg->cmd);
+		LOG_ERR("Unexpected message NetFn: 0x%x Cmd: 0x%x", msg->netfn, msg->cmd);
 		return false;
 	}
 
