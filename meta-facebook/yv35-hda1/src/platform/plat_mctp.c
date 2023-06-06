@@ -391,8 +391,6 @@ void send_cmd_to_dev_handler(struct k_work *work)
 
 	set_tid();
 
-	LOG_INF("prepare set_event_receiver");
-	//Victor test set event receiver
 	set_event_receiver();
 
 	event_message_buffer_size();

@@ -144,7 +144,6 @@ static void mpro_resp_handler(void *args, uint8_t *buf, uint16_t len)
 	if (!len)
 		return;
 
-	msg->data_len = 0;
 	msg->InF_source = BMC_IPMB;
 	msg->netfn = NETFN_OEM_1S_REQ;
 	msg->cmd = CMD_OEM_1S_MSG_OUT;
