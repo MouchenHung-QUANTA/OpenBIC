@@ -24,6 +24,24 @@ typedef struct _bridge_store {
 	mctp_ext_params ext_params;
 } bridge_store;
 
+struct bypass_pldm_cmd_req_rsp {
+	uint8_t iana[3];
+	union {
+		struct {
+			uint8_t inst_id : 5;
+			uint8_t rsvd : 1;
+			uint8_t d : 1;
+			uint8_t rq : 1;
+		};
+		uint8_t req_d_id;
+	};
+
+	uint8_t pldm_type : 6;
+	uint8_t ver : 2;
+	uint8_t cmd;
+	uint8_t payload[1];
+} __attribute__((packed));
+
 bool pldm_request_msg_need_bypass(uint8_t *buf, uint32_t len);
 bool pldm_save_mctp_inst_from_ipmb_req(void *mctp_inst, uint8_t inst_num,
 				       mctp_ext_params ext_params);

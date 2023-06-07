@@ -160,8 +160,8 @@ uint8_t pldm_platform_event_message(void *mctp_inst, uint8_t *buf, uint16_t len,
 
 		if (event_sensor_sup_lst[i].event_handler_func(req_p->event_data, len - 3) ==
 		    false) {
-			LOG_ERR("Event class 0x%x sensor id 0x%x got error",
-				req_p->event_class, sensor_id);
+			LOG_ERR("Event class 0x%x sensor id 0x%x got error", req_p->event_class,
+				sensor_id);
 			goto exit;
 		}
 		break;
@@ -185,16 +185,16 @@ static bool mpro_postcode_collect(uint8_t *buf, uint16_t len)
 {
 	CHECK_NULL_ARG_WITH_RETURN(buf, false);
 
-	if ((len-6) != 4) {
+	if ((len - 6) != 4) {
 		LOG_ERR("Received invalid length postcode data");
 		return false;
 	}
 
-	LOG_HEXDUMP_INF(&buf[6], len-6, "* postcode: ");
+	LOG_HEXDUMP_INF(&buf[6], len - 6, "* postcode: ");
 
 	uint32_t postcode = 0;
 	for (int i = 6; i < len; i++)
-		postcode |= (buf[i] << ((i-6) * 8));
+		postcode |= (buf[i] << ((i - 6) * 8));
 
 	mpro_postcode_insert(postcode);
 
@@ -223,7 +223,7 @@ bool pldm_save_mctp_inst_from_ipmb_req(void *mctp_inst, uint8_t inst_num,
 		LOG_ERR("Invalid instance number %d", inst_num);
 		return false;
 	}
-/*
+	/*
 	if (!(inst_table_for_ipmb & BIT(inst_num))) {
 		LOG_ERR("Instant id %d has been used!", inst_num);
 		return false;
@@ -252,38 +252,42 @@ bool pldm_send_ipmb_rsp(ipmi_msg *msg)
 {
 	CHECK_NULL_ARG_WITH_RETURN(msg, false);
 
-	if ((msg->netfn != (NETFN_OEM_1S_REQ + 1)) || (msg->cmd != CMD_OEM_1S_SEND_PLDM_TO_IPMB)) {
+	if ((msg->netfn != (NETFN_OEM_1S_REQ + 1)) || (msg->cmd != CMD_OEM_1S_MSG_IN)) {
 		LOG_ERR("Unexpected message NetFn: 0x%x Cmd: 0x%x", msg->netfn, msg->cmd);
 		return false;
 	}
 
-	if (msg->data_len < sizeof(pldm_hdr)) {
-		LOG_ERR("Received invalid data length");
+	if (msg->data_len < (sizeof(struct bypass_pldm_cmd_req_rsp))) {
+		LOG_ERR("Received invalid data length while received cc 0x%x",
+			msg->completion_code);
 		return false;
 	}
 
-	pldm_hdr *hdr = (pldm_hdr *)msg->data;
-	bridge_store *hdr_info = pldm_find_mctp_inst_by_inst_id(hdr->inst_id);
+	struct bypass_pldm_cmd_req_rsp *rsp_data = (struct bypass_pldm_cmd_req_rsp *)msg->data;
+
+	uint32_t iana = rsp_data->iana[0] | (rsp_data->iana[1] << 8) | (rsp_data->iana[2] << 16);
+	if (iana != IANA_ID) {
+		LOG_ERR("Received invalid iana 0x%x", iana);
+		return false;
+	}
+
+	bridge_store *hdr_info = pldm_find_mctp_inst_by_inst_id(rsp_data->inst_id);
 	if (!hdr_info) {
 		LOG_ERR("Given instant num %d can't get mctp header while ipmb response",
-			hdr->inst_id);
+			rsp_data->inst_id);
 		return false;
 	}
 
 	pldm_msg pmsg = { 0 };
 	pmsg.ext_params = hdr_info->ext_params;
-	memcpy(&pmsg.hdr, &msg->data[0], sizeof(pmsg.hdr));
-	pmsg.hdr.rq = PLDM_RESPONSE;
+	pmsg.hdr.msg_type = MCTP_MSG_TYPE_PLDM;
+	memcpy(&pmsg.hdr.req_d_id, &rsp_data->req_d_id, sizeof(struct bypass_pldm_cmd_req_rsp) - 3);
 
-	if (msg->completion_code == CC_CAN_NOT_RESPOND) {
-		pmsg.buf[0] = PLDM_ERROR;
-		pmsg.len = 1;
-	} else {
-		pmsg.buf = msg->data + sizeof(pmsg.hdr);
-		pmsg.len = msg->data_len - sizeof(pmsg.hdr);
-	}
+	pmsg.len = msg->data_len - sizeof(struct bypass_pldm_cmd_req_rsp) - 1;
+	if (pmsg.len)
+		memcpy(pmsg.buf, rsp_data->payload, pmsg.len);
 
-	LOG_HEXDUMP_INF(pmsg.buf, pmsg.len, "receive pldm rsp from ipmb:");
+	LOG_HEXDUMP_INF(pmsg.buf, pmsg.len, "Receive pldm rsp from ipmb:");
 
 	// Send response to PLDM/MCTP thread
 	mctp_pldm_send_msg(hdr_info->mctp_inst, &pmsg);

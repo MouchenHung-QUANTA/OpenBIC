@@ -29,8 +29,6 @@
 /* mctp endpoint */
 #define MCTP_EID_MPRO 0x10
 
-#define CMD_OEM_1S_SEND_PLDM_TO_IPMB 0xAA /* TODO: Should confirm with BMC */
-
 /* init the mctp moduel for platform */
 void plat_mctp_init(void);
 void send_cmd_to_dev(struct k_timer *timer);

@@ -343,15 +343,19 @@ static uint8_t mctp_msg_recv(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext_
 			bridge_msg.InF_target =
 				BMC_IPMB; // default bypassing IPMI standard command to BMC
 			bridge_msg.netfn = NETFN_OEM_1S_REQ;
-			bridge_msg.cmd = CMD_OEM_1S_SEND_PLDM_TO_IPMB;
-			bridge_msg.data_len = len; // exclude netfn, cmd
-			memcpy(&bridge_msg.data[0], buf, bridge_msg.data_len);
+			bridge_msg.cmd = CMD_OEM_1S_MSG_IN;
+
+			bridge_msg.data_len =
+				len - 1 + 3 + 1; // exclude msg_type and include IANA, channel
+			bridge_msg.data[0] = MPRO_PLDM;
+			bridge_msg.data[1] = IANA_ID & 0xFF;
+			bridge_msg.data[2] = (IANA_ID >> 8) & 0xFF;
+			bridge_msg.data[3] = (IANA_ID >> 16) & 0xFF;
+
+			memcpy(&bridge_msg.data[4], &buf[1], len - 1);
 
 			LOG_HEXDUMP_INF(&bridge_msg.data[0], bridge_msg.data_len,
 					"Bridging pldm req msg:");
-
-			/* TODO: not support in EVT1 */
-			return MCTP_SUCCESS;
 
 			ipmb_error status =
 				ipmb_send_request(&bridge_msg, IPMB_inf_index_map[BMC_IPMB]);

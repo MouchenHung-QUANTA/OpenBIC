@@ -523,12 +523,7 @@ void IPMB_TXTask(void *pvParameters, void *arvg0, void *arvg1)
 					} else if (current_msg_tx->buffer.InF_source == SELF) {
 						LOG_ERR("Failed to send command");
 					} else if (current_msg_tx->buffer.InF_source == MPRO_PLDM) {
-						LOG_ERR("Failed to send command from PLDM");
-						current_msg_tx->buffer.netfn =
-							current_msg_tx->buffer.netfn + 1;
-						current_msg_tx->buffer.completion_code =
-							CC_CAN_NOT_RESPOND;
-						pldm_send_ipmb_rsp(&current_msg_tx->buffer);
+						LOG_ERR("Failed to send command from Mpro");
 					} else if ((current_msg_tx->buffer.InF_source & 0xF0) ==
 						   HOST_KCS_1) {
 						// the source is KCS if the bit[7:4] are 0101b.
