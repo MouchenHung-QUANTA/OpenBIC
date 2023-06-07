@@ -134,8 +134,8 @@
 #define SENSOR_NUM_POWER_ERROR 0x56
 #define SENSOR_NUM_PROC_FAIL 0x65
 #define SENSOR_NUM_VR_OCP 0x71
-#define SENSOR_NUM_VR_HOT 0x72
-#define SENSOR_NUM_VR_FAULT 0x73
+#define SENSOR_NUM_VR_HOT 0xB2
+#define SENSOR_NUM_VR_FAULT 0xB3
 #define SENSOR_NUM_PMIC_ERROR 0xB4
 
 uint8_t plat_get_config_size();
