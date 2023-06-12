@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#include "plat_def.h"
+#ifdef ENABLE_MPRO
+
 #include <zephyr.h>
 #include <stdlib.h>
 #include "libutil.h"
@@ -188,8 +191,7 @@ bool check_dimm_status(void *mctp_p, uint8_t index, mctp_ext_params ext_params)
 	struct pldm_get_sensor_reading_resp *res = (struct pldm_get_sensor_reading_resp *)resp_buf;
 
 	if (res->completion_code != PLDM_SUCCESS) {
-		LOG_ERR("Get dimm%d status with bad cc 0x%x", index,
-			res->completion_code);
+		LOG_ERR("Get dimm%d status with bad cc 0x%x", index, res->completion_code);
 		return false;
 	}
 
@@ -200,7 +202,8 @@ bool check_dimm_status(void *mctp_p, uint8_t index, mctp_ext_params ext_params)
 	}
 
 	if (res->sensor_data_size != PLDM_SENSOR_DATA_SIZE_SINT32) {
-		LOG_ERR("Dimm%d status get invalid data size type %d", index, res->sensor_data_size);
+		LOG_ERR("Dimm%d status get invalid data size type %d", index,
+			res->sensor_data_size);
 		return false;
 	}
 
@@ -244,12 +247,12 @@ uint8_t mpro_read(uint8_t sensor_num, int *reading)
 	uint8_t mpro_eid = sensor_config[sensor_config_index_map[sensor_num]].port;
 
 	mctp *mctp_inst = NULL;
-	mctp_ext_params ext_params = {0};
+	mctp_ext_params ext_params = { 0 };
 	if (get_mctp_info_by_eid(mpro_eid, &mctp_inst, &ext_params) == false) {
 		LOG_ERR("Failed to get mctp info by Mpro eid 0x%x", mpro_eid);
 		return SENSOR_UNSPECIFIED_ERROR;
 	}
-/*
+	/*
 	if ( (mpro_sensor_num >= MPRO_SENSOR_NUM_TMP_DIMM0) && (mpro_sensor_num <= MPRO_SENSOR_NUM_TMP_DIMM15)) {
 		if (check_dimm_status(mctp_inst, (mpro_sensor_num - MPRO_SENSOR_NUM_TMP_DIMM0)/2, ext_params) == false) {
 			return SENSOR_NOT_ACCESSIBLE;
@@ -289,7 +292,7 @@ uint8_t mpro_read(uint8_t sensor_num, int *reading)
 		/* skip dimm not installed case */
 		if (res->sensor_operational_state != PLDM_SENSOR_UNAVAILABLE)
 			LOG_DBG("Mpro sensor #%d in abnormal op state 0x%x", mpro_sensor_num,
-			res->sensor_operational_state);
+				res->sensor_operational_state);
 		return SENSOR_NOT_ACCESSIBLE;
 	}
 
@@ -298,7 +301,8 @@ uint8_t mpro_read(uint8_t sensor_num, int *reading)
 
 	pldm_sensor_pdr_parm parm = { 0 };
 	memcpy(&parm, &mpro_sensor_map[map_idx].cal_parm, sizeof(parm));
-	float val = pldm_sensor_cal(res->present_reading, resp_len - 7, res->sensor_data_size, parm);
+	float val =
+		pldm_sensor_cal(res->present_reading, resp_len - 7, res->sensor_data_size, parm);
 
 	sensor_val *sval = (sensor_val *)reading;
 	sval->integer = (int)val & 0xFFFF;
@@ -321,3 +325,5 @@ uint8_t mpro_init(uint8_t sensor_num)
 	sensor_config[sensor_config_index_map[sensor_num]].read = mpro_read;
 	return SENSOR_INIT_SUCCESS;
 }
+
+#endif

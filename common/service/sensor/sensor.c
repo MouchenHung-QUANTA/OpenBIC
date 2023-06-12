@@ -156,7 +156,9 @@ SENSOR_DRIVE_INIT_DECLARE(emc1412);
 SENSOR_DRIVE_INIT_DECLARE(i3c_dimm);
 SENSOR_DRIVE_INIT_DECLARE(pt5161l);
 SENSOR_DRIVE_INIT_DECLARE(lm75bd118);
+#ifdef ENABLE_MPRO
 SENSOR_DRIVE_INIT_DECLARE(mpro);
+#endif
 
 struct sensor_drive_api {
 	enum SENSOR_DEV dev;
@@ -206,7 +208,9 @@ struct sensor_drive_api {
 	SENSOR_DRIVE_TYPE_INIT_MAP(i3c_dimm),
 	SENSOR_DRIVE_TYPE_INIT_MAP(pt5161l),
 	SENSOR_DRIVE_TYPE_INIT_MAP(lm75bd118),
+#ifdef ENABLE_MPRO
 	SENSOR_DRIVE_TYPE_INIT_MAP(mpro),
+#endif
 };
 
 static void init_sensor_num(void)

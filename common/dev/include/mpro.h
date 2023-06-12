@@ -17,6 +17,9 @@
 #ifndef MPRO_H
 #define MPRO_H
 
+#include "plat_def.h"
+#ifdef ENABLE_MPRO
+
 #include <stdint.h>
 #include "pldm_monitor.h"
 
@@ -151,4 +154,6 @@ void reset_mpro_postcode_buffer();
 bool get_4byte_postcode_ok();
 void reset_4byte_postcode_ok();
 
-#endif
+#endif /* ENABLE_MPRO */
+
+#endif /* MPRO_H */
