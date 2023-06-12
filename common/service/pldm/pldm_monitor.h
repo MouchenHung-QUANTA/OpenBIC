@@ -283,6 +283,10 @@ struct pldm_set_event_receiver_req {
 	uint16_t heartbeat_timer;
 } __attribute__((packed));
 
+struct pldm_set_event_receiver_resp {
+	uint8_t completion_code;
+} __attribute__((packed));
+
 typedef struct state_field_state_effecter_set {
 	uint8_t set_request;
 	uint8_t effecter_state;
@@ -308,6 +312,14 @@ struct pldm_get_state_effecter_states_resp {
 	uint8_t completion_code;
 	uint8_t composite_effecter_count;
 	get_effecter_state_field_t field[8];
+} __attribute__((packed));
+
+struct pldm_event_message_buffer_size_req {
+	uint16_t event_receiver_max_buffer_size;
+} __attribute__((packed));
+
+struct pldm_event_message_buffer_size_resp {
+	uint8_t completion_code;
 } __attribute__((packed));
 
 uint8_t pldm_monitor_handler_query(uint8_t code, void **ret_fn);

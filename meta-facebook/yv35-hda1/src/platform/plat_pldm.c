@@ -282,14 +282,20 @@ bool pldm_send_ipmb_rsp(ipmi_msg *msg)
 	pmsg.ext_params = hdr_info->ext_params;
 	pmsg.hdr.msg_type = MCTP_MSG_TYPE_PLDM;
 	memcpy(&pmsg.hdr.req_d_id, &rsp_data->req_d_id, sizeof(struct bypass_pldm_cmd_req_rsp) - 3);
+	pmsg.hdr.rq = PLDM_RESPONSE;
 
-	pmsg.len = msg->data_len - sizeof(struct bypass_pldm_cmd_req_rsp) - 1;
-	if (pmsg.len)
-		memcpy(pmsg.buf, rsp_data->payload, pmsg.len);
+	pmsg.len = msg->data_len - sizeof(struct bypass_pldm_cmd_req_rsp) +
+		   1; /* at least have a one-byte completion code */
+	uint8_t tbuf[pmsg.len];
+	memset(tbuf, 0, pmsg.len);
 
-	LOG_HEXDUMP_INF(pmsg.buf, pmsg.len, "Receive pldm rsp from ipmb:");
+	if (pmsg.len) {
+		memcpy(tbuf, rsp_data->payload, pmsg.len);
+		pmsg.buf = tbuf;
+	}
 
-	// Send response to PLDM/MCTP thread
+	LOG_HEXDUMP_DBG(pmsg.buf, pmsg.len, "Receive pldm rsp from ipmb:");
+
 	mctp_pldm_send_msg(hdr_info->mctp_inst, &pmsg);
 
 	return true;

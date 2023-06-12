@@ -28,6 +28,7 @@
 
 /* mctp endpoint */
 #define MCTP_EID_MPRO 0x10
+#define PLDM_TID_MPRO 0x01
 
 /* init the mctp moduel for platform */
 void plat_mctp_init(void);

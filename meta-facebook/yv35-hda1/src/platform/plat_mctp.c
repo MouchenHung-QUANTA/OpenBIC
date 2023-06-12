@@ -44,6 +44,8 @@ LOG_MODULE_REGISTER(plat_mctp);
 #define MCTP_IC_SHIFT 7
 #define MCTP_IC_MASK 0x80
 
+#define MAX_PLDM_EVENT_RECV_BUFF_SIZE 0xC0 //192 Bytes
+
 K_WORK_DEFINE(send_cmd_work, send_cmd_to_dev_handler);
 
 typedef struct _mctp_smbus_port {
@@ -141,14 +143,13 @@ static void set_endpoint_resp_handler(void *args, uint8_t *buf, uint16_t len)
 {
 	if (!buf || !len)
 		return;
-	LOG_HEXDUMP_INF(buf, len, "set device eid:");
+	LOG_HEXDUMP_INF(buf, len, "Set device eid:");
 }
 
 static void set_endpoint_resp_timeout(void *args)
 {
 	mctp_route_entry *p = (mctp_route_entry *)args;
-	printk("[%s] Endpoint 0x%x set endpoint failed on bus %d \n", __func__, p->endpoint,
-	       p->bus);
+	LOG_ERR("Endpoint 0x%x set endpoint failed on bus %d", p->endpoint, p->bus);
 }
 
 static void set_dev_endpoint(void)
@@ -195,32 +196,29 @@ static void set_tid(void)
 		LOG_ERR("Invalid EID: 0x%x, unable to get route information", MCTP_EID_MPRO);
 	}
 
-	// Set PLDM header
 	pmsg.hdr.msg_type = MCTP_MSG_TYPE_PLDM;
 	pmsg.hdr.pldm_type = PLDM_TYPE_BASE;
-	pmsg.hdr.cmd = 0x01;
+	pmsg.hdr.cmd = PLDM_BASE_CMD_CODE_SETTID;
 	pmsg.hdr.rq = PLDM_REQUEST;
 
-	//set req data
 	struct _set_tid_req req = { 0 };
-	req.tid = 0x01; //Victor test
+	req.tid = PLDM_TID_MPRO;
 
 	pmsg.buf = (uint8_t *)&req;
 	pmsg.len = sizeof(req);
 
-	// Send request to PLDM/MCTP thread and get response
 	resp_len = mctp_pldm_read(mctp_inst, &pmsg, resp_buf, sizeof(resp_buf));
 	if (resp_len == 0) {
-		LOG_ERR("mctp_pldm_read fail");
+		LOG_ERR("Set tid receiver FAILED!");
+		return;
 	}
 
 	struct _set_tid_resp *resp = (struct _set_tid_resp *)resp_buf;
-	LOG_INF("set tid receiver response = 0x%x", resp->completion_code);
+	if (resp->completion_code == PLDM_SUCCESS)
+		LOG_INF("Set tid receiver SUCCESS!");
+	else
+		LOG_ERR("Set tid receiver response = 0x%x", resp->completion_code);
 }
-
-struct pldm_set_event_receiver_resp {
-	uint8_t completion_code;
-} __attribute__((packed));
 
 static void set_event_receiver(void)
 {
@@ -235,13 +233,11 @@ static void set_event_receiver(void)
 		LOG_ERR("Invalid EID: 0x%x, unable to get route information", MCTP_EID_MPRO);
 	}
 
-	// Set PLDM header
 	pmsg.hdr.msg_type = MCTP_MSG_TYPE_PLDM;
 	pmsg.hdr.pldm_type = PLDM_TYPE_PLAT_MON_CTRL;
 	pmsg.hdr.cmd = 0x04;
 	pmsg.hdr.rq = PLDM_REQUEST;
 
-	//set req data
 	struct pldm_set_event_receiver_req req = { 0 };
 	req.event_message_global_enable = 0x02; //Victor test
 	req.transport_protocol_type = 0x00;
@@ -251,20 +247,18 @@ static void set_event_receiver(void)
 	pmsg.buf = (uint8_t *)&req;
 	pmsg.len = sizeof(req);
 
-	// Send request to PLDM/MCTP thread and get response
 	resp_len = mctp_pldm_read(mctp_inst, &pmsg, resp_buf, sizeof(resp_buf));
 	if (resp_len == 0) {
-		LOG_ERR("mctp_pldm_read fail");
+		LOG_ERR("Set event receiver FAILED!");
+		return;
 	}
 
-	LOG_HEXDUMP_INF(resp_buf, resp_len, "receiver response");
 	struct pldm_set_event_receiver_resp *resp = (struct pldm_set_event_receiver_resp *)resp_buf;
-	LOG_INF("set event receiver response = 0x%x", resp->completion_code);
+	if (resp->completion_code == PLDM_SUCCESS)
+		LOG_INF("Set event receiver SUCCESS!");
+	else
+		LOG_ERR("Set event receiver response = 0x%x", resp->completion_code);
 }
-
-struct event_message_buffer_size_req {
-	uint16_t event_receiver_max_buffer_size;
-} __attribute__((packed));
 
 static void event_message_buffer_size(void)
 {
@@ -279,28 +273,29 @@ static void event_message_buffer_size(void)
 		LOG_ERR("Invalid EID: 0x%x, unable to get route information", MCTP_EID_MPRO);
 	}
 
-	// Set PLDM header
 	pmsg.hdr.msg_type = MCTP_MSG_TYPE_PLDM;
 	pmsg.hdr.pldm_type = PLDM_TYPE_PLAT_MON_CTRL;
 	pmsg.hdr.cmd = 0x0D;
 	pmsg.hdr.rq = PLDM_REQUEST;
 
-	//set req data
-	struct event_message_buffer_size_req req = { 0 };
-	req.event_receiver_max_buffer_size = 0xC0; //192 Bytes
+	struct pldm_event_message_buffer_size_req req = { 0 };
+	req.event_receiver_max_buffer_size = MAX_PLDM_EVENT_RECV_BUFF_SIZE;
 
 	pmsg.buf = (uint8_t *)&req;
 	pmsg.len = sizeof(req);
 
-	// Send request to PLDM/MCTP thread and get response
 	resp_len = mctp_pldm_read(mctp_inst, &pmsg, resp_buf, sizeof(resp_buf));
 	if (resp_len == 0) {
-		LOG_ERR("mctp_pldm_read fail");
+		LOG_ERR("Event message buffer size set FAILED!");
+		return;
 	}
 
-	LOG_HEXDUMP_INF(resp_buf, resp_len, "event message buffer size");
-	struct pldm_set_event_receiver_resp *resp = (struct pldm_set_event_receiver_resp *)resp_buf;
-	LOG_INF("event message buffer size response = 0x%x", resp->completion_code);
+	struct pldm_event_message_buffer_size_resp *resp =
+		(struct pldm_event_message_buffer_size_resp *)resp_buf;
+	if (resp->completion_code == PLDM_SUCCESS)
+		LOG_INF("Event message buffer size set SUCCESS!");
+	else
+		LOG_ERR("Event message buffer size response = 0x%x", resp->completion_code);
 }
 
 static uint8_t mctp_msg_recv(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext_params ext_params)
@@ -320,23 +315,6 @@ static uint8_t mctp_msg_recv(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext_
 
 	case MCTP_MSG_TYPE_PLDM:
 		if (pldm_request_msg_need_bypass(buf, len) == true) {
-			/*
-			uint8_t seq_source = 0xFF;
-			ipmi_msg msg = { 0 };
-			msg = construct_ipmi_message(seq_source, NETFN_OEM_1S_REQ,
-						     CMD_OEM_1S_SEND_PLDM_TO_IPMB, SELF, BMC_IPMB, len,
-						     buf);
-
-			ipmb_error ipmb_ret = ipmb_read(&msg, IPMB_inf_index_map[msg.InF_target]);
-			if ((ipmb_ret != IPMB_ERROR_SUCCESS) ||
-			    (msg.completion_code != CC_SUCCESS)) {
-				LOG_ERR("Fail to send pldm bridge ipmb request msg with ret: 0x%x CC: 0x%x",
-					ipmb_ret, msg.completion_code);
-				return MCTP_ERROR;
-			}
-
-			return mctp_send_msg(mctp_p, msg.data, msg.data_len, ext_params);
-*/
 			ipmi_msg bridge_msg = { 0 };
 			bridge_msg.seq_source = 0xff; // No seq for MPRO
 			bridge_msg.InF_source = MPRO_PLDM;
@@ -347,10 +325,10 @@ static uint8_t mctp_msg_recv(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext_
 
 			bridge_msg.data_len =
 				len - 1 + 3 + 1; // exclude msg_type and include IANA, channel
-			bridge_msg.data[0] = MPRO_PLDM;
-			bridge_msg.data[1] = IANA_ID & 0xFF;
-			bridge_msg.data[2] = (IANA_ID >> 8) & 0xFF;
-			bridge_msg.data[3] = (IANA_ID >> 16) & 0xFF;
+			bridge_msg.data[0] = IANA_ID & 0xFF;
+			bridge_msg.data[1] = (IANA_ID >> 8) & 0xFF;
+			bridge_msg.data[2] = (IANA_ID >> 16) & 0xFF;
+			bridge_msg.data[3] = MPRO_PLDM;
 
 			memcpy(&bridge_msg.data[4], &buf[1], len - 1);
 
@@ -389,14 +367,12 @@ static uint8_t mctp_msg_recv(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext_
 
 void send_cmd_to_dev_handler(struct k_work *work)
 {
-	/* init the device endpoint */
+	/* mctp - base */
 	set_dev_endpoint();
-	/* get device parameters */
-
+	/* pldm - base */
 	set_tid();
-
+	/* pldm - monitor */
 	set_event_receiver();
-
 	event_message_buffer_size();
 
 	set_mpro_status();
