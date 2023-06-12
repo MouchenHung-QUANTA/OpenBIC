@@ -23,8 +23,8 @@
 #define POLL_TIME_BAT3V 3600
 
 /* SENSOR ADDRESS(7-bit)/OFFSET */
-#define TMP75_IN_ADDR (0x94 >> 1)
-#define TMP75_OUT_ADDR (0x92 >> 1)
+#define TMP75_IN_ADDR (0x92 >> 1)
+#define TMP75_OUT_ADDR (0x94 >> 1)
 #define TMP75_FIO_ADDR (0x90 >> 1)
 #define SSD_ADDR (0xD4 >> 1)
 #define MPRO_ADDR (0x9E >> 1)
