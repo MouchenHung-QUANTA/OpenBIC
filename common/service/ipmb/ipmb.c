@@ -23,8 +23,8 @@
 #endif
 
 #include "plat_def.h"
-#ifdef ENABLE_SSIF
-#include "ssif.h"
+#ifdef ENABLE_MPRO
+#include "plat_pldm.h"
 #endif
 
 #include "libutil.h"
@@ -37,10 +37,6 @@
 #include <string.h>
 #include <zephyr.h>
 #include "plat_ipmb.h"
-
-#ifdef ENABLE_MPRO
-#include "plat_pldm.h"
-#endif
 
 #include "pldm.h"
 #include <logging/log.h>
@@ -565,24 +561,6 @@ void IPMB_TXTask(void *pvParameters, void *arvg0, void *arvg1)
 							  current_msg_tx->buffer.data_len + 3);
 						SAFE_FREE(kcs_buff);
 #endif
-					} else if ((current_msg_tx->buffer.InF_source & 0xF0) ==
-						   HOST_SSIF_1) {
-#ifdef ENABLE_SSIF
-						LOG_ERR("Failed to send ssif message from %d to %d",
-							current_msg_tx->buffer.InF_source,
-							current_msg_tx->buffer.InF_target);
-						current_msg_tx->buffer.completion_code =
-							CC_CAN_NOT_RESPOND;
-						current_msg_tx->buffer.netfn =
-							(current_msg_tx->buffer.netfn + 1) << 2;
-						current_msg_tx->buffer.data_len = 0;
-
-						if (ssif_set_data(current_msg_tx->buffer.InF_source -
-									  HOST_SSIF_1,
-								  current_msg_tx) == false) {
-							LOG_ERR("Failed to put SSIF msg to buffer");
-						}
-#endif
 					} else {
 						// Return the error code(node busy) to the source channel
 						current_msg_tx->buffer.data_len = 0;
@@ -763,21 +741,6 @@ void IPMB_RXTask(void *pvParameters, void *arvg0, void *arvg1)
 							  kcs_buff,
 							  current_msg_rx->buffer.data_len + 3);
 						SAFE_FREE(kcs_buff);
-#endif
-					} else if ((current_msg_rx->buffer.InF_source & 0xF0) ==
-						   HOST_SSIF_1) {
-#ifdef ENABLE_SSIF
-						if (pal_immediate_respond_from_HOST(
-							    current_msg_rx->buffer.netfn & ~BIT(0),
-							    current_msg_rx->buffer.cmd)) {
-							goto cleanup;
-						}
-
-						if (ssif_set_data(current_msg_rx->buffer.InF_source -
-									  HOST_SSIF_1,
-								  current_msg_rx) == false) {
-							LOG_ERR("Failed to put SSIF msg to buffer");
-						}
 #endif
 					} else if ((current_msg_rx->buffer.InF_source) ==
 						   MPRO_PLDM) {
