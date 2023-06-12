@@ -50,18 +50,9 @@ struct _pldm_sensor_event_sup_lst {
 };
 
 static bool mpro_postcode_collect(uint8_t *buf, uint16_t len);
-static bool print_event(uint8_t *buf, uint16_t len);
 
 static struct _pldm_sensor_event_sup_lst event_sensor_sup_lst[] = {
 	{ MPRO_SENSOR_NUM_STA_OVERALL_BOOT, PLDM_NUMERIC_SENSOR_STATE, mpro_postcode_collect },
-	{ MPRO_SENSOR_NUM_STA_DIMM0, PLDM_NUMERIC_SENSOR_STATE, print_event },
-	{ MPRO_SENSOR_NUM_STA_DIMM2, PLDM_NUMERIC_SENSOR_STATE, print_event },
-	{ MPRO_SENSOR_NUM_STA_DIMM4, PLDM_NUMERIC_SENSOR_STATE, print_event },
-	{ MPRO_SENSOR_NUM_STA_DIMM6, PLDM_NUMERIC_SENSOR_STATE, print_event },
-	{ MPRO_SENSOR_NUM_STA_DIMM8, PLDM_NUMERIC_SENSOR_STATE, print_event },
-	{ MPRO_SENSOR_NUM_STA_DIMM10, PLDM_NUMERIC_SENSOR_STATE, print_event },
-	{ MPRO_SENSOR_NUM_STA_DIMM12, PLDM_NUMERIC_SENSOR_STATE, print_event },
-	{ MPRO_SENSOR_NUM_STA_DIMM14, PLDM_NUMERIC_SENSOR_STATE, print_event },
 };
 
 struct _pldm_cmd_sup_lst pldm_cmd_sup_tbl[] = {
@@ -197,15 +188,6 @@ static bool mpro_postcode_collect(uint8_t *buf, uint16_t len)
 		postcode |= (buf[i] << ((i - 6) * 8));
 
 	mpro_postcode_insert(postcode);
-
-	return true;
-}
-
-static bool print_event(uint8_t *buf, uint16_t len)
-{
-	CHECK_NULL_ARG_WITH_RETURN(buf, false);
-
-	LOG_HEXDUMP_INF(buf, len, "*cpu event: ");
 
 	return true;
 }
