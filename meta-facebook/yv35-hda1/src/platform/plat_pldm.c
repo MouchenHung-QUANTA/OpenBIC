@@ -223,12 +223,7 @@ bool pldm_save_mctp_inst_from_ipmb_req(void *mctp_inst, uint8_t inst_num,
 		LOG_ERR("Invalid instance number %d", inst_num);
 		return false;
 	}
-	/*
-	if (!(inst_table_for_ipmb & BIT(inst_num))) {
-		LOG_ERR("Instant id %d has been used!", inst_num);
-		return false;
-	}
-*/
+
 	WRITE_BIT(inst_table_for_ipmb, inst_num, 1);
 	store_table[inst_num].mctp_inst = (mctp *)mctp_inst;
 	store_table[inst_num].ext_params = ext_params;
