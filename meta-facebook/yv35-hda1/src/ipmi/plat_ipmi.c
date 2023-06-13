@@ -23,8 +23,6 @@
 #include "plat_class.h"
 #include "libutil.h"
 #include "plat_fru.h"
-#include "util_spi.h"
-#include "plat_spi.h"
 #include "plat_sensor_table.h"
 #include "ipmb.h"
 #include "mctp.h"
@@ -132,35 +130,6 @@ int pal_record_bios_fw_version(uint8_t *buf, uint8_t size)
 	return 0;
 }
 
-static void mpro_resp_handler(void *args, uint8_t *buf, uint16_t len)
-{
-	CHECK_NULL_ARG(args);
-	CHECK_NULL_ARG(buf);
-
-	LOG_HEXDUMP_DBG(buf, len, "mpro rsp:");
-
-	ipmi_msg *msg = (ipmi_msg *)args;
-
-	if (!len)
-		return;
-
-	msg->InF_source = BMC_IPMB;
-	msg->netfn = NETFN_OEM_1S_REQ;
-	msg->cmd = CMD_OEM_1S_MSG_OUT;
-	msg->completion_code = CC_SUCCESS;
-	msg->data_len = len + 3;
-	msg->data[0] = IANA_ID & 0xFF;
-	msg->data[1] = (IANA_ID >> 8) & 0xFF;
-	msg->data[2] = (IANA_ID >> 16) & 0xFF;
-
-	memcpy(&msg->data[3], buf, len);
-
-	ipmb_error status = ipmb_send_response(msg, IPMB_inf_index_map[msg->InF_source]);
-	if (status != IPMB_ERROR_SUCCESS) {
-		LOG_ERR("OEM_MSG_OUT send IPMB resp fail status: %x", status);
-	}
-}
-
 void OEM_1S_GET_BIOS_VERSION(ipmi_msg *msg)
 {
 	CHECK_NULL_ARG(msg);
@@ -190,6 +159,36 @@ void OEM_1S_GET_BIOS_VERSION(ipmi_msg *msg)
 }
 
 #ifdef CONFIG_I2C_IPMB_SLAVE
+
+static void mpro_resp_handler(void *args, uint8_t *buf, uint16_t len)
+{
+	CHECK_NULL_ARG(args);
+	CHECK_NULL_ARG(buf);
+
+	LOG_HEXDUMP_DBG(buf, len, "mpro rsp:");
+
+	ipmi_msg *msg = (ipmi_msg *)args;
+
+	if (!len)
+		return;
+
+	msg->InF_source = BMC_IPMB;
+	msg->netfn = NETFN_OEM_1S_REQ;
+	msg->cmd = CMD_OEM_1S_MSG_OUT;
+	msg->completion_code = CC_SUCCESS;
+	msg->data_len = len + 3;
+	msg->data[0] = IANA_ID & 0xFF;
+	msg->data[1] = (IANA_ID >> 8) & 0xFF;
+	msg->data[2] = (IANA_ID >> 16) & 0xFF;
+
+	memcpy(&msg->data[3], buf, len);
+
+	ipmb_error status = ipmb_send_response(msg, IPMB_inf_index_map[msg->InF_source]);
+	if (status != IPMB_ERROR_SUCCESS) {
+		LOG_ERR("OEM_MSG_OUT send IPMB resp fail status: %x", status);
+	}
+}
+
 void OEM_1S_MSG_OUT(ipmi_msg *msg)
 {
 	CHECK_NULL_ARG(msg);
@@ -358,59 +357,6 @@ void OEM_1S_MSG_OUT(ipmi_msg *msg)
 	return;
 }
 #endif
-
-void OEM_1S_COPY_FLASH_IMAGE(ipmi_msg *msg)
-{
-	CHECK_NULL_ARG(msg);
-
-	if (msg->data_len != 13) {
-		msg->completion_code = CC_INVALID_LENGTH;
-		return;
-	}
-
-	uint8_t copy_type = msg->data[0];
-	uint32_t src_offset =
-		msg->data[1] | (msg->data[2] << 8) | (msg->data[3] << 16) | (msg->data[4] << 24);
-	uint32_t dest_offset =
-		msg->data[5] | (msg->data[6] << 8) | (msg->data[7] << 16) | (msg->data[8] << 24);
-	uint32_t length =
-		msg->data[9] | (msg->data[10] << 8) | (msg->data[11] << 16) | (msg->data[12] << 24);
-
-	if (((src_offset % SECTOR_SZ_4K) != 0) || ((dest_offset % SECTOR_SZ_4K) != 0) ||
-	    ((length % SECTOR_SZ_4K) != 0)) {
-		msg->completion_code = CC_INVALID_DATA_FIELD;
-		return;
-	}
-
-	if (start_flash_copy(copy_type, src_offset, dest_offset, length)) {
-		msg->completion_code = CC_UNSPECIFIED_ERROR;
-		return;
-	}
-
-	msg->data_len = 0;
-	msg->completion_code = CC_SUCCESS;
-	return;
-}
-
-void GET_COPY_FLASH_STATUS(ipmi_msg *msg)
-{
-	CHECK_NULL_ARG(msg);
-
-	FLASH_COPY_INFO current_info = { 0 };
-
-	get_flash_copy_info(&current_info);
-
-	msg->data[0] = current_info.status;
-	msg->data[1] = current_info.completion_code;
-	if ((current_info.total_length == 0)) {
-		msg->data[2] = 0;
-	} else {
-		msg->data[2] = 100 * current_info.current_len / current_info.total_length;
-	}
-	msg->data_len = 3;
-	msg->completion_code = CC_SUCCESS;
-	return;
-}
 
 void OEM_1S_GET_HSC_STATUS(ipmi_msg *msg)
 {
