@@ -24,6 +24,7 @@
 #include "libutil.h"
 #include "plat_fru.h"
 #include "plat_sensor_table.h"
+#include "plat_power_status.h"
 #include "ipmb.h"
 #include "mctp.h"
 #include "pldm.h"
@@ -240,6 +241,11 @@ void OEM_1S_MSG_OUT(ipmi_msg *msg)
 	case MPRO_PLDM:
 		if (msg->data_len < 3) {
 			msg->completion_code = CC_INVALID_LENGTH;
+			return;
+		}
+
+		if (get_mpro_status() == false) {
+			msg->completion_code = CC_NOT_SUPP_IN_CURR_STATE;
 			return;
 		}
 
