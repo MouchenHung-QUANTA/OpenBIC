@@ -117,9 +117,10 @@ void ISR_MPRO_BOOT_OK()
 	}
 }
 
+bool last_hb = false;
 void ISR_MPRO_HB()
 {
-	isr_dbg_print(S0_BMC_MPRO_HEARTBEAT);
+	mpro_padding();
 }
 
 void ISR_CPU_SHD_ACK()
