@@ -179,7 +179,7 @@ void ISR_CPU_HIGHTEMP()
 		sel_msg.InF_target = BMC_IPMB;
 		sel_msg.sensor_type = IPMI_OEM_SENSOR_TYPE_SYS_STA;
 		sel_msg.sensor_number = SENSOR_NUM_SYSTEM_STATUS;
-		sel_msg.event_data1 = IPMI_OEM_EVENT_OFFSET_SYS_THROTTLE;
+		sel_msg.event_data1 = IPMI_OEM_EVENT_OFFSET_SYS_FMTHROTTLE;
 		sel_msg.event_data2 = 0xFF;
 		sel_msg.event_data3 = 0xFF;
 		if (!common_add_sel_evt_record(&sel_msg)) {
