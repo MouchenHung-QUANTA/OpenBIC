@@ -34,6 +34,11 @@
 #include "plat_mctp.h"
 #include "plat_gpio.h"
 
+#include "pldm_monitor.h"
+#include "pdr.h"
+#include "nvidia.h"
+#include "plat_def.h"
+
 LOG_MODULE_REGISTER(plat_mctp);
 
 /* i2c 8 bit address */
@@ -54,13 +59,13 @@ LOG_MODULE_REGISTER(plat_mctp);
 /* mctp endpoint */
 #define MCTP_EID_BMC 0x08
 #define MCTP_EID_NIC_0 0x10
-#define MCTP_EID_NIC_1 0x11
-#define MCTP_EID_NIC_2 0x12
-#define MCTP_EID_NIC_3 0x13
-#define MCTP_EID_NIC_4 0x14
-#define MCTP_EID_NIC_5 0x15
-#define MCTP_EID_NIC_6 0x16
-#define MCTP_EID_NIC_7 0x17
+#define MCTP_EID_NIC_1 0x10
+#define MCTP_EID_NIC_2 0x11
+#define MCTP_EID_NIC_3 0x12
+#define MCTP_EID_NIC_4 0x0b
+#define MCTP_EID_NIC_5 0x0c
+#define MCTP_EID_NIC_6 0x0d
+#define MCTP_EID_NIC_7 0x0e
 
 K_TIMER_DEFINE(send_cmd_timer, send_cmd_to_dev, NULL);
 K_WORK_DEFINE(send_cmd_work, send_cmd_to_dev_handler);
@@ -76,17 +81,44 @@ static mctp_port smbus_port[] = {
 	{ .conf.smbus_conf.addr = I2C_ADDR_BIC, .conf.smbus_conf.bus = I2C_BUS_NIC_6 },
 	{ .conf.smbus_conf.addr = I2C_ADDR_BIC, .conf.smbus_conf.bus = I2C_BUS_NIC_7 },
 };
-
+/*
+mctp_route_entry mctp_route_tbl[] = {
+	{ MCTP_EID_BMC, I2C_BUS_BMC, I2C_ADDR_BMC },
+	{ MCTP_EID_NIC_0, I2C_BUS_NIC_7, 0x70, PRSNT_NIC7_R_N },
+	{ MCTP_EID_NIC_1, I2C_BUS_NIC_7, 0x60, PRSNT_NIC7_R_N },
+	{ MCTP_EID_NIC_2, I2C_BUS_NIC_7, 0x60, PRSNT_NIC7_R_N },
+	{ MCTP_EID_NIC_3, I2C_BUS_NIC_7, 0x60, PRSNT_NIC7_R_N },
+	{ MCTP_EID_NIC_4, I2C_BUS_NIC_7, 0x60, PRSNT_NIC7_R_N },
+	{ MCTP_EID_NIC_5, I2C_BUS_NIC_7, 0x60, PRSNT_NIC7_R_N },
+	{ MCTP_EID_NIC_6, I2C_BUS_NIC_7, 0x60, PRSNT_NIC7_R_N },
+	{ MCTP_EID_NIC_7, I2C_BUS_NIC_7, 0x60, PRSNT_NIC7_R_N },
+};
+*/
 mctp_route_entry mctp_route_tbl[] = {
 	{ MCTP_EID_BMC, I2C_BUS_BMC, I2C_ADDR_BMC },
 	{ MCTP_EID_NIC_0, I2C_BUS_NIC_0, I2C_ADDR_NIC, PRSNT_NIC0_R_N },
-	{ MCTP_EID_NIC_1, I2C_BUS_NIC_1, I2C_ADDR_NIC, PRSNT_NIC1_R_N },
-	{ MCTP_EID_NIC_2, I2C_BUS_NIC_2, I2C_ADDR_NIC, PRSNT_NIC2_R_N },
-	{ MCTP_EID_NIC_3, I2C_BUS_NIC_3, I2C_ADDR_NIC, PRSNT_NIC3_R_N },
-	{ MCTP_EID_NIC_4, I2C_BUS_NIC_4, I2C_ADDR_NIC, PRSNT_NIC4_R_N },
-	{ MCTP_EID_NIC_5, I2C_BUS_NIC_5, I2C_ADDR_NIC, PRSNT_NIC5_R_N },
-	{ MCTP_EID_NIC_6, I2C_BUS_NIC_6, I2C_ADDR_NIC, PRSNT_NIC6_R_N },
-	{ MCTP_EID_NIC_7, I2C_BUS_NIC_7, I2C_ADDR_NIC, PRSNT_NIC7_R_N },
+	{ 0x00, I2C_BUS_NIC_7, 0x28, PRSNT_NIC7_R_N },
+	{ 0x08, I2C_BUS_NIC_7, 0x28, PRSNT_NIC7_R_N },
+	{ 0x09, I2C_BUS_NIC_7, 0x28, PRSNT_NIC7_R_N },
+	{ 0x0a, I2C_BUS_NIC_7, 0x28, PRSNT_NIC7_R_N },
+	{ 0x0b, I2C_BUS_NIC_7, 0x28, PRSNT_NIC7_R_N },
+	{ 0x0c, I2C_BUS_NIC_7, 0x28, PRSNT_NIC7_R_N },
+	{ 0x0d, I2C_BUS_NIC_7, 0x28, PRSNT_NIC7_R_N },
+	{ 0x0e, I2C_BUS_NIC_7, 0x28, PRSNT_NIC7_R_N },
+	{ 0x0f, I2C_BUS_NIC_7, 0x28, PRSNT_NIC7_R_N },
+	{ 0x10, I2C_BUS_NIC_7, 0x28, PRSNT_NIC7_R_N },
+	{ 0x11, I2C_BUS_NIC_7, 0x28, PRSNT_NIC7_R_N },
+	{ 0x12, I2C_BUS_NIC_7, 0x28, PRSNT_NIC7_R_N },
+	{ 0x13, I2C_BUS_NIC_7, 0x28, PRSNT_NIC7_R_N },
+	{ 0x14, I2C_BUS_NIC_7, 0x28, PRSNT_NIC7_R_N },
+	{ 0x15, I2C_BUS_NIC_7, 0x28, PRSNT_NIC7_R_N },
+	{ 0x16, I2C_BUS_NIC_7, 0x28, PRSNT_NIC7_R_N },
+	{ 0x17, I2C_BUS_NIC_7, 0x28, PRSNT_NIC7_R_N },
+	{ 0x18, I2C_BUS_NIC_7, 0x28, PRSNT_NIC7_R_N },
+	{ 0x19, I2C_BUS_NIC_7, 0x28, PRSNT_NIC7_R_N },
+	{ 0x1a, I2C_BUS_NIC_7, 0x28, PRSNT_NIC7_R_N },
+	{ 0x1b, I2C_BUS_NIC_7, 0x28, PRSNT_NIC7_R_N },
+	{ 0x1c, I2C_BUS_NIC_7, 0x28, PRSNT_NIC7_R_N },
 };
 
 static mctp *find_mctp_by_smbus(uint8_t bus)
@@ -155,6 +187,8 @@ static void set_dev_endpoint(void)
 		for (uint8_t j = 0; j < ARRAY_SIZE(smbus_port); j++) {
 			if (p->bus != smbus_port[j].conf.smbus_conf.bus)
 				continue;
+			
+			LOG_INF("SET DEVICE EID 0x%x...", p->endpoint);
 
 			struct _set_eid_req req = { 0 };
 			req.op = SET_EID_REQ_OP_SET_EID;
@@ -174,6 +208,8 @@ static void set_dev_endpoint(void)
 			msg.recv_resp_cb_fn = set_endpoint_resp_handler;
 			msg.timeout_cb_fn = set_endpoint_resp_timeout;
 			msg.timeout_cb_fn_args = p;
+
+			LOG_INF("EID: 0x%x bus: %d addr:0x%x", p->endpoint, p->bus, p->addr);
 
 			mctp_ctrl_send_msg(find_mctp_by_smbus(p->bus), &msg);
 		}
@@ -249,6 +285,44 @@ static void get_dev_firmware_parameters(void)
 
 		mctp_pldm_send_msg(find_mctp_by_smbus(p->bus), &msg);
 	}
+}
+
+static bool get_pdr_send_req(mctp *mctp_inst, struct pldm_get_pdr_req *req, struct pldm_get_pdr_resp *rsp, mctp_ext_params ext_params)
+{
+	CHECK_NULL_ARG_WITH_RETURN(mctp_inst, false);
+	CHECK_NULL_ARG_WITH_RETURN(req, false);
+	CHECK_NULL_ARG_WITH_RETURN(rsp, false);
+
+	if (req->request_count > NUMERIC_PDR_SIZE) {
+		LOG_WRN("Request pdr data response size over limit 0x%x", NUMERIC_PDR_SIZE);
+		return false;
+	}
+
+	uint8_t resp_buf[PLDM_MAX_DATA_SIZE] = { 0 };
+	pldm_msg pmsg = { 0 };
+	pmsg.hdr.msg_type = MCTP_MSG_TYPE_PLDM;
+	pmsg.hdr.pldm_type = 0x02;
+	pmsg.hdr.cmd = PLDM_MONITOR_CMD_CODE_GET_PDR;
+	pmsg.hdr.rq = PLDM_REQUEST;
+	pmsg.len = sizeof(struct pldm_get_pdr_req);
+	pmsg.buf = (uint8_t *)req;
+	pmsg.ext_params = ext_params;
+
+	uint16_t resp_len = mctp_pldm_read(mctp_inst, &pmsg, resp_buf, sizeof(resp_buf));
+	if (resp_len == 0) {
+		LOG_ERR("Failed to get mctp response...");
+		return false;
+	}
+
+	if (resp_buf[0] != PLDM_SUCCESS) {
+		LOG_ERR("GetPDR: Get bad cc 0x%x", resp_buf[0]);
+		return false;
+	}
+
+	LOG_HEXDUMP_DBG(resp_buf, resp_len, "resp_buf:");
+	memcpy(rsp, (struct pldm_get_pdr_resp *)resp_buf, resp_len);
+
+	return true;
 }
 
 bool mctp_add_sel_to_ipmi(common_addsel_msg_t *sel_msg)
@@ -367,6 +441,230 @@ void send_cmd_to_dev(struct k_timer *timer)
 {
 	k_work_submit(&send_cmd_work);
 }
+
+#define MAX_PDR_RSP 0x25
+void pdr_handler(void *arug0, void *arug1, void *arug2)
+{
+	k_msleep(3000);
+
+	mctp *mctp_inst = NULL;
+	mctp_ext_params ext_params = {0};
+	if (get_mctp_info_by_eid(MCTP_EID_NIC_0, &mctp_inst, &ext_params) == false) {
+		LOG_ERR("Failed to get mctp info by eid 0x%x", MCTP_EID_NIC_0);
+		return;
+	}
+
+	LOG_INF("[STEP1] Set Event Receiver");
+	uint8_t resp_buf[128] = { 0 };
+	pldm_msg pmsg = { 0 };
+	pmsg.hdr.msg_type = MCTP_MSG_TYPE_PLDM;
+	pmsg.hdr.pldm_type = 0x02;
+	pmsg.hdr.cmd = 0x05;
+	pmsg.hdr.rq = PLDM_REQUEST;
+	pmsg.len = 0;
+	pmsg.ext_params = ext_params;
+
+	uint16_t resp_len = mctp_pldm_read(mctp_inst, &pmsg, resp_buf, sizeof(resp_buf));
+	if (resp_len == 0) {
+		LOG_ERR("Failed to get mctp response...");
+		goto step2;
+	}
+
+	if (resp_buf[0] != PLDM_SUCCESS) {
+		LOG_ERR("GetEventReceiver: Get bad cc 0x%x", resp_buf[0]);
+		goto step2;
+	}
+
+	LOG_HEXDUMP_INF(resp_buf, resp_len, "resp_buf:");
+
+step2:
+	LOG_INF("[STEP2] Get PDR");
+
+	struct pldm_get_pdr_req req_data = {0};
+	struct pldm_get_pdr_resp rsp_data = {0};
+
+	PDR_common_header common_hdr = {0}; 
+
+	uint16_t pdr_idx = 0;
+	bool first_pdr = true;
+
+	req_data.record_handle = 0x00000000;
+	req_data.data_transfer_handle = 0x00000000;
+	req_data.record_change_number = 0;
+	req_data.request_count = MAX_PDR_RSP;
+	req_data.transfer_operation_flag = 0x01;
+
+	LOG_WRN("PDR requirement task start!");
+	while (1)
+	{
+		if (first_pdr == false) {
+
+		}
+
+		LOG_INF("=============== Get PDR No.%d ===============", pdr_idx);
+		LOG_INF("[req]");
+		LOG_INF("* record_handle:             0x%x", req_data.record_handle);
+		LOG_INF("* data_transfer_handle:      0x%x", req_data.data_transfer_handle);
+		LOG_INF("* transfer_operation_flag:   0x%x", req_data.transfer_operation_flag);
+		LOG_INF("* request_count:             0x%x", req_data.request_count);
+		LOG_INF("* record_change_number:      0x%x", req_data.record_change_number);
+
+		/* get pdr from NIC_0 */
+		if (get_pdr_send_req(mctp_inst, &req_data, &rsp_data, ext_params) == false) {
+			break;;
+		}
+
+		LOG_INF("[rsp]");
+		LOG_INF("* next_record_handle:        0x%x", rsp_data.next_record_handle);
+		LOG_INF("* next_data_transfer_handle: 0x%x", rsp_data.next_data_transfer_handle);
+
+		char *trans_flag_name;
+		if (rsp_data.transfer_flag == PLDM_TRANSFER_FLAG_START)
+			trans_flag_name = "Start";
+		else if (rsp_data.transfer_flag == PLDM_TRANSFER_FLAG_MIDDLE)
+			trans_flag_name = "Middle";
+		else if (rsp_data.transfer_flag == PLDM_TRANSFER_FLAG_END)
+			trans_flag_name = "Eed";
+		else if (rsp_data.transfer_flag == PLDM_TRANSFER_FLAG_START_AND_END)
+			trans_flag_name = "StartAndEnd";
+		else
+			trans_flag_name = "---";
+
+		LOG_INF("* transfer_flag:             0x%x (%s)", rsp_data.transfer_flag, trans_flag_name);
+		LOG_INF("* response_count:            0x%x", rsp_data.response_count);
+		LOG_HEXDUMP_INF(rsp_data.record_data, rsp_data.response_count, "* record_data:");
+
+		if ( (rsp_data.transfer_flag == PLDM_TRANSFER_FLAG_START) || (rsp_data.transfer_flag == PLDM_TRANSFER_FLAG_START_AND_END) ) {
+			memcpy(&common_hdr, rsp_data.record_data, sizeof(PDR_common_header));
+
+			LOG_INF("[common pdr header]");
+			LOG_INF("   + record_handle:        0x%x", common_hdr.record_handle);
+			LOG_INF("   + pdr_header_version:   0x%x", common_hdr.PDR_header_version);
+
+			char *pdr_type_name;
+			switch (common_hdr.PDR_type)
+			{
+			case PLDM_TERMINUS_LOCATOR_PDR:
+				pdr_type_name = "TERMINUS LOCATOR PDR";
+				break;
+			case PLDM_NUMERIC_SENSOR_PDR:
+				pdr_type_name = "NUMERIC SENSOR PDR";
+				break;
+			case PLDM_NUMERIC_SENSOR_INITIALIZATION_PDR:
+				pdr_type_name = "NUMERIC SENSOR INITIALIZATION PDR";
+				break;
+			case PLDM_STATE_SENSOR_PDR:
+				pdr_type_name = "STATE SENSOR PDR";
+				break;
+			case PLDM_STATE_SENSOR_INITIALIZATION_PDR:
+				pdr_type_name = "STATE SENSOR INITIALIZATION PDR";
+				break;
+			case PLDM_SENSOR_AUXILIARY_NAMES_PDR:
+				pdr_type_name = "SENSOR AUXILIARY NAMES PDR";
+				break;
+			case PLDM_OEM_UNIT_PDR:
+				pdr_type_name = "OEM UNIT PDR";
+				break;
+			case PLDM_OEM_STATE_SET_PDR:
+				pdr_type_name = "OEM STATE SET PDR";
+				break;
+			case PLDM_NUMERIC_EFFECTER_PDR:
+				pdr_type_name = "NUMERIC EFFECTER PDR";
+				break;
+			case PLDM_NUMERIC_EFFECTER_INITIALIZATION_PDR:
+				pdr_type_name = "NUMERIC EFFECTER INITIALIZATION PDR";
+				break;
+			case PLDM_STATE_EFFECTER_PDR:
+				pdr_type_name = "STATE EFFECTER PDR";
+				break;
+			case PLDM_STATE_EFFECTER_INITIALIZATION_PDR:
+				pdr_type_name = "STATE EFFECTER INITIALIZATION PDR";
+				break;
+			case PLDM_EFFECTER_AUXILIARY_NAMES_PDR:
+				pdr_type_name = "EFFECTER AUXILIARY NAMES PDR";
+				break;
+			case PLDM_EFFECTER_OEM_SEMANTIC_PDR:
+				pdr_type_name = "EFFECTER OEM SEMANTIC PDR";
+				break;
+			case PLDM_PDR_ENTITY_ASSOCIATION:
+				pdr_type_name = "ENTITY ASSOCIATION PDR";
+				break;
+			case PLDM_ENTITY_AUXILIARY_NAMES_PDR:
+				pdr_type_name = "ENTITY AUXILIARY NAMES PDR";
+				break;
+			case PLDM_OEM_ENTITY_ID_PDR:
+				pdr_type_name = "OEM ENTITY ID PDR";
+				break;
+			case PLDM_INTERRUPT_ASSOCIATION_PDR:
+				pdr_type_name = "INTERRUPT ASSOCIATION PDR";
+				break;
+			case PLDM_EVENT_LOG_PDR:
+				pdr_type_name = "EVENT LOG PDR";
+				break;
+			case PLDM_PDR_FRU_RECORD_SET:
+				pdr_type_name = "FRU RECORD SET PDR";
+				break;
+			case PLDM_COMPACT_NUMERIC_SENSOR_PDR:
+				pdr_type_name = "COMPACT NUMERIC SENSOR PDR";
+				break;
+			case PLDM_OEM_DEVICE_PDR:
+				pdr_type_name = "OEM DEVICE PDR";
+				break;
+			case PLDM_OEM_PDR:
+				pdr_type_name = "OEM PDR";
+				break;
+
+			default:
+				pdr_type_name = "---";
+				break;
+			}
+
+			LOG_INF("   + pdr_type:             0x%x (%s)", common_hdr.PDR_type, pdr_type_name);
+			LOG_INF("   + record_change_number: 0x%x", common_hdr.record_change_number);
+			LOG_INF("   + data_length:          0x%x", common_hdr.data_length);
+		}
+
+#ifdef ENABLE_NVIDIA
+		static uint8_t cur_numeric_sensor_buff[sizeof(PDR_numeric_sensor)] = {0};
+		static int cur_numeric_sensor_idx = 0;
+
+		if (common_hdr.PDR_type == PLDM_NUMERIC_SENSOR_PDR) {
+			memcpy(&cur_numeric_sensor_buff[cur_numeric_sensor_idx], rsp_data.record_data, rsp_data.response_count);
+			cur_numeric_sensor_idx += rsp_data.response_count;
+
+			if (rsp_data.transfer_flag == PLDM_TRANSFER_FLAG_END || rsp_data.transfer_flag == PLDM_TRANSFER_FLAG_START_AND_END) {
+				nv_satmc_pdr_collect(PLDM_NUMERIC_SENSOR_PDR, cur_numeric_sensor_buff, cur_numeric_sensor_idx + 1);
+				memset(cur_numeric_sensor_buff, 0, sizeof(PDR_numeric_sensor));
+				cur_numeric_sensor_idx = 0;
+			}
+		}
+#endif
+
+		if (rsp_data.next_record_handle == 0) {
+			LOG_WRN("Last PDR has been received(total: %d)", pdr_idx+1);
+			break;
+		}
+
+		req_data.record_handle = rsp_data.next_record_handle;
+		req_data.data_transfer_handle = rsp_data.next_data_transfer_handle;
+
+		if ( (rsp_data.transfer_flag == PLDM_TRANSFER_FLAG_END) || (rsp_data.transfer_flag == PLDM_TRANSFER_FLAG_START_AND_END) ) {
+			LOG_INF("");
+			req_data.transfer_operation_flag = 0x01;
+			pdr_idx++;
+		} else if ( (rsp_data.transfer_flag == PLDM_TRANSFER_FLAG_START) || (rsp_data.transfer_flag == PLDM_TRANSFER_FLAG_MIDDLE) ) {
+			req_data.transfer_operation_flag = 0x00;
+		} else {
+			LOG_ERR("Receivce invalid transfer flag 0x%x", rsp_data.transfer_flag);
+			break;
+		}
+
+		k_msleep(500);
+	}
+}
+
+struct k_thread pdr_thread;
+K_KERNEL_STACK_MEMBER(pdr_thread_stack, 4096);
 void plat_mctp_init(void)
 {
 	LOG_INF("plat_mctp_init");
@@ -374,8 +672,8 @@ void plat_mctp_init(void)
 	/* init the mctp/pldm instance */
 	for (uint8_t i = 0; i < ARRAY_SIZE(smbus_port); i++) {
 		mctp_port *p = smbus_port + i;
-		LOG_DBG("smbus port %d", i);
-		LOG_DBG("bus = %x, addr = %x", p->conf.smbus_conf.bus, p->conf.smbus_conf.addr);
+		LOG_INF("smbus port %d", i);
+		LOG_INF("bus = %x, addr = %x", p->conf.smbus_conf.bus, p->conf.smbus_conf.addr);
 
 		p->mctp_inst = mctp_init();
 		if (!p->mctp_inst) {
@@ -383,10 +681,10 @@ void plat_mctp_init(void)
 			continue;
 		}
 
-		LOG_DBG("mctp_inst = %p", p->mctp_inst);
+		LOG_INF("mctp_inst = %p", p->mctp_inst);
 		uint8_t rc =
 			mctp_set_medium_configure(p->mctp_inst, MCTP_MEDIUM_TYPE_SMBUS, p->conf);
-		LOG_DBG("mctp_set_medium_configure %s",
+		LOG_INF("mctp_set_medium_configure %s",
 			(rc == MCTP_SUCCESS) ? "success" : "failed");
 
 		mctp_reg_endpoint_resolve_func(p->mctp_inst, get_mctp_route_info);
@@ -398,4 +696,9 @@ void plat_mctp_init(void)
 	/* Only send command to device when DC on */
 	if (is_mb_dc_on())
 		k_timer_start(&send_cmd_timer, K_MSEC(3000), K_NO_WAIT);
+
+	k_thread_create(&pdr_thread, pdr_thread_stack, K_THREAD_STACK_SIZEOF(pdr_thread_stack),
+			pdr_handler, NULL, NULL, NULL, CONFIG_MAIN_THREAD_PRIORITY, 0, K_NO_WAIT);
+	k_thread_name_set(&pdr_thread, "PDR_thread");
+
 }

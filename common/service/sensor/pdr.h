@@ -62,6 +62,16 @@ typedef struct __attribute__((packed)) {
 	uint16_t data_length;
 } PDR_common_header;
 
+#define MAX_PDR_DATA_SIZE 512
+typedef struct __attribute__((packed)) {
+	/*** PDR common header***/
+	PDR_common_header pdr_common_header;
+
+	/*** PDR data***/
+	uint8_t pdr_data_buff[MAX_PDR_DATA_SIZE];
+	uint16_t pdr_data_len;
+} PDR_record_data;
+
 typedef struct __attribute__((packed)) {
 	/*** PDR common header***/
 	PDR_common_header pdr_common_header;
