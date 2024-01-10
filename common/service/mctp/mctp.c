@@ -149,6 +149,10 @@ static uint8_t bridge_msg(mctp *mctp_inst, uint8_t *buf, uint16_t len)
 		return MCTP_ERROR;
 	}
 
+	LOG_INF("bridge out from eid [0x%x] to eid [0x%x] (bus: 0x%x addr: 0x%x)",
+				mctp_inst->endpoint, hdr->dest_ep, mctp_inst->medium_conf.smbus_conf.bus, target_ext_params.smbus_ext_params.addr);
+	LOG_HEXDUMP_INF(buf, len, "");
+
 	LOG_DBG("ret = %d, bridget msg to mctp = %p", ret, target_mctp);
 	return mctp_bridge_msg(target_mctp, buf, len, target_ext_params);
 }
@@ -237,7 +241,8 @@ static void mctp_rx_task(void *arg, void *dummy0, void *dummy1)
 		ext_params.tag_owner = 0;
 		ext_params.ep = hdr->src_ep;
 
-		if ((hdr->dest_ep != mctp_inst->endpoint) && (hdr->dest_ep != MCTP_NULL_EID)) {
+		if ((hdr->dest_ep != mctp_inst->endpoint) ) {
+			hdr->src_ep = 0xa;
 			/* try to bridge this packet */
 			ret = bridge_msg(mctp_inst, read_buf, read_len);
 			if (ret == MCTP_ERROR)
