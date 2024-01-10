@@ -99,6 +99,13 @@ struct lattice_dev_config LATTICE_CFG_TABLE[] = {
 			.cpld_i2C_update = x02x03_i2c_update,
 			.cpld_jtag_update = NULL,
 		},
+	[LATTICE_LCMX03_6900C] =
+		{
+			.name = "LCMXO3-6900C",
+			.id = 0x612BD043,
+			.cpld_i2C_update = x02x03_i2c_update,
+			.cpld_jtag_update = NULL,
+		},
 	[LATTICE_LCMX03_9400C] =
 		{
 			.name = "LCMXO3-9400C",
