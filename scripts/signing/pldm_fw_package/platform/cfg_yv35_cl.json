@@ -1,0 +1,47 @@
+{
+    "PlatformDescriptor": [
+        {
+            "DescriptorType" : 1,
+            "DescriptorData" : "0000A015"
+        },
+        {
+            "DescriptorType" : 65535,
+            "VendorDefinedDescriptorTitleString" : "Platform",
+            "VendorDefinedDescriptorData" : "Yosemite V3.5"
+    
+        },
+        {
+            "DescriptorType" : 65535,
+            "VendorDefinedDescriptorTitleString" : "BoardID",
+            "VendorDefinedDescriptorData" : "Crater Lake"
+        },
+        {
+            "DescriptorType" : 65535,
+            "VendorDefinedDescriptorTitleString" : "Stage",
+            "VendorDefinedDescriptorData" : "na"
+        }
+    ],
+    "SupportDevice" : [
+        {
+            "CompID" : [2],
+            "Vendor" : "aspeed",
+            "Device" : "ast1030",
+            "CheckSum" : "n",
+            "pkg_suffix" : ".pldm"
+        },
+        {
+            "CompID" : [0],
+            "Vendor" : "lattice",
+            "Device" : "LCMXO3-6900C",
+            "CheckSum" : "n",
+            "pkg_suffix" : ".pldm"
+        },
+        {
+            "CompID" : [1],
+            "Vendor" : "none",
+            "Device" : "bios-flash",
+            "CheckSum" : "n",
+            "pkg_suffix" : ".pldm"
+        }
+    ]
+}
