@@ -21,5 +21,6 @@
 
 #define ENABLE_SSIF
 #define ENABLE_MPRO
+#define ENABLE_SBMR
 
 #endif

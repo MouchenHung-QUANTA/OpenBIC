@@ -50,6 +50,9 @@ bool pal_request_msg_to_BIC_from_HOST(uint8_t netfn, uint8_t cmd)
 		    (cmd == CMD_OEM_1S_GET_BIC_FW_INFO) ||
 		    (cmd == CMD_OEM_1S_GET_DIMM_I3C_MUX_SELECTION))
 			return true;
+	} else if (netfn == NETFN_DCMI_REQ) {
+		if ((cmd == CMD_DCMI_SEND_BOOT_PROGRESS_CODE) || (cmd == CMD_DCMI_GET_BOOT_PROGRESS_CODE))
+			return true;
 	}
 
 	return false;

@@ -185,6 +185,12 @@ enum {
 	CMD_STORAGE_ADD_SEL = 0x44,
 };
 
+// DCMI Command Codes (0x2C)
+enum {
+	CMD_DCMI_SEND_BOOT_PROGRESS_CODE = 0x02,
+	CMD_DCMI_GET_BOOT_PROGRESS_CODE = 0x03,
+};
+
 // OEM NM Command Codes (0x2E)
 enum {
 	CMD_OEM_NM_FORCE_ME_RECOVERY = 0xDF,
