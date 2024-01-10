@@ -37,7 +37,7 @@ void cmd_pldm_send_req(const struct shell *shell, size_t argc, char **argv)
 	uint8_t pldm_cmd = strtol(argv[3], NULL, 16);
 	uint16_t pldm_data_len = argc - 4;
 
-	uint8_t resp_buf[PLDM_MAX_DATA_SIZE] = { 0 };
+	uint8_t resp_buf[128] = { 0 };
 	pldm_msg pmsg = { 0 };
 	pmsg.hdr.msg_type = MCTP_MSG_TYPE_PLDM;
 	pmsg.hdr.pldm_type = pldm_type;
@@ -67,6 +67,7 @@ void cmd_pldm_send_req(const struct shell *shell, size_t argc, char **argv)
 	if (resp_buf[0] != PLDM_SUCCESS)
 		shell_error(shell, "Response with bad cc 0x%x", resp_buf[0]);
 	else {
+		shell_print(shell, "rsp:");
 		shell_hexdump(shell, resp_buf, resp_len);
 		shell_print(shell, "");
 	}
