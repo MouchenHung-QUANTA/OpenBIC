@@ -96,6 +96,13 @@ enum BIC_CARD_PRESENT {
 	CARD_PRESENT = true,
 };
 
+enum FIRMWARE_COMPONENT_ID {
+	CL_COMPNT_CPLD,
+	CL_COMPNT_NV_FPGA,
+	CL_COMPNT_BIC,
+	GT_COMPNT_MAX,
+};
+
 uint8_t get_system_class();
 CARD_STATUS get_1ou_status();
 CARD_STATUS get_2ou_status();

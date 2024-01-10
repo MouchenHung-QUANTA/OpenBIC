@@ -14,19 +14,14 @@
  * limitations under the License.
  */
 
-#ifndef PLAT_DEF_H
-#define PLAT_DEF_H
+#ifndef _PLAT_FWUPDATE_H_
+#define _PLAT_FWUPDATE_H_
 
-#define ENABLE_ASD
-#define ENABLE_ISL69260
-#define ENABLE_FIX_SENSOR
-#define ENABLE_PLDM
-#define ENABLE_MCTP_I3C
+#include <stdbool.h>
+#include <stdint.h>
+#include "pldm_firmware_update.h"
 
-#define BMC_USB_PORT "CDC_ACM_0"
+void load_pldmupdate_comp_config(void);
+void clear_pending_version(uint8_t activate_method);
 
-#define WORKER_STACK_SIZE 4096
-
-#define KEYWORD_CPLD_LATTICE "LCMXO3-6900C"
-
-#endif
+#endif /* _PLAT_FWUPDATE_H_ */
