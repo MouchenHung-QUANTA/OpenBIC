@@ -278,6 +278,10 @@
 #define SENSOR_NUM_TEMP_NIC_OPTICS_6 0xC6
 #define SENSOR_NUM_TEMP_NIC_OPTICS_7 0xC7
 
+#define SENSOR_NUM_TEMP_SATMC_TEST 0xD0
+#define SENSOR_NUM_TEMP_SMBPBI_TEST 0xE0
+#define SENSOR_NUM_TEMP_SMBPBI_TEST1 0xE1
+
 /* The sensors of different source components by ADC */
 #define SENSOR_NUM_HSC_TYPE 0xF0
 #define SENSOR_NUM_VR_TYPE 0xF1

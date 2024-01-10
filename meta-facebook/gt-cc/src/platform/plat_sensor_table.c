@@ -35,6 +35,7 @@
 #include "i2c-mux-tca9548.h"
 #include "isl28022.h"
 #include "pex89000.h"
+#include "nvidia.h"
 #include "util_sys.h"
 #include "plat_class.h"
 #include "plat_pldm_monitor.h"
@@ -48,6 +49,14 @@ static void load_vr_sensor_table(void);
 static void load_power_ic_sensor_table(void);
 static void change_p1v8_sensor_i2c_addr(void);
 
+struct nv_satmc_sensor_parm satmc_sensor_cfg_list[] = {
+	{0x0001, {0,0,0}, false},
+	{0x0008, {0,0,0}, false},
+	{0x0010, {0,0,0}, false},
+};
+
+const int SATMC_SENSOR_CFG_LIST_SIZE = ARRAY_SIZE(satmc_sensor_cfg_list);
+
 sensor_cfg plat_sensor_config[] = {
 	/* number,                  type,       port,      address,      offset,
 	   access check arg0, arg1, cache, cache_status, mux_ADDRess, mux_offset,
@@ -55,7 +64,7 @@ sensor_cfg plat_sensor_config[] = {
 
 	/* NIC 0-7 temperature sensor */
 	{ SENSOR_NUM_TEMP_NIC_0, sensor_dev_tmp75, I2C_BUS1, NIC_ADDR, NIC_TEMP_OFFSET,
-	  is_nic_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  is_nic_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, DISABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
 	{ SENSOR_NUM_TEMP_NIC_1, sensor_dev_tmp75, I2C_BUS2, NIC_ADDR, NIC_TEMP_OFFSET,
 	  is_nic_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
@@ -76,13 +85,13 @@ sensor_cfg plat_sensor_config[] = {
 	  is_nic_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
 	{ SENSOR_NUM_TEMP_NIC_7, sensor_dev_tmp75, I2C_BUS14, NIC_ADDR, NIC_TEMP_OFFSET,
-	  is_nic_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  is_nic_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, DISABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
 
 	/* NIC optics 0-7 temperature sensor */
 	{ SENSOR_NUM_TEMP_NIC_OPTICS_0, sensor_dev_cx7, I2C_BUS1, NIC_ADDR, NONE,
 	  is_nic_optics_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &cx7_init_args[0] },
+	  DISABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &cx7_init_args[0] },
 	{ SENSOR_NUM_TEMP_NIC_OPTICS_1, sensor_dev_cx7, I2C_BUS2, NIC_ADDR, NONE,
 	  is_nic_optics_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &cx7_init_args[1] },
@@ -103,7 +112,7 @@ sensor_cfg plat_sensor_config[] = {
 	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &cx7_init_args[6] },
 	{ SENSOR_NUM_TEMP_NIC_OPTICS_7, sensor_dev_cx7, I2C_BUS14, NIC_ADDR, NONE,
 	  is_nic_optics_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &cx7_init_args[7] },
+	  DISABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &cx7_init_args[7] },
 
 	/* ADC voltage */
 	{ SENSOR_NUM_BB_P12V_AUX, sensor_dev_ast_adc, ADC_PORT0, NONE, NONE, stby_access, 1780, 200,
@@ -146,7 +155,7 @@ sensor_cfg plat_sensor_config[] = {
 	/* SYSTEM INLET TEMP */
 	{ SENSOR_NUM_SYSTEM_INLET_TEMP, sensor_dev_tmp75, I2C_BUS5, SYSTEM_INLET_TEMP_ADDR,
 	  TMP75_TEMP_OFFSET, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
-	  ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
+	  DISABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, NULL },
 	/* SYSTEM OUTLET TEMP LEFT */
 	{ SENSOR_NUM_OUTLET_TEMP_L1, sensor_dev_tmp75, I2C_BUS6, SYSTEM_OUTLET_TEMP_L1_ADDR,
 	  TMP75_TEMP_OFFSET, stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT,
@@ -231,6 +240,16 @@ sensor_cfg plat_sensor_config[] = {
 	  is_e1s_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, pre_i2c_bus_read, &mux_conf_addr_0xe2[7], post_i2c_bus_read, NULL,
 	  NULL },
+
+	{ SENSOR_NUM_TEMP_SATMC_TEST, sensor_dev_nv_satmc, I2C_BUS1, NIC_ADDR, NONE,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &satmc_init_args[0] },
+	{ SENSOR_NUM_TEMP_SMBPBI_TEST, sensor_dev_nv_smbpbi, I2C_BUS14, NONE, NONE,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &smbpbi_init_args[0] },
+	{ SENSOR_NUM_TEMP_SMBPBI_TEST1, sensor_dev_nv_smbpbi, I2C_BUS14, NONE, NONE,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &smbpbi_init_args[1] },
 };
 
 sensor_cfg evt_pex_sensor_config_table[] = {

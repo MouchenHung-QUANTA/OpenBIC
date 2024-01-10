@@ -119,6 +119,8 @@ const char *const sensor_type_name[] = {
 	sensor_name_to_num(mpro)
 	sensor_name_to_num(bmr351)
 	sensor_name_to_num(cx7)
+	sensor_name_to_num(nv_satmc)
+	sensor_name_to_num(nv_smbpbi)
 };
 // clang-format on
 
@@ -174,6 +176,8 @@ SENSOR_DRIVE_INIT_DECLARE(mpro);
 #endif
 SENSOR_DRIVE_INIT_DECLARE(bmr351);
 SENSOR_DRIVE_INIT_DECLARE(cx7);
+SENSOR_DRIVE_INIT_DECLARE(nv_satmc);
+SENSOR_DRIVE_INIT_DECLARE(nv_smbpbi);
 
 sensor_drive_api sensor_drive_tbl[] = {
 	SENSOR_DRIVE_TYPE_INIT_MAP(tmp75),
@@ -228,6 +232,8 @@ sensor_drive_api sensor_drive_tbl[] = {
 #endif
 	SENSOR_DRIVE_TYPE_INIT_MAP(bmr351),
 	SENSOR_DRIVE_TYPE_INIT_MAP(cx7),
+	SENSOR_DRIVE_TYPE_INIT_MAP(nv_satmc),
+	SENSOR_DRIVE_TYPE_INIT_MAP(nv_smbpbi),
 };
 
 static void init_sensor_num(void)

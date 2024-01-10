@@ -27,6 +27,7 @@
 #include "pex89000.h"
 #include "pmbus.h"
 #include "nvme.h"
+#include "nvidia.h"
 #include "plat_pldm_monitor.h"
 
 #include <logging/log.h>
@@ -865,6 +866,17 @@ cx7_init_arg cx7_init_args[] = {
 	[5] = { .is_init = false, .endpoint = 0x15, .sensor_id = 0x0008 },
 	[6] = { .is_init = false, .endpoint = 0x16, .sensor_id = 0x0008 },
 	[7] = { .is_init = false, .endpoint = 0x17, .sensor_id = 0x0008 },
+};
+
+nv_satmc_init_arg satmc_init_args[] = {
+	[0] = { .is_init = false, .endpoint = 0x10, .sensor_id = 0x0001 },
+	[1] = { .is_init = false, .endpoint = 0x10, .sensor_id = 0x0008 },
+	[2] = { .is_init = false, .endpoint = 0x10, .sensor_id = 0x0010 },
+};
+
+nv_smbpbi_init_arg smbpbi_init_args[] = {
+	[0] = { .is_init = false, .dev_id = NV_GPU1, .opcode = SMBPBI_OPCODE_GET_TEMP_SINGLE, .arg1 = 0x00, .arg2 = 0 },
+	[1] = { .is_init = false, .dev_id = NV_GPU1, .opcode = SMBPBI_OPCODE_GET_TEMP_EXT, .arg1 = 0x00, .arg2 = 0 },
 };
 
 /**************************************************************************************************
