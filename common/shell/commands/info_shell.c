@@ -17,6 +17,9 @@
 #include "info_shell.h"
 #include "plat_version.h"
 #include "util_sys.h"
+#include "sbmr.h"
+#include "nvidia.h"
+#include "sensor.h"
 
 #ifndef CONFIG_BOARD
 #define CONFIG_BOARD "unknown"
@@ -46,5 +49,28 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 	shell_print(
 		shell,
 		"========================{SHELL COMMAND INFO}========================================");
+	
+	uint32_t val = 0;
+	if (nv_smbpbi_access(0x0d, NV_GPU1, 0x02, 0x00, 0x00, &val) == false ) {
+		return 0;
+	}
+
+	k_msleep(1000);
+
+	sensor_val sval = {0};
+	sval.integer = (int16_t)(val >> 8);
+	sval.fraction = 0;
+	shell_print(shell, "---> 0x%08x (%d.%d)", val, sval.integer, sval.fraction);
+
+	val = 0;
+	if (nv_smbpbi_access(0x0d, NV_GPU1, 0x03, 0x00, 0x00, &val) == false ) {
+		return 0;
+	}
+
+	k_msleep(1000);
+
+	sval.integer = (int16_t)(val >> 8);
+	sval.fraction = (int16_t)(val & 0xFF);;
+	shell_print(shell, "---> 0x%08x (%d.%d)", val, sval.integer, sval.fraction);
 	return 0;
 }
