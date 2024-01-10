@@ -33,6 +33,10 @@
 #include "hal_i2c_target.h"
 #include "hal_gpio.h"
 
+#ifdef ENABLE_SSIF
+#include "sbmr.h"
+#endif
+
 LOG_MODULE_REGISTER(ssif);
 
 #define SSIF_TARGET_MSGQ_SIZE 0x0A
@@ -313,6 +317,18 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 		/* Message to BIC */
 		if (pal_request_msg_to_BIC_from_HOST(ssif_inst->current_ipmi_msg.buffer.netfn,
 						     ssif_inst->current_ipmi_msg.buffer.cmd)) {
+#ifdef ENABLE_SBMR
+			if (ssif_inst->current_ipmi_msg.buffer.netfn == NETFN_DCMI_REQ) {
+				if (smbr_cmd_handler(&ssif_inst->current_ipmi_msg.buffer) == true) {
+					if (ssif_set_data(ssif_inst->index, &ssif_inst->current_ipmi_msg) ==
+						false) {
+						LOG_ERR("Failed to write ssif response data");
+					}
+				}
+				goto exit;
+			}
+#endif
+
 			while (k_msgq_put(&ipmi_msgq, &ssif_inst->current_ipmi_msg, K_NO_WAIT) !=
 			       0) {
 				k_msgq_purge(&ipmi_msgq);
@@ -368,17 +384,30 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 					ssif_inst->current_ipmi_msg.buffer.cmd, SELF, BMC_IPMB,
 					ssif_inst->current_ipmi_msg.buffer.data_len,
 					ssif_inst->current_ipmi_msg.buffer.data);
-				ipmb_error ipmb_ret =
-					ipmb_read(&msg, IPMB_inf_index_map[msg.InF_target]);
-				if (ipmb_ret != IPMB_ERROR_SUCCESS) {
-					LOG_ERR("SSIF[%d] Failed to send SSIF msg to BMC with ret: 0x%x",
-						ssif_inst->index, ipmb_ret);
-					break;
+
+				// Check BMC communication interface if use IPMB or not
+				if (!pal_is_interface_use_ipmb(IPMB_inf_index_map[BMC_IPMB])) {
+					// Send request to MCTP/PLDM thread to ask BMC
+					int ret = pldm_send_ipmi_request(&msg);
+					if (ret < 0) {
+						LOG_ERR("SSIF[%d] Failed to send SSIF msg to BMC via PLDM with ret: 0x%x",
+							ssif_inst->index, ret);
+						break;
+					}
+				} else {
+					ipmb_error ipmb_ret =
+						ipmb_read(&msg, IPMB_inf_index_map[msg.InF_target]);
+					if (ipmb_ret != IPMB_ERROR_SUCCESS) {
+						LOG_ERR("SSIF[%d] Failed to send SSIF msg to BMC via IPMB with ret: 0x%x",
+							ssif_inst->index, ipmb_ret);
+						break;
+					}
 				}
 
 				ipmi_msg_cfg ssif_rsp = { 0 };
 				ssif_rsp.buffer = msg;
 				ssif_rsp.buffer.netfn = ssif_rsp.buffer.netfn << 2;
+
 				if (ssif_set_data(ssif_inst->index, &ssif_rsp) == false) {
 					LOG_ERR("SSIF[%d] failed to write ssif response data",
 						ssif_inst->index);
@@ -386,6 +415,7 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 			} while (0);
 		}
 
+exit:
 		if (k_sem_take(&ssif_inst->rsp_buff_sem, K_MSEC(1500)) != 0) {
 			LOG_ERR("SSIF[%d] Get ipmi response message timeout!", ssif_inst->index);
 			ssif_error_record(ssif_inst->index, SSIF_STATUS_RSP_MSG_TIMEOUT);
