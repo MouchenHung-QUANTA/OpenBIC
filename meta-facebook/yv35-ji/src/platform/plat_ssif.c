@@ -14,14 +14,29 @@
  * limitations under the License.
  */
 
-#ifndef PLAT_DEF_H
-#define PLAT_DEF_H
+#include <stdint.h>
+#include <logging/log.h>
+#include "plat_ssif.h"
+#include "plat_i2c.h"
+#include "plat_gpio.h"
+#include "ssif.h"
 
-#define BMC_USB_PORT "CDC_ACM_0"
+LOG_MODULE_REGISTER(plat_ssif);
 
-#define WORKER_STACK_SIZE 4096
-#define ENABLE_MCTP_I3C
+struct ssif_init_cfg ssif_cfg_table[] = {
+	{ SSIF_I2C_BUS, SSIF_I2C_ADDR, 0x0A },
+};
 
-#define ENABLE_SSIF
+void pal_ssif_alert_trigger(uint8_t status)
+{
+	LOG_DBG("trigger %d", status);
+	gpio_set(I2C_SSIF_ALERT_L, status);
+}
 
-#endif
+void ssif_init(void)
+{
+	ssif_device_init(ssif_cfg_table, ARRAY_SIZE(ssif_cfg_table));
+
+	if (ssif_inst_get_by_bus(SSIF_I2C_BUS))
+		LOG_WRN("BIC SSIF is ready! Trigger GPIO interrupt if CPU need it..");
+}
