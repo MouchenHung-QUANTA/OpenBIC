@@ -17,6 +17,7 @@
 #include "mctp_ctrl.h"
 #include "pldm.h"
 #include "ipmi.h"
+#include "plat_i2c.h"
 #include "plat_i3c.h"
 #include "hal_i3c.h"
 
@@ -24,6 +25,8 @@ LOG_MODULE_REGISTER(plat_mctp);
 
 /* mctp endpoint */
 #define MCTP_EID_BMC 0x01
+#define MCTP_EID_SATMC 0xF0 // TODO: Modify SatMC eid
+#define MCTP_EID_EROT 0xF1 // TODO: Modify ERoT eid
 
 K_TIMER_DEFINE(send_cmd_timer, send_cmd_to_dev, NULL);
 K_WORK_DEFINE(send_cmd_work, send_cmd_to_dev_handler);
@@ -33,10 +36,20 @@ mctp_port plat_mctp_port[] = {
 	  .medium_type = MCTP_MEDIUM_TYPE_TARGET_I3C,
 	  .conf.i3c_conf.bus = MCTP_I3C_BMC_BUS,
 	  .conf.i3c_conf.addr = MCTP_I3C_BMC_ADDR },
+	{ .channel_target = PLDM,
+	  .medium_type = MCTP_MEDIUM_TYPE_SMBUS,
+	  .conf.smbus_conf.bus = MCTP_I2C_SATMC_BUS,
+	  .conf.smbus_conf.addr = MCTP_I2C_SATMC_ADDR },
+	{ .channel_target = PLDM,
+	  .medium_type = MCTP_MEDIUM_TYPE_SMBUS,
+	  .conf.smbus_conf.bus = MCTP_I2C_EROT_BUS,
+	  .conf.smbus_conf.addr = MCTP_I2C_EROT_ADDR },
 };
 
 mctp_route_entry mctp_route_tbl[] = {
 	{ MCTP_EID_BMC, MCTP_I3C_BMC_BUS, MCTP_I3C_BMC_ADDR },
+	{ MCTP_EID_SATMC, MCTP_I2C_SATMC_BUS, MCTP_I2C_SATMC_ADDR },
+	{ MCTP_EID_EROT, MCTP_I2C_EROT_BUS, MCTP_I2C_EROT_ADDR },
 };
 
 static void set_endpoint_resp_handler(void *args, uint8_t *buf, uint16_t len)
