@@ -35,6 +35,9 @@ bool pal_request_msg_to_BIC_from_HOST(uint8_t netfn, uint8_t cmd)
 		if (cmd == CMD_APP_GET_SYSTEM_GUID) {
 			return true;
 		}
+	} else if (netfn == NETFN_DCMI_REQ) {
+		if ((cmd == CMD_DCMI_SEND_BOOT_PROGRESS_CODE) || (cmd == CMD_DCMI_GET_BOOT_PROGRESS_CODE))
+			return true;
 	}
 
 	return false;

@@ -23,5 +23,6 @@
 #define ENABLE_MCTP_I3C
 
 #define ENABLE_SSIF
+#define ENABLE_SBMR
 
 #endif
