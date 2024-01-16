@@ -125,6 +125,8 @@ const char *const sensor_type_name[] = {
 	sensor_name_to_num(bmr351)
 	sensor_name_to_num(cx7)
 	sensor_name_to_num(vistara)
+	sensor_name_to_num(nv_satmc)
+	sensor_name_to_num(nv_smbpbi)
 };
 // clang-format on
 
@@ -183,6 +185,10 @@ SENSOR_DRIVE_INIT_DECLARE(cx7);
 #ifdef ENABLE_VISTARA
 SENSOR_DRIVE_INIT_DECLARE(vistara);
 #endif
+#ifdef ENABLE_NVIDIA
+SENSOR_DRIVE_INIT_DECLARE(nv_satmc);
+SENSOR_DRIVE_INIT_DECLARE(nv_smbpbi);
+#endif
 
 // The sequence needs to same with SENSOR_DEV ID
 sensor_drive_api sensor_drive_tbl[] = {
@@ -232,6 +238,10 @@ sensor_drive_api sensor_drive_tbl[] = {
 	SENSOR_DRIVE_TYPE_INIT_MAP(vistara),
 #else
 	SENSOR_DRIVE_TYPE_UNUSE(vistara),
+#endif
+#ifdef ENABLE_NVIDIA
+	SENSOR_DRIVE_TYPE_INIT_MAP(nv_satmc),
+	SENSOR_DRIVE_TYPE_INIT_MAP(nv_smbpbi),
 #endif
 };
 
