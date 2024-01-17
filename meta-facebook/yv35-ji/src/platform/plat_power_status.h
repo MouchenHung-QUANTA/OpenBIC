@@ -4,7 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
+ * 
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
@@ -14,16 +14,13 @@
  * limitations under the License.
  */
 
-#ifndef PLAT_DEF_H
-#define PLAT_DEF_H
+#ifndef PLAT_POWER_STATUS_H
+#define PLAT_POWER_STATUS_H
 
-#define BMC_USB_PORT "CDC_ACM_0"
+#include <stdint.h>
 
-#define WORKER_STACK_SIZE 4096
-#define ENABLE_MCTP_I3C
-
-#define ENABLE_SSIF
-#define ENABLE_SBMR
-#define ENABLE_NVIDIA
+void set_satmc_status();
+bool get_satmc_status();
+bool satmc_access(uint8_t sensor_num);
 
 #endif

@@ -17,15 +17,20 @@
 #include <stdio.h>
 #include <string.h>
 #include "sensor.h"
+#include "plat_def.h"
 #include "plat_i2c.h"
 #include "plat_gpio.h"
 #include "plat_hook.h"
 #include "plat_sensor_table.h"
-#include "i2c-mux-tca9548.h"
+#include "plat_mctp.h"
 #include "logging/log.h"
 #include "libipmi.h"
 #include "ipmi.h"
 #include "power_status.h"
+
+#ifdef ENABLE_NVIDIA
+#include "nvidia.h"
+#endif
 
 #define ADJUST_MP5990_CURRENT(x) (x)
 #define ADJUST_MP5990_POWER(x) (x)
@@ -43,6 +48,17 @@ mp5990_init_arg mp5990_init_args[] = {
 		.iout_oc_fault_limit = 0xFFFF,
 		.ocw_sc_ref = 0xFFFF },
 };
+
+#ifdef ENABLE_NVIDIA
+nv_satmc_init_arg satmc_init_args[] = {
+	[0] = { .is_init = false, .endpoint = MCTP_EID_SATMC, .sensor_id = NV_SATMC_SENSOR_NUM_TMP_GRACE },
+};
+
+nv_smbpbi_init_arg smbpbi_init_args[] = {
+	[0] = { .is_init = false, .dev_id = NV_FPGA, .opcode = SMBPBI_OPCODE_GET_TEMP_SINGLE, .arg1 = 0xB0, .arg2 = 0 },
+	[1] = { .is_init = false, .dev_id = NV_FPGA, .opcode = SMBPBI_OPCODE_GET_TEMP_EXT, .arg1 = 0xB2, .arg2 = 0 },
+};
+#endif
 
 /**************************************************************************************************
  *  PRE-HOOK/POST-HOOK ARGS

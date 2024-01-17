@@ -4,6 +4,11 @@
 #include "storage_handler.h"
 #include "pldm.h"
 
+/* mctp endpoint */
+#define MCTP_EID_BMC 0x01
+#define MCTP_EID_SATMC 0xF0 // TODO: Modify SatMC eid
+#define MCTP_EID_EROT 0xF1 // TODO: Modify ERoT eid
+
 struct mctp_to_ipmi_header_req {
 	uint8_t iana[IANA_LEN];
 	uint8_t netfn_lun;

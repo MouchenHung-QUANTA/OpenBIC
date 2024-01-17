@@ -23,11 +23,6 @@
 
 LOG_MODULE_REGISTER(plat_mctp);
 
-/* mctp endpoint */
-#define MCTP_EID_BMC 0x01
-#define MCTP_EID_SATMC 0xF0 // TODO: Modify SatMC eid
-#define MCTP_EID_EROT 0xF1 // TODO: Modify ERoT eid
-
 K_TIMER_DEFINE(send_cmd_timer, send_cmd_to_dev, NULL);
 K_WORK_DEFINE(send_cmd_work, send_cmd_to_dev_handler);
 

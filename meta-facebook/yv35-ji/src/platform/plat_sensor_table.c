@@ -27,6 +27,7 @@
 #include "plat_hook.h"
 #include "plat_i2c.h"
 #include "plat_i3c.h"
+#include "plat_power_status.h"
 #include "libutil.h"
 
 #include <logging/log.h>
@@ -97,6 +98,21 @@ sensor_cfg plat_sensor_config[] = {
 	{ SENSOR_NUM_VOL_ADC15_CPU_DVDD, sensor_dev_ast_adc, ADC_PORT15, NONE, NONE, stby_access,
 	  1, 1, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
+
+#ifdef ENABLE_NVIDIA
+	/* SatMC */
+	{ SENSOR_NUM_TEMP_CPU, sensor_dev_nv_satmc, MCTP_I2C_SATMC_BUS, SATMC_ADDR, NONE,
+	  satmc_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, DISABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &satmc_init_args[0] },
+	
+	/* SMBPBI */
+	{ SENSOR_NUM_TEMP_TMP451_IN, sensor_dev_nv_smbpbi, SMBPBI_I2C_BUS2, NONE, NONE,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, DISABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &smbpbi_init_args[0] },
+	{ SENSOR_NUM_TEMP_FPGA, sensor_dev_nv_smbpbi, SMBPBI_I2C_BUS2, NONE, NONE,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, DISABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &smbpbi_init_args[1] },
+#endif
 };
 
 sensor_cfg mp5990_sensor_config_table[] = {

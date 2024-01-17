@@ -24,7 +24,10 @@
 **************************************************************************************************/
 extern adc_asd_init_arg ast_adc_init_args[];
 extern mp5990_init_arg mp5990_init_args[];
-
+#ifdef ENABLE_NVIDIA
+extern nv_satmc_init_arg satmc_init_args[];
+extern nv_smbpbi_init_arg smbpbi_init_args[];
+#endif
 /**************************************************************************************************
  *  PRE-HOOK/POST-HOOK ARGS
  **************************************************************************************************/

@@ -4,7 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
+ * 
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
@@ -14,16 +14,27 @@
  * limitations under the License.
  */
 
-#ifndef PLAT_DEF_H
-#define PLAT_DEF_H
+#include <string.h>
+#include <logging/log.h>
+#include "plat_gpio.h"
+#include "plat_power_status.h"
+#include "libutil.h"
 
-#define BMC_USB_PORT "CDC_ACM_0"
+LOG_MODULE_REGISTER(plat_power_status);
 
-#define WORKER_STACK_SIZE 4096
-#define ENABLE_MCTP_I3C
+static bool is_satmc_ready = false;
+void set_satmc_status()
+{
+	//is_satmc_ready = (gpio_get(S0_BMC_GPIOA5_FW_BOOT_OK) == 1) ? true : false;
+	LOG_WRN("SatMC_STATUS: %s", (is_satmc_ready) ? "on" : "off");
+}
 
-#define ENABLE_SSIF
-#define ENABLE_SBMR
-#define ENABLE_NVIDIA
+bool get_satmc_status()
+{
+	return is_satmc_ready;
+}
 
-#endif
+bool satmc_access(uint8_t sensor_num)
+{
+	return get_satmc_status();
+}

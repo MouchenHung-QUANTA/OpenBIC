@@ -46,6 +46,9 @@ enum _i2c_bus_num {
 #define MCTP_I2C_SATMC_BUS I2C_BUS4
 #define MCTP_I2C_SATMC_ADDR 0xFF //8bit
 
+#define SMBPBI_I2C_BUS1 I2C_BUS4
+#define SMBPBI_I2C_BUS2 I2C_BUS5
+
 // TODO: Modify ERoT bus&addr
 #define MCTP_I2C_EROT_BUS I2C_BUS4
 #define MCTP_I2C_EROT_ADDR 0xFF //8bit

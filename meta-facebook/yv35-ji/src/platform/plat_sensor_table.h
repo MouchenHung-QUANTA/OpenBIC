@@ -26,7 +26,7 @@
 /* SENSOR ADDRESS(7-bit)/OFFSET */
 #define E1S_SSD_ADDR (0xD4 >> 1)
 #define FPGA_ADDR (0xC0 >> 1)
-#define SATMC_ADDR
+#define SATMC_ADDR 0xFF //TODO: Define satmc addr
 
 #define TEMP_HSC_ADDR (0x98 >> 1)
 #define MP5990_ADDR (0xA0 >> 1)
@@ -35,8 +35,8 @@
 #define SSD_TEMP_OFFSET 0x00
 
 /*  threshold sensor number, 1 based - temperature */
-#define SENSOR_NUM_TEMP_TMP75_IN 0x1
-#define SENSOR_NUM_TEMP_TMP75_OUT 0x2
+#define SENSOR_NUM_TEMP_TMP451_IN 0x1
+#define SENSOR_NUM_TEMP_TMP451_OUT 0x2
 #define SENSOR_NUM_TEMP_TMP75_FIO 0x3
 #define SENSOR_NUM_TEMP_CPU 0x4
 #define SENSOR_NUM_TEMP_FPGA 0x5
