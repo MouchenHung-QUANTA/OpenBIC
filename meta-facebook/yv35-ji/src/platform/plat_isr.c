@@ -57,9 +57,9 @@ void ISR_GPIOA3()
 	isr_dbg_print(INA230_E1S_ALERT_L);
 }
 
-void ISR_GPIOA4()
+void ISR_GPIOB7()
 {
-	isr_dbg_print(IRQ_UV_DETECT_N);
+	isr_dbg_print(FPGA_CPU_BOOT_DONE);
 }
 
 void ISR_GPIOA5()
@@ -135,11 +135,6 @@ void ISR_GPIOE7()
 void ISR_GPIOF0()
 {
 	isr_dbg_print(HSC_TYPE_0);
-}
-
-void ISR_GPIOF1()
-{
-	isr_dbg_print(CARD_TYPE_EXP);
 }
 
 void ISR_GPIOF2()

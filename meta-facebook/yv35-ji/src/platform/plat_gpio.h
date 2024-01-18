@@ -30,7 +30,7 @@
 	gpio_name_to_num(FAN_FULL_SPEED_FPGA_L) \
 	gpio_name_to_num(PWR_BRAKE_L) \
 	gpio_name_to_num(INA230_E1S_ALERT_L) \
-	gpio_name_to_num(IRQ_UV_DETECT_N) \
+	gpio_name_to_num(Reserve_GPIOA4) \
 	gpio_name_to_num(FPGA_WATCH_DOG_TIMER0_L) \
 	gpio_name_to_num(FPGA_WATCH_DOG_TIMER1_L) \
 	gpio_name_to_num(HSC_OCP_GPIO1)
@@ -41,9 +41,9 @@
 	gpio_name_to_num(P3V_BAT_SCALED_EN_R) \
 	gpio_name_to_num(WP_HW_EXT_CTRL_L) \
 	gpio_name_to_num(BIC_EROT_LVSFT_EN) \
-	gpio_name_to_num(Reserve_GPIOB5) \
+	gpio_name_to_num(RTC_CLR_L) \
 	gpio_name_to_num(I2C_SSIF_ALERT_L) \
-	gpio_name_to_num(Reserve_GPIOB7)
+	gpio_name_to_num(FPGA_CPU_BOOT_DONE)
 
 #define name_gpioC \
 	gpio_name_to_num(FM_HSC_TIMER) \
@@ -77,7 +77,7 @@
 
 #define name_gpioF \
 	gpio_name_to_num(HSC_TYPE_0) \
-	gpio_name_to_num(CARD_TYPE_EXP) \
+	gpio_name_to_num(Reserve_GPIOF1) \
 	gpio_name_to_num(RUN_POWER_FAULT_L) \
 	gpio_name_to_num(Reserve_GPIOF3) \
 	gpio_name_to_num(Reserve_GPIOF4) \
