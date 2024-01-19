@@ -22,8 +22,7 @@
 
 #include <stdint.h>
 #include "ipmb.h"
-
-struct sbmr_boot_progress_code {
+typedef struct __attribute__((packed)) {
 	union {
 		struct {
 			uint8_t type;
@@ -41,11 +40,13 @@ struct sbmr_boot_progress_code {
 		uint32_t efi_status_code;
 	};
 	uint8_t inst;
-} __attribute__((packed));
+} sbmr_boot_progress_code_t;
+
+#define SBMR_POSTCODE_SIZE sizeof(sbmr_boot_progress_code_t)
 
 struct sbmr_cmd_send_boot_progress_code_req {
 	uint8_t group_ext_def_body;
-	struct sbmr_boot_progress_code code;
+	sbmr_boot_progress_code_t code;
 } __attribute__((packed));
 
 struct sbmr_cmd_send_boot_progress_code_resp {
@@ -60,17 +61,16 @@ struct sbmr_cmd_get_boot_progress_code_req {
 struct sbmr_cmd_get_boot_progress_code_resp {
 	uint8_t completion_code;
 	uint8_t group_ext_def_body;
-	struct sbmr_boot_progress_code code;
+	sbmr_boot_progress_code_t code;
 } __attribute__((packed));
 
 void print_out();
 uint16_t copy_sbmr_read_buffer(uint16_t start, uint16_t length, uint8_t *buffer,
 			       uint16_t buffer_len);
-void sbmr_postcode_read_init();
-void sbmr_postcode_insert(struct sbmr_boot_progress_code boot_progress_code);
+void sbmr_postcode_insert(sbmr_boot_progress_code_t boot_progress_code);
 void reset_sbmr_postcode_buffer();
-bool sbmr_get_4byte_postcode_ok();
-void sbmr_reset_4byte_postcode_ok();
+bool sbmr_get_9byte_postcode_ok();
+void sbmr_reset_9byte_postcode_ok();
 bool smbr_cmd_handler(ipmi_msg *msg);
 
 #endif /* ENABLE_SBMR */
