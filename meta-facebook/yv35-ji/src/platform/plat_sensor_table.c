@@ -23,6 +23,10 @@
 #include "sensor.h"
 #include "ast_adc.h"
 #include "pmbus.h"
+#include "plat_def.h"
+#ifdef NO_FPGA
+#include "tmp461.h"
+#endif
 #include "plat_class.h"
 #include "plat_hook.h"
 #include "plat_i2c.h"
@@ -74,9 +78,6 @@ sensor_cfg plat_sensor_config[] = {
 	{ SENSOR_NUM_VOL_ADC7_1V2, sensor_dev_ast_adc, ADC_PORT7, NONE, NONE, stby_access, 1, 1,
 	  SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0, SENSOR_INIT_STATUS,
 	  NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
-	{ SENSOR_NUM_VOL_ADC8_P1V8_STBY, sensor_dev_ast_adc, ADC_PORT8, NONE, NONE, stby_access,
-	  1, 1, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
-	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
 	{ SENSOR_NUM_VOL_ADC9_VDD_M2, sensor_dev_ast_adc, ADC_PORT9, NONE, NONE, stby_access,
 	  2, 1, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, ENABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &ast_adc_init_args[0] },
@@ -104,7 +105,21 @@ sensor_cfg plat_sensor_config[] = {
 	{ SENSOR_NUM_TEMP_CPU, sensor_dev_nv_satmc, MCTP_I2C_SATMC_BUS, SATMC_ADDR, NONE,
 	  satmc_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, DISABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &satmc_init_args[0] },
-	
+
+#ifdef NO_FPGA
+	{ SENSOR_NUM_TEMP_TMP451_IN, sensor_dev_tmp461, I2C_BUS12, TMP451_ADDR, TMP461_REMOTE_TEMPERATRUE,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, DISABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, pre_tmp451_read, &mux_conf_addr_0xe0[0], NULL, NULL, NULL },
+	{ SENSOR_NUM_TEMP_TMP451_OUT, sensor_dev_tmp461, I2C_BUS12, TMP451_ADDR, TMP461_REMOTE_TEMPERATRUE,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, DISABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, pre_tmp451_read, &mux_conf_addr_0xe0[1], NULL, NULL, NULL },
+	{ SENSOR_NUM_TEMP_FPGA, sensor_dev_tmp461, I2C_BUS12, TMP451_ADDR, TMP461_REMOTE_TEMPERATRUE,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, DISABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, pre_tmp451_read, &mux_conf_addr_0xe0[2], NULL, NULL, NULL },
+	{ SENSOR_NUM_TEMP_TMP75_FIO, sensor_dev_tmp75, I2C_BUS2, TMP75_ADDR, TMP75_TEMP_OFFSET,
+	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, DISABLE_SENSOR_POLLING, 0,
+	  SENSOR_INIT_STATUS, pre_tmp75_read, &mux_conf_addr_0xe2[0], NULL, NULL, NULL },
+#else
 	/* SMBPBI */
 	{ SENSOR_NUM_TEMP_TMP451_IN, sensor_dev_nv_smbpbi, SMBPBI_I2C_BUS2, NONE, NONE,
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, DISABLE_SENSOR_POLLING, 0,
@@ -113,6 +128,8 @@ sensor_cfg plat_sensor_config[] = {
 	  stby_access, 0, 0, SAMPLE_COUNT_DEFAULT, POLL_TIME_DEFAULT, DISABLE_SENSOR_POLLING, 0,
 	  SENSOR_INIT_STATUS, NULL, NULL, NULL, NULL, &smbpbi_init_args[1] },
 #endif
+#endif
+
 };
 
 sensor_cfg mp5990_sensor_config_table[] = {

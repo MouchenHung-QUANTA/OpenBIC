@@ -31,6 +31,10 @@ extern nv_smbpbi_init_arg smbpbi_init_args[];
 /**************************************************************************************************
  *  PRE-HOOK/POST-HOOK ARGS
  **************************************************************************************************/
+#ifdef NO_FPGA
+extern struct tca9548 mux_conf_addr_0xe0[];
+extern struct tca9548 mux_conf_addr_0xe2[];
+#endif
 
 /**************************************************************************************************
  *  PRE-HOOK/POST-HOOK FUNC
@@ -40,5 +44,7 @@ bool pre_vol_bat3v_read(sensor_cfg *cfg, void *args);
 bool post_vol_bat3v_read(sensor_cfg *cfg, void *args, int *reading);
 bool post_mp5990_cur_read(sensor_cfg *cfg, void *args, int *reading);
 bool post_mp5990_pwr_read(sensor_cfg *cfg, void *args, int *reading);
+bool pre_tmp451_read(sensor_cfg *cfg, void *args);
+bool pre_tmp75_read(sensor_cfg *cfg, void *args);
 
 #endif

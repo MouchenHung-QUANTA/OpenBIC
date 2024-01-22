@@ -25,5 +25,6 @@
 #define ENABLE_SSIF
 #define ENABLE_SBMR
 #define ENABLE_NVIDIA
+#define NO_FPGA
 
 #endif

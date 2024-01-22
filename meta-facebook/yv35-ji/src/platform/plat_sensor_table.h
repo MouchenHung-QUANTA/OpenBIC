@@ -19,6 +19,7 @@
 
 #include <stdint.h>
 #include "sensor.h"
+#include "plat_def.h"
 
 /* SENSOR POLLING TIME(second) */
 #define POLL_TIME_BAT3V 3600
@@ -31,8 +32,17 @@
 #define TEMP_HSC_ADDR (0x98 >> 1)
 #define MP5990_ADDR (0xA0 >> 1)
 
+#ifdef NO_FPGA
+#define TMP451_ADDR (0x98 >> 1)
+#define TMP75_ADDR (0x90 >> 1)
+#endif
+
 /* SENSOR OFFSET */
 #define SSD_TEMP_OFFSET 0x00
+
+#ifdef NO_FPGA
+#define TMP75_TEMP_OFFSET 0x00
+#endif
 
 /*  threshold sensor number, 1 based - temperature */
 #define SENSOR_NUM_TEMP_TMP451_IN 0x1
@@ -54,14 +64,13 @@
 #define SENSOR_NUM_VOL_ADC5_CPUVDD 0x16
 #define SENSOR_NUM_VOL_ADC6_FPGA_VCC_AO 0x17
 #define SENSOR_NUM_VOL_ADC7_1V2 0x18
-#define SENSOR_NUM_VOL_ADC8_P1V8_STBY 0x19
-#define SENSOR_NUM_VOL_ADC9_VDD_M2 0x1A
-#define SENSOR_NUM_VOL_ADC10_P1V2_STBY 0x1B
-#define SENSOR_NUM_VOL_ADC11_FBVDDQ 0x1C
-#define SENSOR_NUM_VOL_ADC12_FBVDDP2 0x1D
-#define SENSOR_NUM_VOL_ADC13_FBVDD1 0x1E
-#define SENSOR_NUM_VOL_ADC14_P5V_STBY 0x1F
-#define SENSOR_NUM_VOL_ADC15_CPU_DVDD 0x20
+#define SENSOR_NUM_VOL_ADC9_VDD_M2 0x19
+#define SENSOR_NUM_VOL_ADC10_P1V2_STBY 0x1A
+#define SENSOR_NUM_VOL_ADC11_FBVDDQ 0x1B
+#define SENSOR_NUM_VOL_ADC12_FBVDDP2 0x1C
+#define SENSOR_NUM_VOL_ADC13_FBVDD1 0x1D
+#define SENSOR_NUM_VOL_ADC14_P5V_STBY 0x1E
+#define SENSOR_NUM_VOL_ADC15_CPU_DVDD 0x1F
 
 /* SENSOR NUMBER(1 based) - current */
 #define SENSOR_NUM_CUR_HSCOUT 0x25

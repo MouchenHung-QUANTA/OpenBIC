@@ -32,6 +32,10 @@
 #include "nvidia.h"
 #endif
 
+#ifdef NO_FPGA
+	#include "i2c-mux-tca9548.h"
+#endif
+
 #define ADJUST_MP5990_CURRENT(x) (x)
 #define ADJUST_MP5990_POWER(x) (x)
 
@@ -63,6 +67,16 @@ nv_smbpbi_init_arg smbpbi_init_args[] = {
 /**************************************************************************************************
  *  PRE-HOOK/POST-HOOK ARGS
  **************************************************************************************************/
+#ifdef NO_FPGA
+struct tca9548 mux_conf_addr_0xe0[4] = {
+	[0] = { .addr = 0xe0, .chan = 0 }, [1] = { .addr = 0xe0, .chan = 1 },
+	[2] = { .addr = 0xe0, .chan = 2 }, [3] = { .addr = 0xe0, .chan = 3 },
+};
+
+struct tca9548 mux_conf_addr_0xe2[2] = {
+	[0] = { .addr = 0xe2, .chan = 0 }, [1] = { .addr = 0xe2, .chan = 1 },
+};
+#endif
 
 /**************************************************************************************************
  *  PRE-HOOK/POST-HOOK FUNC
@@ -127,3 +141,27 @@ bool post_mp5990_pwr_read(sensor_cfg *cfg, void *args, int *reading)
 
 	return true;
 }
+
+#ifdef NO_FPGA
+bool pre_tmp451_read(sensor_cfg *cfg, void *args)
+{
+	CHECK_NULL_ARG_WITH_RETURN(cfg, false);
+	CHECK_NULL_ARG_WITH_RETURN(args, false);
+
+	if (!tca9548_select_chan(cfg, (struct tca9548 *)args))
+		return false;
+
+	return true;
+}
+
+bool pre_tmp75_read(sensor_cfg *cfg, void *args)
+{
+	CHECK_NULL_ARG_WITH_RETURN(cfg, false);
+	CHECK_NULL_ARG_WITH_RETURN(args, false);
+
+	if (!tca9548_select_chan(cfg, (struct tca9548 *)args))
+		return false;
+
+	return true;
+}
+#endif
