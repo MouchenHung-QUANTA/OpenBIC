@@ -28,9 +28,10 @@
 #define E1S_SSD_ADDR (0xD4 >> 1)
 #define FPGA_ADDR (0xC0 >> 1)
 #define SATMC_ADDR 0xFF //TODO: Define satmc addr
-
 #define TEMP_HSC_ADDR (0x98 >> 1)
 #define MP5990_ADDR (0xA0 >> 1)
+#define INA230_ADDR (0x8A >> 1)
+#define INA3221_ADDR (0x80 >> 1)
 
 #ifdef NO_FPGA
 #define TMP451_ADDR (0x98 >> 1)
@@ -55,7 +56,6 @@
 
 /* SENSOR NUMBER(1 based) - voltage */
 #define SENSOR_NUM_VOL_HSCIN 0x10
-
 #define SENSOR_NUM_VOL_ADC0_P12V_STBY 0x11
 #define SENSOR_NUM_VOL_ADC1_VDD_1V8 0x12
 #define SENSOR_NUM_VOL_ADC2_P3V3_STBY 0x13
@@ -71,13 +71,16 @@
 #define SENSOR_NUM_VOL_ADC13_FBVDD1 0x1D
 #define SENSOR_NUM_VOL_ADC14_P5V_STBY 0x1E
 #define SENSOR_NUM_VOL_ADC15_CPU_DVDD 0x1F
+#define SENSOR_NUM_VOL_E1S 0x20
 
 /* SENSOR NUMBER(1 based) - current */
 #define SENSOR_NUM_CUR_HSCOUT 0x25
+#define SENSOR_NUM_CUR_E1S 0x26
 
 /* SENSOR NUMBER(1 based) - power */
 #define SENSOR_NUM_PWR_CPU 0x30
 #define SENSOR_NUM_PWR_HSCIN 0x31
+#define SENSOR_NUM_PWR_E1S 0x32
 
 uint8_t plat_get_config_size();
 void load_sensor_config(void);

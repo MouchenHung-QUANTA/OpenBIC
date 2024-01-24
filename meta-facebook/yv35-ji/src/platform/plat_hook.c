@@ -53,6 +53,25 @@ mp5990_init_arg mp5990_init_args[] = {
 		.ocw_sc_ref = 0xFFFF },
 };
 
+ina230_init_arg ina230_init_args[] = {
+	[0] = { .is_init = false,
+		.config =
+			{
+				.MODE = 0b111, // Measure voltage of shunt resistor and bus(default).
+				.VSH_CT = 0b100, // The Vshunt conversion time is 1.1ms(default).
+				.VBUS_CT = 0b100, // The Vbus conversion time is 1.1ms(default).
+				.AVG = 0b000, // Average number is 1(default).
+			},
+		.alt_cfg =
+			{
+				.LEN = 1, // Alert Latch enabled.
+				.BOL = 1,
+			},
+		.r_shunt = 0.01,
+		.alert_value = 13.2, // Unit: Watt, // Unit: Watt
+		.i_max = 16.384 },
+};
+
 #ifdef ENABLE_NVIDIA
 nv_satmc_init_arg satmc_init_args[] = {
 	[0] = { .is_init = false, .endpoint = MCTP_EID_SATMC, .sensor_id = NV_SATMC_SENSOR_NUM_TMP_GRACE },
