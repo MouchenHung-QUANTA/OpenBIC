@@ -26,5 +26,6 @@
 #define ENABLE_SBMR
 #define ENABLE_NVIDIA
 #define NO_FPGA
+#define ENABLE_VR_ACCESS
 
 #endif

@@ -48,4 +48,9 @@ bool post_mp5990_pwr_read(sensor_cfg *cfg, void *args, int *reading);
 bool pre_tmp451_read(sensor_cfg *cfg, void *args);
 bool pre_tmp75_read(sensor_cfg *cfg, void *args);
 
+#ifdef ENABLE_VR_ACCESS
+bool pre_vr_read(sensor_cfg *cfg, void *args);
+bool post_vr_read(sensor_cfg *cfg, void *args, int *reading);
+#endif
+
 #endif

@@ -32,6 +32,9 @@
 #define MP5990_ADDR (0xA0 >> 1)
 #define INA230_ADDR (0x8A >> 1)
 #define INA3221_ADDR (0x80 >> 1)
+#define MPQ8746_ADDR (0x32 >> 1)
+#define MP2894_ADDR (0x4C >> 1)
+#define MP2898_ADDR (0x4A >> 1)
 
 #ifdef NO_FPGA
 #define TMP451_ADDR (0x98 >> 1)
@@ -53,6 +56,9 @@
 #define SENSOR_NUM_TEMP_FPGA 0x5
 #define SENSOR_NUM_TEMP_E1S_SSD 0x6
 #define SENSOR_NUM_TEMP_HSC 0x7
+#define SENSOR_NUM_TEMP_CPUDVDD 0x8
+#define SENSOR_NUM_TEMP_CPUVDD 0x9
+#define SENSOR_NUM_TEMP_SOCVDD 0xA
 
 /* SENSOR NUMBER(1 based) - voltage */
 #define SENSOR_NUM_VOL_HSCIN 0x10
@@ -72,15 +78,23 @@
 #define SENSOR_NUM_VOL_ADC14_P5V_STBY 0x1E
 #define SENSOR_NUM_VOL_ADC15_CPU_DVDD 0x1F
 #define SENSOR_NUM_VOL_E1S 0x20
+#define SENSOR_NUM_VOL_CPUDVDD 0x21
+#define SENSOR_NUM_VOL_CPUVDD 0x22
+#define SENSOR_NUM_VOL_SOCVDD 0x23
 
 /* SENSOR NUMBER(1 based) - current */
 #define SENSOR_NUM_CUR_HSCOUT 0x25
 #define SENSOR_NUM_CUR_E1S 0x26
+#define SENSOR_NUM_CUR_CPUDVDD 0x27
+#define SENSOR_NUM_CUR_CPUVDD 0x28
+#define SENSOR_NUM_CUR_SOCVDD 0x29
 
 /* SENSOR NUMBER(1 based) - power */
 #define SENSOR_NUM_PWR_CPU 0x30
 #define SENSOR_NUM_PWR_HSCIN 0x31
 #define SENSOR_NUM_PWR_E1S 0x32
+#define SENSOR_NUM_PWR_CPUVDD 0x33
+#define SENSOR_NUM_PWR_SOCVDD 0x34
 
 uint8_t plat_get_config_size();
 void load_sensor_config(void);

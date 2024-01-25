@@ -184,3 +184,19 @@ bool pre_tmp75_read(sensor_cfg *cfg, void *args)
 	return true;
 }
 #endif
+
+#ifdef ENABLE_VR_ACCESS
+bool pre_vr_read(sensor_cfg *cfg, void *args)
+{
+	gpio_set(BIC_CPLD_VRD_MUX_SEL, GPIO_LOW);
+	k_msleep(1);
+	return true;
+}
+
+bool post_vr_read(sensor_cfg *cfg, void *args, int *reading)
+{
+	gpio_set(BIC_CPLD_VRD_MUX_SEL, GPIO_HIGH);
+	k_msleep(1);
+	return true;
+}
+#endif
