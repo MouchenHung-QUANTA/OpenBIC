@@ -160,6 +160,7 @@ enum SENSOR_DEV {
 	sensor_dev_nv_smbpbi = 0x31,
 	sensor_dev_mp289x = 0x32,
 	sensor_dev_mpq8746 = 0x33,
+	sensor_dev_ina3221 = 0x34,
 	sensor_dev_max
 };
 

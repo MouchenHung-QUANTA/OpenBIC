@@ -129,6 +129,7 @@ const char *const sensor_type_name[] = {
 	sensor_name_to_num(nv_smbpbi)
 	sensor_name_to_num(mp289x)
 	sensor_name_to_num(mpq8746)
+	sensor_name_to_num(ina3221)
 };
 // clang-format on
 
@@ -193,6 +194,7 @@ SENSOR_DRIVE_INIT_DECLARE(nv_smbpbi);
 #endif
 SENSOR_DRIVE_INIT_DECLARE(mp289x);
 SENSOR_DRIVE_INIT_DECLARE(mpq8746);
+SENSOR_DRIVE_INIT_DECLARE(ina3221);
 
 // The sequence needs to same with SENSOR_DEV ID
 sensor_drive_api sensor_drive_tbl[] = {
@@ -252,6 +254,7 @@ sensor_drive_api sensor_drive_tbl[] = {
 #endif
 	SENSOR_DRIVE_TYPE_INIT_MAP(mp289x),
 	SENSOR_DRIVE_TYPE_INIT_MAP(mpq8746),
+	SENSOR_DRIVE_TYPE_INIT_MAP(ina3221),
 };
 
 static void init_sensor_num(void)
