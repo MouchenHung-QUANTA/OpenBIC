@@ -29,6 +29,8 @@ LOG_MODULE_REGISTER(mp289x);
 #define VR_REG_EN_WR_PROT 0x0F
 #define VR_REG_MTP_CTRL 0xD0
 #define VR_REG_STAT_CML 0x7E
+#define VR_REG_FAULT_CLR 0x03
+#define VR_REG_MTP_FAULT_CLR 0xFF
 
 //multi-cfg: 6 groups store with same data from page4
 #define VR_REG_STORE_CFG_ALL 0x15
@@ -146,11 +148,11 @@ static bool mp289x_write_data(uint8_t bus, uint8_t addr, struct mp289x_data *dat
 	return true;
 }
 
-static bool mp289x_check_err_status(uint8_t bus, uint8_t addr)
+static uint8_t mp289x_check_err_status(uint8_t bus, uint8_t addr)
 {
 	if (mp289x_set_page(bus, addr, VR_MPS_PAGE_0) == false) {
 		LOG_ERR("Failed to set page before reading error status");
-		return false;
+		return 0xFF;
 	}
 
 	I2C_MSG i2c_msg = { 0 };
@@ -164,15 +166,15 @@ static bool mp289x_check_err_status(uint8_t bus, uint8_t addr)
 
 	if (i2c_master_read(&i2c_msg, retry)) {
 		LOG_ERR("Failed to read error status");
-		return false;
+		return 0xFF;
 	}
 
 	if (i2c_msg.data[0]) {
 		LOG_ERR("Get error status 0x%x", i2c_msg.data[0]);
-		return false;
+		return i2c_msg.data[0];
 	}
 
-	return true;
+	return 0;
 }
 
 static bool mp289x_crc_get(uint8_t bus, uint8_t addr, uint8_t mode, uint16_t *crc)
@@ -375,6 +377,33 @@ static bool mp289x_pre_update(uint8_t bus, uint8_t addr)
 		return false;
 	}
 
+	uint8_t state_7e = mp289x_check_err_status(bus, addr);
+	if (!state_7e)
+		goto exit;
+	else {
+		LOG_WRN("Got 0x35 status error 0x%x in previous update", state_7e);
+		if (state_7e & BIT(4)) {
+			i2c_msg.tx_len = 1;
+			i2c_msg.data[0] = VR_REG_MTP_FAULT_CLR;
+
+			if (i2c_master_write(&i2c_msg, retry)) {
+				LOG_ERR("Failed to clear 0x35 bit[4]fault");
+				return false;
+			}
+			state_7e &= ~BIT(4);
+		}
+		if (state_7e) {
+			i2c_msg.tx_len = 1;
+			i2c_msg.data[0] = VR_REG_FAULT_CLR;
+
+			if (i2c_master_write(&i2c_msg, retry)) {
+				LOG_ERR("Failed to clear 0x35 bit[7:5][2:0] fault");
+				return false;
+			}
+		}
+	}
+
+exit:
 	return true;
 }
 
@@ -505,6 +534,19 @@ bool mp289x_fwupdate(uint8_t bus, uint8_t addr, uint8_t *img_buff, uint32_t img_
 	}
 
 	/* Step3. Firmware update */
+	uint8_t page = 0;
+	struct mp289x_data *cur_data;
+	uint16_t line_idx = 0;
+
+	for (line_idx = 0; line_idx < dev_cfg.wr_cnt; line_idx++) {
+		cur_data = &dev_cfg.pdata[line_idx];
+		if ((cur_data->page == VR_MPS_PAGE_0) || (cur_data->page == VR_MPS_PAGE_1)) {
+			
+		} else {
+			LOG_ERR("Unexpected page %d received!", cur_data->page);
+			goto exit;
+		}
+	}
 
 	/* Step4. After update */
 
