@@ -24,9 +24,83 @@
 
 LOG_MODULE_REGISTER(mp289x);
 
+/* --------- PAGE0 ---------- */
+#define VR_REG_STAT_PMBUS 0x8A
+#define VR_REG_EN_WR_PROT 0x0F
+#define VR_REG_MTP_CTRL 0xD0
+#define VR_REG_STAT_CML 0x7E
+
+//multi-cfg: 6 groups store with same data from page4
+#define VR_REG_STORE_CFG_ALL 0x15
+#define VR_REG_STORE_USR 0x17
+
+#define VR_REG_CRC_USR 0xF6
+
+/* --------- PAGE3 ---------- */
+#define VR_REG_STORE_STAT 0x35
+
+/* --------- PAGE4 ---------- */
 #define VR_REG_MFR_IMON_DIGI_GAIN 0xD0
+//multi-cfg: every 2 groups store data from page4
+#define VR_REG_STORE_CFG_GP12 0xF5
+#define VR_REG_STORE_CFG_GP34 0xF6
+#define VR_REG_STORE_CFG_GP56 0xF7
+
+/* --------- PAGE9E ---------- */
+#define VR_REG_CRC_GP12_HI 0xFE
+#define VR_REG_CRC_GP12_LO 0xFF
+
+/* --------- PAGE9F ---------- */
+#define VR_REG_CRC_GP34_HI 0x7E
+#define VR_REG_CRC_GP34_LO 0x7F
+#define VR_REG_CRC_GP56_HI 0xFE
+#define VR_REG_CRC_GP56_LO 0xFF
 
 uint8_t total_current_set = 0xFF;
+
+#define MAX_CMD_LINE 720
+
+#define VR_MPS_PAGE_0 0x00
+#define VR_MPS_PAGE_1 0x01
+#define VR_MPS_PAGE_3 0x03
+#define VR_MPS_PAGE_4 0x04
+#define VR_MPS_PAGE_9E 0x9E
+#define VR_MPS_PAGE_9F 0x9F
+
+enum {
+	ATE_CONF_ID = 0,
+	ATE_PAGE_NUM,
+	ATE_REG_ADDR_HEX,
+	ATE_REG_ADDR_DEC,
+	ATE_REG_NAME,
+	ATE_REG_DATA_HEX,
+	ATE_REG_DATA_DEC,
+	ATE_COL_MAX,
+};
+
+enum {
+	MODE_USR,
+	MODE_MULTI_CFG_12,
+	MODE_MULTI_CFG_34,
+	MODE_MULTI_CFG_56,
+	MODE_MULTI_CFG_ALL,
+};
+
+struct mp289x_data {
+	uint16_t cfg_id;
+	uint8_t page;
+	uint8_t reg_addr;
+	uint8_t reg_data[4];
+	uint8_t reg_len;
+};
+
+struct mp289x_config {
+	uint8_t mode;
+	uint16_t cfg_id;
+	uint16_t wr_cnt;
+	uint16_t product_id_exp;
+	struct mp289x_data *pdata;
+};
 
 static bool mp289x_set_page(uint8_t bus, uint8_t addr, uint8_t page)
 {
@@ -45,7 +119,399 @@ static bool mp289x_set_page(uint8_t bus, uint8_t addr, uint8_t page)
 		return false;
 	}
 
+	k_msleep(100);
+
 	return true;
+}
+
+static bool mp289x_write_data(uint8_t bus, uint8_t addr, struct mp289x_data *data)
+{
+	CHECK_NULL_ARG_WITH_RETURN(data, false);
+
+	I2C_MSG i2c_msg = { 0 };
+	uint8_t retry = 3;
+
+	i2c_msg.bus = bus;
+	i2c_msg.target_addr = addr;
+
+	i2c_msg.tx_len = data->reg_len + 1;
+	i2c_msg.data[0] = data->reg_addr;
+	memcpy(&i2c_msg.data[1], &data->reg_data[0], data->reg_len);
+
+	if (i2c_master_write(&i2c_msg, retry)) {
+		LOG_ERR("Failed to write data in register 0x%02X", data->reg_addr);
+		return false;
+	}
+
+	return true;
+}
+
+static bool mp289x_check_err_status(uint8_t bus, uint8_t addr)
+{
+	if (mp289x_set_page(bus, addr, VR_MPS_PAGE_0) == false) {
+		LOG_ERR("Failed to set page before reading error status");
+		return false;
+	}
+
+	I2C_MSG i2c_msg = { 0 };
+	uint8_t retry = 3;
+	i2c_msg.bus = bus;
+	i2c_msg.target_addr = addr;
+
+	i2c_msg.tx_len = 1;
+	i2c_msg.rx_len = 1;
+	i2c_msg.data[0] = VR_REG_STAT_CML;
+
+	if (i2c_master_read(&i2c_msg, retry)) {
+		LOG_ERR("Failed to read error status");
+		return false;
+	}
+
+	if (i2c_msg.data[0]) {
+		LOG_ERR("Get error status 0x%x", i2c_msg.data[0]);
+		return false;
+	}
+
+	return true;
+}
+
+static bool mp289x_crc_get(uint8_t bus, uint8_t addr, uint8_t mode, uint16_t *crc)
+{
+	CHECK_NULL_ARG_WITH_RETURN(crc, false);
+
+	uint8_t page = 0;
+	uint8_t crc_hi_cmd_code = 0;
+	uint8_t crc_lo_cmd_code = 0;
+
+	*crc = 0;
+
+	I2C_MSG i2c_msg = { 0 };
+	uint8_t retry = 3;
+	i2c_msg.bus = bus;
+	i2c_msg.target_addr = addr;
+
+	switch (mode) {
+		case MODE_USR:
+			if (mp289x_set_page(bus, addr, VR_MPS_PAGE_0) == false) {
+				LOG_ERR("Failed to set page before reading user crc");
+				return false;
+			}
+
+			i2c_msg.tx_len = 1;
+			i2c_msg.rx_len = 2;
+			i2c_msg.data[0] = VR_REG_CRC_USR;
+
+			if (i2c_master_read(&i2c_msg, retry)) {
+				LOG_ERR("Failed to read user crc");
+				return false;
+			}
+
+			*crc = (i2c_msg.data[1] << 8) | i2c_msg.data[0];
+			return true;
+
+		case MODE_MULTI_CFG_12:
+			page = VR_MPS_PAGE_9E;
+			crc_hi_cmd_code = VR_REG_CRC_GP12_HI;
+			crc_lo_cmd_code = VR_REG_CRC_GP12_LO;
+			break;
+		case MODE_MULTI_CFG_34:
+			page = VR_MPS_PAGE_9F;
+			crc_hi_cmd_code = VR_REG_CRC_GP34_HI;
+			crc_lo_cmd_code = VR_REG_CRC_GP34_LO;
+			break;
+		case MODE_MULTI_CFG_56:
+			page = VR_MPS_PAGE_9F;
+			crc_hi_cmd_code = VR_REG_CRC_GP56_HI;
+			crc_lo_cmd_code = VR_REG_CRC_GP56_LO;
+			break;
+		default:
+			break;
+	}
+
+	if (mp289x_set_page(bus, addr, page) == false) {
+		LOG_ERR("Failed to set page before reading group crc");
+		return false;
+	}
+
+	i2c_msg.tx_len = 1;
+	i2c_msg.rx_len = 1;
+	i2c_msg.data[0] = crc_hi_cmd_code;
+
+	if (i2c_master_read(&i2c_msg, retry)) {
+		LOG_ERR("Failed to read group crc high byte");
+		return false;
+	}
+
+	*crc |= (i2c_msg.data[0] << 8);
+
+	i2c_msg.tx_len = 1;
+	i2c_msg.rx_len = 1;
+	i2c_msg.data[0] = crc_lo_cmd_code;
+
+	if (i2c_master_read(&i2c_msg, retry)) {
+		LOG_ERR("Failed to read group crc low byte");
+		return false;
+	}
+
+	*crc |= (i2c_msg.data[0]);
+
+	return true;
+}
+
+static bool mp289x_store(uint8_t bus, uint8_t addr, uint8_t mode)
+{
+	uint8_t page = 0;
+	uint8_t cmd_code = 0;
+
+	switch (mode) {
+		case MODE_USR:
+			page = 0;
+			cmd_code = VR_REG_STORE_USR;
+			break;
+		case MODE_MULTI_CFG_12:
+			page = 4;
+			cmd_code = VR_REG_STORE_CFG_GP12;
+			break;
+		case MODE_MULTI_CFG_34:
+			page = 4;
+			cmd_code = VR_REG_STORE_CFG_GP34;
+			break;
+		case MODE_MULTI_CFG_56:
+			page = 4;
+			cmd_code = VR_REG_STORE_CFG_GP56;
+			break;
+		case MODE_MULTI_CFG_ALL:
+			page = 0;
+			cmd_code = VR_REG_STORE_CFG_ALL;
+			break;
+		
+		default:
+			LOG_ERR("Invalid store mode %d", mode);
+			return false;
+	}
+
+	if (mp289x_set_page(bus, addr, page) == false) {
+		LOG_ERR("Failed to set page before store data");
+		return false;
+	}
+
+	I2C_MSG i2c_msg = { 0 };
+	uint8_t retry = 3;
+
+	i2c_msg.bus = bus;
+	i2c_msg.target_addr = addr;
+
+	i2c_msg.tx_len = 1;
+	i2c_msg.data[0] = cmd_code;
+
+	if (i2c_master_write(&i2c_msg, retry)) {
+		LOG_ERR("Failed to send store command 0x%02X", cmd_code);
+		return false;
+	}
+
+	int wait_time = 10;
+	while (wait_time) {
+		if (mp289x_set_page(bus, addr, VR_MPS_PAGE_3) == false) {
+			LOG_ERR("Failed to set page before check status");
+			return false;
+		}
+
+		i2c_msg.tx_len = 1;
+		i2c_msg.rx_len = 1;
+		i2c_msg.data[0] = VR_REG_STORE_STAT;
+
+		if (i2c_master_read(&i2c_msg, retry) == 0) {
+			if (i2c_msg.data[0] == 1)
+				break;
+		}
+
+		wait_time--;
+	}
+
+	if (!wait_time) {
+		LOG_ERR("Failed to store data, ret 0x%x", i2c_msg.data[0]);
+		return false;
+	}
+
+	return true;
+}
+
+static bool mp289x_pre_update(uint8_t bus, uint8_t addr)
+{
+	if (mp289x_set_page(bus, addr, VR_MPS_PAGE_0) == false) {
+		return false;
+	}
+
+	I2C_MSG i2c_msg = { 0 };
+	uint8_t retry = 3;
+	i2c_msg.bus = bus;
+	i2c_msg.target_addr = addr;
+
+	i2c_msg.tx_len = 1;
+	i2c_msg.rx_len = 2;
+	i2c_msg.data[0] = VR_REG_STAT_PMBUS;
+
+	if (i2c_master_read(&i2c_msg, retry)) {
+		LOG_ERR("Failed to read register 0x%02X", VR_REG_STAT_PMBUS);
+		return false;
+	}
+
+	if (((i2c_msg.data[0] | (8 << i2c_msg.data[1])) & BIT(15)) == 0x00) {
+		LOG_ERR("PMBus write is block by password!");
+		return false;
+	}
+
+	i2c_msg.tx_len = 1;
+	i2c_msg.rx_len = 1;
+	i2c_msg.data[0] = VR_REG_EN_WR_PROT;
+
+	if (i2c_master_read(&i2c_msg, retry)) {
+		LOG_ERR("Failed to read register 0x%02X", VR_REG_EN_WR_PROT);
+		return false;
+	}
+
+	if ((i2c_msg.data[0] & BIT(15)) != 0x63) {
+		LOG_ERR("MTP write protection is disable!");
+		return false;
+	}
+
+	return true;
+}
+
+static bool parsing_image(uint8_t *img_buff, uint32_t img_size, struct mp289x_config *dev_cfg)
+{
+	CHECK_NULL_ARG_WITH_RETURN(img_buff, false);
+	CHECK_NULL_ARG_WITH_RETURN(dev_cfg, false);
+
+	bool ret = false;
+
+	/* Parsing image */
+	int max_line = MAX_CMD_LINE;
+	dev_cfg->pdata = (struct mp289x_data *)malloc(sizeof(struct mp289x_data) * max_line);
+	if (!dev_cfg->pdata) {
+		LOG_ERR("pdata malloc failed!");
+		goto exit;
+	}
+
+	struct mp289x_data *cur_line = &dev_cfg->pdata[0];
+	uint8_t cur_ele_idx = 0;
+	uint32_t data_store = 0;
+	uint8_t data_idx = 0;
+	dev_cfg->wr_cnt = 0;
+	for (int i = 0; i < img_size; i++) {
+		/* check valid */
+		if (!img_buff[i]) {
+			LOG_ERR("Get invalid buffer data at index %d", i);
+			goto exit;
+		}
+
+		if ((cur_ele_idx == ATE_CONF_ID) && (i + 2 < img_size)) {
+			if (!strncmp(&img_buff[i], "END", 3)) {
+				break;
+			}
+		}
+
+		if (((img_buff[i] != 0x09) && img_buff[i] != 0x0d)) {
+			// pass non hex charactor
+			int val = ascii_to_val(img_buff[i]);
+			if (val == -1)
+				continue;
+
+			data_store = (data_store << 4) | val;
+			data_idx++;
+			continue;
+		}
+
+		switch (cur_ele_idx) {
+		case ATE_CONF_ID:
+			cur_line->cfg_id = data_store & 0xffff;
+			break;
+
+		case ATE_PAGE_NUM:
+			cur_line->page = data_store & 0xff;
+			break;
+
+		case ATE_REG_ADDR_HEX:
+			cur_line->reg_addr = data_store & 0xff;
+			break;
+
+		case ATE_REG_ADDR_DEC:
+			break;
+
+		case ATE_REG_NAME:
+			break;
+
+		case ATE_REG_DATA_HEX:
+			*((uint32_t *)cur_line->reg_data) = data_store;
+			cur_line->reg_len = data_idx % 2 == 0 ? data_idx / 2 : (data_idx / 2 + 1);
+			break;
+
+		case ATE_REG_DATA_DEC:
+			break;
+
+		default:
+			LOG_ERR("Got unknow element index %d", cur_ele_idx);
+			goto exit;
+		}
+
+		data_idx = 0;
+		data_store = 0;
+
+		if (img_buff[i] == 0x09) {
+			cur_ele_idx++;
+		} else if (img_buff[i] == 0x0d) {
+			LOG_DBG("vr[%d] page: %d addr:%x", dev_cfg->wr_cnt, cur_line->page,
+				cur_line->reg_addr);
+			for (int i = 0; i < cur_line->reg_len; i++) {
+				LOG_DBG("data:%x", cur_line->reg_data[i]);
+			}
+			cur_ele_idx = 0;
+			dev_cfg->wr_cnt++;
+			if (dev_cfg->wr_cnt > max_line) {
+				LOG_ERR("Line record count is overlimit");
+				goto exit;
+			}
+			cur_line++;
+			i++; //skip 'a'
+		}
+	}
+
+	ret = true;
+
+exit:
+	if (ret == false)
+		SAFE_FREE(dev_cfg->pdata);
+
+	return ret;
+}
+
+bool mp289x_fwupdate(uint8_t bus, uint8_t addr, uint8_t *img_buff, uint32_t img_size)
+{
+	CHECK_NULL_ARG_WITH_RETURN(img_buff, false);
+
+	uint8_t ret = false;
+
+	/* Step1. Before update */
+	if (mp289x_pre_update(bus, addr) == false) {
+		LOG_ERR("Pre update failed!");
+		return false;
+	}
+
+	/* Step2. Image parsing */
+	struct mp289x_config dev_cfg = { 0 };
+	if (parsing_image(img_buff, img_size, &dev_cfg) == false) {
+		LOG_ERR("Failed to parsing image!");
+		goto exit;
+	}
+
+	/* Step3. Firmware update */
+
+	/* Step4. After update */
+
+	ret = true;
+exit:
+	SAFE_FREE(dev_cfg.pdata);
+	return ret;
 }
 
 static bool mp289x_pre_read(sensor_cfg *cfg)
@@ -58,7 +524,7 @@ static bool mp289x_pre_read(sensor_cfg *cfg)
 	case PMBUS_READ_IOUT:
 	case PMBUS_READ_TEMPERATURE_1:
 	case PMBUS_READ_POUT:
-		if (mp289x_set_page(cfg->port, cfg->target_addr, 0) == false)
+		if (mp289x_set_page(cfg->port, cfg->target_addr, VR_MPS_PAGE_0) == false)
 			return false;
 		break;
 	
@@ -140,7 +606,7 @@ uint8_t mp289x_init(sensor_cfg *cfg)
 		return SENSOR_INIT_UNSPECIFIED_ERROR;
 	}
 
-	if (mp289x_set_page(cfg->port, cfg->target_addr, 4) == false)
+	if (mp289x_set_page(cfg->port, cfg->target_addr, VR_MPS_PAGE_4) == false)
 		return SENSOR_INIT_UNSPECIFIED_ERROR;
 
 	uint8_t i2c_max_retry = 5;
