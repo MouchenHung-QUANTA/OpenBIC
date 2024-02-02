@@ -38,6 +38,9 @@ LOG_MODULE_REGISTER(mp289x);
 
 #define VR_REG_CRC_USR 0xF6
 
+/* --------- PAGE1 ---------- */
+#define VR_REG_OFFLINE_CTL 0xF3
+
 /* --------- PAGE3 ---------- */
 #define VR_REG_STORE_STAT 0x35
 
@@ -66,6 +69,14 @@ uint8_t total_current_set = 0xFF;
 #define VR_MPS_PAGE_1 0x01
 #define VR_MPS_PAGE_3 0x03
 #define VR_MPS_PAGE_4 0x04
+
+#define VR_MPS_PAGE_14 0x14
+#define VR_MPS_PAGE_24 0x24
+#define VR_MPS_PAGE_34 0x34
+#define VR_MPS_PAGE_44 0x44
+#define VR_MPS_PAGE_54 0x54
+#define VR_MPS_PAGE_64 0x64
+
 #define VR_MPS_PAGE_9E 0x9E
 #define VR_MPS_PAGE_9F 0x9F
 
@@ -260,6 +271,31 @@ static bool mp289x_crc_get(uint8_t bus, uint8_t addr, uint8_t mode, uint16_t *cr
 	return true;
 }
 
+bool mp289x_get_checksum(uint8_t bus, uint8_t addr, uint32_t *checksum)
+{
+	CHECK_NULL_ARG_WITH_RETURN(checksum, false);
+
+	uint16_t crc_user;
+	uint16_t crc_multi_config[3];
+
+	//get user crc
+	if (mp289x_crc_get(bus, addr, MODE_USR, &crc_user) == false)
+		return false;
+
+	if (mp289x_crc_get(bus, addr, MODE_MULTI_CFG_12, &crc_multi_config[0]) == false)
+		return false;
+
+	if (mp289x_crc_get(bus, addr, MODE_MULTI_CFG_34, &crc_multi_config[1]) == false)
+		return false;
+
+	if (mp289x_crc_get(bus, addr, MODE_MULTI_CFG_56, &crc_multi_config[2]) == false)
+		return false;
+
+	//TODO: Checksum length??
+
+	return true;
+}
+
 static bool mp289x_store(uint8_t bus, uint8_t addr, uint8_t mode)
 {
 	uint8_t page = 0;
@@ -335,6 +371,11 @@ static bool mp289x_store(uint8_t bus, uint8_t addr, uint8_t mode)
 		return false;
 	}
 
+	if (mp289x_check_err_status(bus, addr) == false) {
+		LOG_ERR("Get error after program!");
+		return false;
+	}
+
 	return true;
 }
 
@@ -372,32 +413,65 @@ static bool mp289x_pre_update(uint8_t bus, uint8_t addr)
 		return false;
 	}
 
-	if ((i2c_msg.data[0] & BIT(15)) != 0x63) {
-		LOG_ERR("MTP write protection is disable!");
-		return false;
+	if (i2c_msg.data[0] != 0x63) {
+		LOG_INF("Try to unlock MTP...");
+		i2c_msg.tx_len = 2;
+		i2c_msg.data[0] = VR_REG_EN_WR_PROT;
+		i2c_msg.data[1] = 0x63;
+
+		if (i2c_master_write(&i2c_msg, retry)) {
+			LOG_ERR("Failed to unlock MTP");
+			return false;
+		}
 	}
 
 	uint8_t state_7e = mp289x_check_err_status(bus, addr);
 	if (!state_7e)
 		goto exit;
 	else {
-		LOG_WRN("Got 0x35 status error 0x%x in previous update", state_7e);
-		if (state_7e & BIT(4)) {
+		if ((state_7e & BIT(4)) == 0)
+			goto exit;
+
+		if (mp289x_set_page(bus, addr, VR_MPS_PAGE_3) == false) {
+			LOG_ERR("Failed to set page before check 0x%x", VR_REG_STORE_STAT);
+			return false;
+		}
+
+		i2c_msg.tx_len = 1;
+		i2c_msg.rx_len = 1;
+		i2c_msg.data[0] = VR_REG_STORE_STAT;
+
+		if (i2c_master_read(&i2c_msg, retry)) {
+			LOG_ERR("Failed to read register 0x%02X", VR_REG_STORE_STAT);
+			return false;
+		}
+
+		uint8_t state_35 = i2c_msg.data[0];
+		
+		LOG_WRN("Got 0x%x status error 0x%x in previous update", VR_REG_STORE_STAT, state_35);
+
+		if (mp289x_set_page(bus, addr, VR_MPS_PAGE_0) == false) {
+			LOG_ERR("Failed to set page before clear fault");
+			return false;
+		}
+
+		if (state_35 & BIT(4)) {
 			i2c_msg.tx_len = 1;
 			i2c_msg.data[0] = VR_REG_MTP_FAULT_CLR;
 
 			if (i2c_master_write(&i2c_msg, retry)) {
-				LOG_ERR("Failed to clear 0x35 bit[4]fault");
+				LOG_ERR("Failed to clear register 0x%x bit[4] fault", VR_REG_STORE_STAT);
 				return false;
 			}
-			state_7e &= ~BIT(4);
+			state_35 &= ~BIT(4);
 		}
-		if (state_7e) {
+
+		if (state_35) {
 			i2c_msg.tx_len = 1;
 			i2c_msg.data[0] = VR_REG_FAULT_CLR;
 
 			if (i2c_master_write(&i2c_msg, retry)) {
-				LOG_ERR("Failed to clear 0x35 bit[7:5][2:0] fault");
+				LOG_ERR("Failed to clear register 0x%x bit[7:5][2:0] fault", VR_REG_STORE_STAT);
 				return false;
 			}
 		}
@@ -534,21 +608,137 @@ bool mp289x_fwupdate(uint8_t bus, uint8_t addr, uint8_t *img_buff, uint32_t img_
 	}
 
 	/* Step3. Firmware update */
-	uint8_t page = 0;
+	uint8_t last_page = 0xFF;
 	struct mp289x_data *cur_data;
 	uint16_t line_idx = 0;
+	uint16_t multi_cfg_start_idx = 0;
 
+	/* program USER data */
 	for (line_idx = 0; line_idx < dev_cfg.wr_cnt; line_idx++) {
 		cur_data = &dev_cfg.pdata[line_idx];
 		if ((cur_data->page == VR_MPS_PAGE_0) || (cur_data->page == VR_MPS_PAGE_1)) {
-			
-		} else {
-			LOG_ERR("Unexpected page %d received!", cur_data->page);
-			goto exit;
+			if (cur_data->page == VR_MPS_PAGE_14) {
+				multi_cfg_start_idx = line_idx;
+				break;
+			}
+
+			if (cur_data->page != last_page) {
+				if (mp289x_set_page(bus, addr, cur_data->page) == false) {
+					LOG_ERR("Failed to set page before program data");
+					goto exit;
+				}
+				last_page = cur_data->page;
+			}
+
+			if (mp289x_write_data(bus, addr, cur_data) == false)
+				goto exit;
+
+			uint8_t percent = ((line_idx + 1) * 100) / dev_cfg.wr_cnt;
+			if (percent % 10 == 0)
+				LOG_INF("updated: %d%% (line: %d/%d page: %d)", percent, line_idx + 1,
+					dev_cfg.wr_cnt, cur_data->page);
 		}
 	}
 
-	/* Step4. After update */
+	if (mp289x_store(bus, addr, MODE_USR) == false) {
+		LOG_ERR("Failed to store USER data to MTP!");
+		goto exit;
+	}
+
+	/* program Multi-config data */
+	if (mp289x_set_page(bus, addr, VR_MPS_PAGE_0) == false) {
+		LOG_ERR("Failed to set page before enable multi-config program");
+		goto exit;
+	}
+
+	I2C_MSG i2c_msg = { 0 };
+	uint8_t retry = 3;
+	i2c_msg.bus = bus;
+	i2c_msg.target_addr = addr;
+
+	i2c_msg.tx_len = 1;
+	i2c_msg.rx_len = 2;
+	i2c_msg.data[0] = VR_REG_MTP_CTRL;
+
+	if (i2c_master_read(&i2c_msg, retry)) {
+		LOG_ERR("Failed to read error status");
+		return 0xFF;
+	}
+
+	uint16_t state_d0 = i2c_msg.data[0] | (i2c_msg.data[1] << 8);
+	state_d0 |= (BIT(5)|BIT(12));
+
+	i2c_msg.rx_len = 0;
+	i2c_msg.tx_len = 3;
+	i2c_msg.data[0] = VR_REG_MTP_CTRL;
+	i2c_msg.data[1] = state_d0 & 0xFF;
+	i2c_msg.data[2] = (state_d0 >> 8) & 0xFF;
+
+	if (i2c_master_write(&i2c_msg, retry)) {
+		LOG_ERR("Failed to enable multi-config program");
+		return false;
+	}
+
+	uint8_t group_idx = 1;
+	last_page = 0xFF;
+
+	for (line_idx = multi_cfg_start_idx; line_idx < dev_cfg.wr_cnt; line_idx++) {
+		cur_data = &dev_cfg.pdata[line_idx];
+		group_idx = (cur_data->page >> 4);
+
+		if (group_idx < 1 || group_idx > 6) {
+			LOG_WRN("Invalid group index %d found from multi-config part", group_idx);
+			continue;
+		}
+
+		if (group_idx % 2)
+			cur_data->page = VR_MPS_PAGE_4; //group 1/3/5
+		else
+			cur_data->page = VR_MPS_PAGE_1; //group 2/4/6
+
+		if (cur_data->page != last_page) {
+			// store last group x and x-1 data first
+			if (last_page == VR_MPS_PAGE_1) {
+				if (mp289x_store(bus, addr, group_idx/2) == false) {
+					LOG_ERR("Failed to store group%d&%d MULTI-CONFIG data to MTP!", group_idx-1, group_idx);
+					goto exit;
+				}
+			}
+
+			if (mp289x_set_page(bus, addr, cur_data->page) == false) {
+				LOG_ERR("Failed to set page before program multi-config");
+				goto exit;
+			}
+
+			if (cur_data->page == VR_MPS_PAGE_1) {
+				i2c_msg.rx_len = 0;
+				i2c_msg.tx_len = 2;
+				i2c_msg.data[0] = VR_REG_OFFLINE_CTL;
+				i2c_msg.data[1] = 0x8C; //borrow page1 for program group2/4/6
+
+				if (i2c_master_write(&i2c_msg, retry)) {
+					LOG_ERR("Failed to borrow page1 for multi-config program");
+					return false;
+				}
+			}
+
+			last_page = cur_data->page;
+		}
+
+		if (mp289x_write_data(bus, addr, cur_data) == false)
+				goto exit;
+
+		uint8_t percent = ((line_idx + 1) * 100) / dev_cfg.wr_cnt;
+		if (percent % 10 == 0)
+			LOG_INF("updated: %d%% (line: %d/%d group: %d)", percent, line_idx + 1,
+				dev_cfg.wr_cnt, group_idx);
+	}
+
+	//store last group x and x-1
+	if (mp289x_store(bus, addr, group_idx/2) == false) {
+		LOG_ERR("Failed to store group%d and group%d data", group_idx-1, group_idx);
+		goto exit;
+	}
 
 	ret = true;
 exit:
