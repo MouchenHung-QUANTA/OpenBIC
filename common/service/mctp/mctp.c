@@ -221,9 +221,16 @@ static void mctp_rx_task(void *arg, void *dummy0, void *dummy1)
 
 		if (!read_len)
 			continue;
-
-		LOG_HEXDUMP_DBG(read_buf, read_len, "mctp receive data");
-
+/*
+		if ((read_buf[11] != 0xe0 && read_buf[12] != 0x02) && 
+			(read_buf[11] != 0xe0 && read_buf[12] != 0x03) &&
+			(read_buf[11] != 0x10 && read_buf[12] != 0x2d) &&
+			(read_buf[11] != 0x28 && read_buf[12] != 0x22) &&
+			(read_buf[11] != 0x18 && read_buf[12] != 0x04) &&
+			(read_buf[9] != 0x1c && read_buf[10] != 0x01)
+			)
+			LOG_HEXDUMP_INF(read_buf, read_len, "mctp receive data");
+*/
 		mctp_hdr *hdr = (mctp_hdr *)read_buf;
 		LOG_DBG("dest_ep(0x%x), src_ep(0x%x), flags(0x%x)", hdr->dest_ep, hdr->src_ep,
 			hdr->flags_seq_to_tag);
