@@ -93,8 +93,9 @@
 #define SENSOR_NUM_PWR_CPU 0x30
 #define SENSOR_NUM_PWR_HSCIN 0x31
 #define SENSOR_NUM_PWR_E1S 0x32
-#define SENSOR_NUM_PWR_CPUVDD 0x33
-#define SENSOR_NUM_PWR_SOCVDD 0x34
+#define SENSOR_NUM_PWR_CPUDVDD 0x33
+#define SENSOR_NUM_PWR_CPUVDD 0x34
+#define SENSOR_NUM_PWR_SOCVDD 0x35
 
 uint8_t plat_get_config_size();
 void load_sensor_config(void);
