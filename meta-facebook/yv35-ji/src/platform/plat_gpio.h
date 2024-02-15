@@ -142,14 +142,14 @@
 	gpio_name_to_num(Reserve_GPIOL3) \
 	gpio_name_to_num(Reserve_GPIOL4) \
 	gpio_name_to_num(Reserve_GPIOL5) \
-	gpio_name_to_num(Reserve_GPIOL6) \
-	gpio_name_to_num(Reserve_GPIOL7)
+	gpio_name_to_num(BOARD_ID0) \
+	gpio_name_to_num(BOARD_ID1)
 
 // GPIOM6, M7 hardware not define
 #define name_gpioM \
-	gpio_name_to_num(BOARD_ID0) \
-	gpio_name_to_num(BOARD_ID1) \
+	gpio_name_to_num(Reserve_GPIOM0) \
 	gpio_name_to_num(BOARD_ID2) \
+	gpio_name_to_num(Reserve_GPIOM2) \
 	gpio_name_to_num(BOARD_ID3) \
 	gpio_name_to_num(BOARD_ID4) \
 	gpio_name_to_num(BOARD_ID5) \
