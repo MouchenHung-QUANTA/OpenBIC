@@ -60,8 +60,7 @@ board_map = {
     "op": "00101",
     "gl": "01000",
     "nf": "01001",
-    "hda1": "01010",
-    "ji": "01011",
+    "ji": "01010",
 }
 
 # Mapping between short and full project names.

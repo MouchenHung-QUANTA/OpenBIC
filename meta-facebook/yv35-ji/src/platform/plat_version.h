@@ -23,7 +23,7 @@
 #define PROJECT_NAME "Java Island"
 #define PROJECT_STAGE POC
 
-#define BOARD_ID 0x0B /* same with sign tool table */
+#define BOARD_ID 0x0A /* same with sign tool table */
 #define DEVICE_ID 0x00
 #define DEVICE_REVISION 0x80
 
