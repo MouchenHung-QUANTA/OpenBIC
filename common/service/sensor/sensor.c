@@ -60,7 +60,7 @@ uint8_t sensor_config_index_map[SENSOR_NUM_MAX];
 uint8_t sdr_index_map[SENSOR_NUM_MAX];
 
 bool enable_sensor_poll_thread = true;
-static bool sensor_poll_enable_flag = true;
+static bool sensor_poll_enable_flag = false;
 static bool is_sensor_initial_done = false;
 static bool is_sensor_ready_flag = false;
 
