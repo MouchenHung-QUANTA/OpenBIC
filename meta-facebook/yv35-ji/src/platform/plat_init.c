@@ -25,6 +25,18 @@
 
 SCU_CFG scu_cfg[] = {
 	//register    value
+	/* Set GPIOA/B/C/D internal pull-up/down after gpio init */
+	{ 0x7e6e2610, 0xFFFFFFFF },
+	/* Set GPIOF/G/H internal pull-up/down after gpio init */
+	{ 0x7e6e2614, 0xFFFFFFFF },
+	/* Set GPIOJ/K/L internal pull-up/down after gpio init */
+	{ 0x7e6e2618, 0x06000000 },
+	/* Set GPIOM/N/O/P internal pull-up/down after gpio init */
+	{ 0x7e6e261c, 0x0000003F },
+	/* Set GPIOQ/R/S/T internal pull-up/down after gpio init */
+	{ 0x7e6e2630, 0x00000000 },
+	/* Set GPIOU/V/X internal pull-up/down after gpio init */
+	{ 0x7e6e2634, 0x00000000 },
 };
 
 void pal_pre_init()
