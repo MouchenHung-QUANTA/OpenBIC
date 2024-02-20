@@ -96,6 +96,12 @@ enum BIC_CARD_PRESENT {
 	CARD_PRESENT = true,
 };
 
+enum FIRMWARE_COMPONENT_ID {
+	JI_COMPNT_CPLD,
+	JI_COMPNT_BIC = 2,
+	JI_COMPNT_MAX,
+};
+
 uint8_t get_system_class();
 CARD_STATUS get_1ou_status();
 CARD_STATUS get_2ou_status();
