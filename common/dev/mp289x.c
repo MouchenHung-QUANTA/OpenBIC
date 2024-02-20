@@ -399,7 +399,7 @@ static bool mp289x_pre_update(uint8_t bus, uint8_t addr)
 		return false;
 	}
 
-	if (((i2c_msg.data[0] | (8 << i2c_msg.data[1])) & BIT(15)) == 0x00) {
+	if (((i2c_msg.data[0] | (i2c_msg.data[1] << 8)) & BIT(15)) == 0x00) {
 		LOG_ERR("PMBus write is block by password!");
 		return false;
 	}
