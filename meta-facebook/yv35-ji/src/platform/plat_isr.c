@@ -57,9 +57,9 @@ void ISR_GPIOA3()
 	isr_dbg_print(INA230_E1S_ALERT_L);
 }
 
-void ISR_GPIOA4()
+void ISR_GPIOB7()
 {
-	isr_dbg_print(IRQ_UV_DETECT_N);
+	isr_dbg_print(FPGA_CPU_BOOT_DONE);
 }
 
 void ISR_GPIOA5()
@@ -122,6 +122,11 @@ void ISR_GPIOE4()
 	isr_dbg_print(I2C_SENSOR_LVC_ALERT_L);
 }
 
+void ISR_GPIOE5()
+{
+	isr_dbg_print(INA_CRIT_ALERT1_L);
+}
+
 void ISR_GPIOE6()
 {
 	isr_dbg_print(RUN_POWER_EN);
@@ -139,12 +144,22 @@ void ISR_GPIOF0()
 
 void ISR_GPIOF1()
 {
-	isr_dbg_print(CARD_TYPE_EXP);
+	isr_dbg_print(THERM_WARN_CPU1_L_3V3);
 }
 
 void ISR_GPIOF2()
 {
 	isr_dbg_print(RUN_POWER_FAULT_L);
+}
+
+void ISR_GPIOF3()
+{
+	isr_dbg_print(SENSOR_AIR0_THERM_L);
+}
+
+void ISR_GPIOF4()
+{
+	isr_dbg_print(SENSOR_AIR1_THERM_L);
 }
 
 void ISR_GPIOF6()
@@ -165,6 +180,26 @@ void ISR_GPIOG0()
 void ISR_GPIOG2()
 {
 	isr_dbg_print(FPGA_READY);
+}
+
+void ISR_GPIOG3()
+{
+	isr_dbg_print(CPU_EROT_FATAL_ERROR_L);
+}
+
+void ISR_GPIOG5()
+{
+	isr_dbg_print(THERM_OVERT_CPU1_L_3V3);
+}
+
+void ISR_GPIOH0()
+{
+	isr_dbg_print(SENSOR_AIR0_ALERT_L);
+}
+
+void ISR_GPIOH1()
+{
+	isr_dbg_print(SENSOR_AIR1_ALERT_L);
 }
 
 void ISR_GPIOH3()

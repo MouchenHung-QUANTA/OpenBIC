@@ -21,10 +21,10 @@
 
 void ISR_GPIOA0();
 void ISR_GPIOA3();
-void ISR_GPIOA4();
 void ISR_GPIOA5();
 void ISR_GPIOA6();
 void ISR_GPIOB0();
+void ISR_GPIOB7();
 void ISR_GPIOC0();
 void ISR_GPIOC1();
 void ISR_GPIOC3();
@@ -34,15 +34,22 @@ void ISR_GPIOE0();
 void ISR_GPIOE2();
 void ISR_GPIOE3();
 void ISR_GPIOE4();
+void ISR_GPIOE5();
 void ISR_GPIOE6();
 void ISR_GPIOE7();
 void ISR_GPIOF0();
 void ISR_GPIOF1();
 void ISR_GPIOF2();
+void ISR_GPIOF3();
+void ISR_GPIOF4();
 void ISR_GPIOF6();
 void ISR_GPIOF7();
 void ISR_GPIOG0();
 void ISR_GPIOG2();
+void ISR_GPIOG3();
+void ISR_GPIOG5();
+void ISR_GPIOH0();
+void ISR_GPIOH1();
 void ISR_GPIOH3();
 
 #endif

@@ -30,7 +30,7 @@
 	gpio_name_to_num(FAN_FULL_SPEED_FPGA_L) \
 	gpio_name_to_num(PWR_BRAKE_L) \
 	gpio_name_to_num(INA230_E1S_ALERT_L) \
-	gpio_name_to_num(IRQ_UV_DETECT_N) \
+	gpio_name_to_num(Reserve_GPIOA4) \
 	gpio_name_to_num(FPGA_WATCH_DOG_TIMER0_L) \
 	gpio_name_to_num(FPGA_WATCH_DOG_TIMER1_L) \
 	gpio_name_to_num(HSC_OCP_GPIO1)
@@ -41,9 +41,9 @@
 	gpio_name_to_num(P3V_BAT_SCALED_EN_R) \
 	gpio_name_to_num(WP_HW_EXT_CTRL_L) \
 	gpio_name_to_num(BIC_EROT_LVSFT_EN) \
-	gpio_name_to_num(Reserve_GPIOB5) \
+	gpio_name_to_num(RTC_CLR_L) \
 	gpio_name_to_num(I2C_SSIF_ALERT_L) \
-	gpio_name_to_num(Reserve_GPIOB7)
+	gpio_name_to_num(FPGA_CPU_BOOT_DONE)
 
 #define name_gpioC \
 	gpio_name_to_num(FM_HSC_TIMER) \
@@ -61,7 +61,7 @@
 	gpio_name_to_num(Reserve_GPIOD2) \
 	gpio_name_to_num(BMC_READY) \
 	gpio_name_to_num(BIC_READY) \
-	gpio_name_to_num(Reserve_GPIOD5) \
+	gpio_name_to_num(PWR_BRAKE_CPU1_L) \
 	gpio_name_to_num(Reserve_GPIOD6) \
 	gpio_name_to_num(Reserve_GPIOD7)
 
@@ -71,33 +71,33 @@
 	gpio_name_to_num(SPI_BMC_FPGA_INT_L) \
 	gpio_name_to_num(IRQ_HSC_ALERT1_L) \
 	gpio_name_to_num(I2C_SENSOR_LVC_ALERT_L) \
-	gpio_name_to_num(Reserve_GPIOE5) \
+	gpio_name_to_num(INA_CRIT_ALERT1_L) \
 	gpio_name_to_num(RUN_POWER_EN) \
 	gpio_name_to_num(SPI_HOST_TPM_RST_L)
 
 #define name_gpioF \
 	gpio_name_to_num(HSC_TYPE_0) \
-	gpio_name_to_num(CARD_TYPE_EXP) \
+	gpio_name_to_num(THERM_WARN_CPU1_L_3V3) \
 	gpio_name_to_num(RUN_POWER_FAULT_L) \
-	gpio_name_to_num(Reserve_GPIOF3) \
-	gpio_name_to_num(Reserve_GPIOF4) \
+	gpio_name_to_num(SENSOR_AIR0_THERM_L) \
+	gpio_name_to_num(SENSOR_AIR1_THERM_L) \
 	gpio_name_to_num(FM_FAST_PROCHOT_EN) \
 	gpio_name_to_num(THERM_BB_OVERT_L) \
 	gpio_name_to_num(THERM_BB_WARN_L)
 
 #define name_gpioG \
 	gpio_name_to_num(BIC_CPU_JTAG_MUX_SEL) \
-	gpio_name_to_num(Reserve_GPIOG1) \
+	gpio_name_to_num(FM_VR_FW_PROGRAM_L) \
 	gpio_name_to_num(FAST_PROCHOT_L) \
-	gpio_name_to_num(Reserve_GPIOG3) \
+	gpio_name_to_num(CPU_EROT_FATAL_ERROR_L) \
 	gpio_name_to_num(BIC_REMOTEJTAG_EN) \
-	gpio_name_to_num(Reserve_GPIOG5) \
+	gpio_name_to_num(THERM_OVERT_CPU1_L_3V3) \
 	gpio_name_to_num(HSC_OCP_GPIO2) \
 	gpio_name_to_num(HSC_OCP_GPIO3)
 
 #define name_gpioH \
-	gpio_name_to_num(Reserve_GPIOH0) \
-	gpio_name_to_num(Reserve_GPIOH1) \
+	gpio_name_to_num(SENSOR_AIR0_ALERT_L) \
+	gpio_name_to_num(SENSOR_AIR1_ALERT_L) \
 	gpio_name_to_num(BIC_CPLD_VRD_MUX_SEL) \
 	gpio_name_to_num(CPU_BIC_PROCHOT_L) \
 	gpio_name_to_num(Reserve_GPIOH4) \
@@ -142,14 +142,14 @@
 	gpio_name_to_num(Reserve_GPIOL3) \
 	gpio_name_to_num(Reserve_GPIOL4) \
 	gpio_name_to_num(Reserve_GPIOL5) \
-	gpio_name_to_num(Reserve_GPIOL6) \
-	gpio_name_to_num(Reserve_GPIOL7)
+	gpio_name_to_num(BOARD_ID0) \
+	gpio_name_to_num(BOARD_ID1)
 
 // GPIOM6, M7 hardware not define
 #define name_gpioM \
-	gpio_name_to_num(BOARD_ID0) \
-	gpio_name_to_num(BOARD_ID1) \
+	gpio_name_to_num(Reserve_GPIOM0) \
 	gpio_name_to_num(BOARD_ID2) \
+	gpio_name_to_num(Reserve_GPIOM2) \
 	gpio_name_to_num(BOARD_ID3) \
 	gpio_name_to_num(BOARD_ID4) \
 	gpio_name_to_num(BOARD_ID5) \
