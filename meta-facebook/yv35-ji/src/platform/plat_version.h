@@ -23,7 +23,7 @@
 #define PROJECT_NAME "Java Island"
 #define PROJECT_STAGE POC
 
-#define BOARD_ID 0x0B /* same with sign tool table */
+#define BOARD_ID 0x0A /* same with sign tool table */
 #define DEVICE_ID 0x00
 #define DEVICE_REVISION 0x80
 
@@ -37,7 +37,7 @@
 
 #define BIC_FW_YEAR_MSB 0x20
 #define BIC_FW_YEAR_LSB 0x24
-#define BIC_FW_WEEK 0x05
+#define BIC_FW_WEEK 0x08
 #define BIC_FW_VER 0x01
 #define BIC_FW_platform_0 0x6A // char: j
 #define BIC_FW_platform_1 0x69 // char: i
