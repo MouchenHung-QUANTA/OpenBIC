@@ -18,6 +18,7 @@
 #include "util_sys.h"
 #include "plat_class.h"
 #include "plat_gpio.h"
+#include "plat_mctp.h"
 #include "util_worker.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -48,6 +49,7 @@ void pal_pre_init()
 
 void pal_post_init()
 {
+	plat_mctp_init();
 }
 
 void pal_device_init()
