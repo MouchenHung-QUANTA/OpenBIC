@@ -14,34 +14,38 @@
  * limitations under the License.
  */
 
-#ifndef PLAT_I2C_h
-#define PLAT_I2C_h
-
+#include "hal_gpio.h"
 #include "hal_i2c.h"
+#include "plat_gpio.h"
+#include "plat_i2c.h"
+#include "util_spi.h"
+#include <logging/log.h>
 
-// map i2c bus to peripherial bus
-// i2c peripheral 1 based, as used i2c index 0 in firmware.
-enum _i2c_bus_num {
-	I2C_BUS1,
-	I2C_BUS2,
-	I2C_BUS3,
-	I2C_BUS4,
-	I2C_BUS5,
-	I2C_BUS6,
-	I2C_BUS7,
-	I2C_BUS8,
-	I2C_BUS9,
-	I2C_BUS10,
-	I2C_BUS11,
-	I2C_BUS12,
-	I2C_BUS13,
-	I2C_BUS14,
-	I2C_BUS_MAX_NUM,
-};
+LOG_MODULE_REGISTER(plat_spi);
 
-#define SSIF_I2C_BUS I2C_BUS6
-#define SSIF_I2C_ADDR 0x20 //8bit
+#define CPLD_REG_SPI_MUX 0x10
 
-#define CPLD_I2C_ADDR 0x42 //8bit
+int pal_get_bios_flash_position()
+{
+	return DEVSPI_SPI1_CS0;
+}
 
-#endif
+bool pal_switch_bios_spi_mux(int gpio_status)
+{
+	I2C_MSG msg = { 0 };
+	int retry = 3;
+
+	msg.bus = I2C_BUS1;
+	msg.target_addr = CPLD_I2C_ADDR;
+	msg.tx_len = 2;
+	msg.data[0] = CPLD_REG_SPI_MUX;
+	msg.data[1] = (gpio_status == GPIO_HIGH) ? 0:1;
+
+	int ret = i2c_master_write(&msg, retry);
+	if (ret) {
+		LOG_ERR("Failed to switch spi mux, ret: %d", ret);
+		return false;
+	}
+
+	return true;
+}

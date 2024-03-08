@@ -93,7 +93,7 @@ static uint8_t pldm_pre_cpld_update(void *fw_update_param)
 
 	if (p->inf == COMP_UPDATE_VIA_I2C) {
 		p->bus = I2C_BUS1;
-		p->addr = CPLD_ADDR;
+		p->addr = CPLD_I2C_ADDR;
 	}
 
 	return 0;
@@ -108,7 +108,7 @@ static bool get_cpld_user_code(void *info_p, uint8_t *buf, uint8_t *len)
 	uint8_t tmp_buf[4] = { 0 };
 	uint32_t read_usrcode = 0;
 
-	bool ret = cpld_i2c_get_usercode(I2C_BUS1, CPLD_ADDR, &read_usrcode);
+	bool ret = cpld_i2c_get_usercode(I2C_BUS1, CPLD_I2C_ADDR, &read_usrcode);
 	if (ret == false) {
 		LOG_ERR("Fail to get CPLD usercode");
 		return false;

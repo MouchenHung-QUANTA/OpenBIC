@@ -23,7 +23,6 @@
 #define SYS_CLASS_1 1
 #define SYS_CLASS_2 2
 
-#define CPLD_ADDR 0x21 // 7-bit address
 #define CPLD_CLASS_TYPE_REG 0x05
 #define CPLD_2OU_EXPANSION_CARD_REG 0x06
 #define CPLD_BOARD_REV_ID_REG 0x08
