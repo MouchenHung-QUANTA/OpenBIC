@@ -23,7 +23,7 @@
 
 LOG_MODULE_REGISTER(plat_spi);
 
-#define CPLD_REG_SPI_MUX 0x10
+#define CPLD_REG_SPI_MUX 0x0B
 
 int pal_get_bios_flash_position()
 {
