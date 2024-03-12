@@ -155,5 +155,5 @@ bool get_adc_voltage(int channel, float *voltage)
 
 void init_platform_config()
 {
-
+	hsc_module = gpio_get(HSC_TYPE_0) & 0x01;
 }
