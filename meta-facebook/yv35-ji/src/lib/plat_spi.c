@@ -36,7 +36,7 @@ bool pal_switch_bios_spi_mux(int gpio_status)
 	int retry = 3;
 
 	msg.bus = I2C_BUS1;
-	msg.target_addr = CPLD_I2C_ADDR;
+	msg.target_addr = (CPLD_I2C_ADDR >> 1);
 	msg.tx_len = 2;
 	msg.data[0] = CPLD_REG_SPI_MUX;
 	msg.data[1] = (gpio_status == GPIO_HIGH) ? 0:1;
