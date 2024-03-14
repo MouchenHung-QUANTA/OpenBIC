@@ -21,5 +21,6 @@
 
 /* i2c-mux tca9548 */
 bool tca9548_select_chan(sensor_cfg *cfg, void *args);
+bool tca9545_select_chan(sensor_cfg *cfg, void *args);
 
 #endif

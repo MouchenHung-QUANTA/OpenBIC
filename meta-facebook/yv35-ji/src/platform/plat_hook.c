@@ -144,7 +144,9 @@ bool pre_tmp451_read(sensor_cfg *cfg, void *args)
 	CHECK_NULL_ARG_WITH_RETURN(cfg, false);
 	CHECK_NULL_ARG_WITH_RETURN(args, false);
 
-	if (!tca9548_select_chan(cfg, (struct tca9548 *)args))
+	gpio_set(BIC_TMP_LVSFT_EN, GPIO_HIGH);
+
+	if (!tca9545_select_chan(cfg, (struct tca9548 *)args))
 		return false;
 
 	return true;
@@ -155,7 +157,7 @@ bool pre_tmp75_read(sensor_cfg *cfg, void *args)
 	CHECK_NULL_ARG_WITH_RETURN(cfg, false);
 	CHECK_NULL_ARG_WITH_RETURN(args, false);
 
-	if (!tca9548_select_chan(cfg, (struct tca9548 *)args))
+	if (!tca9545_select_chan(cfg, (struct tca9548 *)args))
 		return false;
 
 	return true;

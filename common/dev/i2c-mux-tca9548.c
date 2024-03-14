@@ -46,3 +46,28 @@ bool tca9548_select_chan(sensor_cfg *cfg, void *args)
 
 	return true;
 }
+
+bool tca9545_select_chan(sensor_cfg *cfg, void *args)
+{
+	CHECK_NULL_ARG_WITH_RETURN(cfg, false);
+	CHECK_NULL_ARG_WITH_RETURN(args, false);
+
+	struct tca9548 *p = (struct tca9548 *)args;
+
+	uint8_t retry = 200; //workaround for poc board
+	I2C_MSG msg = { 0 };
+
+	msg.bus = cfg->port;
+	/* change address to 7-bit */
+	msg.target_addr = ((p->addr) >> 1);
+	msg.tx_len = 2;
+	msg.data[0] = 0x00;
+	msg.data[1] = (1 << (p->chan));
+
+	if (i2c_master_write(&msg, retry)) {
+		LOG_ERR("I2C master write failed");
+		return false;
+	}
+
+	return true;
+}
