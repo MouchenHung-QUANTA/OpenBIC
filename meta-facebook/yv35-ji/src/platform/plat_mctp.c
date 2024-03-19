@@ -18,14 +18,12 @@
 #include "pldm.h"
 #include "ipmi.h"
 #include "plat_i3c.h"
+#include "plat_i2c.h"
 #include "hal_i3c.h"
+#include "hal_i2c_target.h"
 
 LOG_MODULE_REGISTER(plat_mctp);
 
-/* mctp endpoint */
-#define MCTP_EID_BMC 0x01
-
-K_TIMER_DEFINE(send_cmd_timer, send_cmd_to_dev, NULL);
 K_WORK_DEFINE(send_cmd_work, send_cmd_to_dev_handler);
 
 mctp_port plat_mctp_port[] = {
@@ -33,10 +31,15 @@ mctp_port plat_mctp_port[] = {
 	  .medium_type = MCTP_MEDIUM_TYPE_TARGET_I3C,
 	  .conf.i3c_conf.bus = MCTP_I3C_BMC_BUS,
 	  .conf.i3c_conf.addr = MCTP_I3C_BMC_ADDR },
+	{ .channel_target = PLDM,
+	  .medium_type = MCTP_MEDIUM_TYPE_SMBUS,
+	  .conf.smbus_conf.bus = MCTP_I2C_SATMC_BUS,
+	  .conf.smbus_conf.addr = MCTP_I2C_SATMC_ADDR },
 };
 
 mctp_route_entry mctp_route_tbl[] = {
 	{ MCTP_EID_BMC, MCTP_I3C_BMC_BUS, MCTP_I3C_BMC_ADDR },
+	{ MCTP_EID_SATMC, MCTP_I2C_SATMC_BUS, MCTP_I2C_SATMC_ADDR },
 };
 
 static void set_endpoint_resp_handler(void *args, uint8_t *buf, uint16_t len)
@@ -44,7 +47,7 @@ static void set_endpoint_resp_handler(void *args, uint8_t *buf, uint16_t len)
 	ARG_UNUSED(args);
 	CHECK_NULL_ARG(buf);
 
-	LOG_HEXDUMP_DBG(buf, len, __func__);
+	LOG_HEXDUMP_INF(buf, len, __func__);
 }
 
 static void set_endpoint_resp_timeout(void *args)
@@ -52,7 +55,7 @@ static void set_endpoint_resp_timeout(void *args)
 	CHECK_NULL_ARG(args);
 
 	mctp_route_entry *p = (mctp_route_entry *)args;
-	LOG_DBG("Endpoint 0x%x set endpoint failed on bus %d", p->endpoint, p->bus);
+	LOG_ERR("Failed to set endpoint 0x%x on bus %d addr 0x%x", p->endpoint, p->bus, p->addr);
 }
 
 static void set_dev_endpoint(void)
@@ -92,6 +95,46 @@ static void set_dev_endpoint(void)
 	}
 }
 
+uint8_t get_mctp_info(uint8_t dest_endpoint, mctp **mctp_inst, mctp_ext_params *ext_params)
+{
+	CHECK_NULL_ARG_WITH_RETURN(mctp_inst, MCTP_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(ext_params, MCTP_ERROR);
+
+	uint8_t ret = MCTP_ERROR;
+	uint32_t index = 0;
+
+	for (index = 0; index < ARRAY_SIZE(mctp_route_tbl); index++) {
+		mctp_route_entry *port = mctp_route_tbl + index;
+		CHECK_NULL_ARG_WITH_RETURN(port, MCTP_ERROR);
+
+		if (port->endpoint == dest_endpoint) {
+			*mctp_inst = pal_find_mctp_by_bus(port->bus);
+			CHECK_NULL_ARG_WITH_RETURN(mctp_inst, MCTP_ERROR);
+
+			if (dest_endpoint == MCTP_EID_BMC) {
+				ext_params->type = MCTP_MEDIUM_TYPE_TARGET_I3C;
+				ext_params->i3c_ext_params.addr = port->addr;
+			} else {
+				ext_params->type = MCTP_MEDIUM_TYPE_SMBUS;
+				ext_params->smbus_ext_params.addr = port->addr;
+			}
+			ext_params->ep = port->endpoint;
+			ret = MCTP_SUCCESS;
+			break;
+		}
+	}
+	return ret;
+}
+
+static uint8_t get_mctp_route_info(uint8_t dest_endpoint, void **mctp_inst,
+				   mctp_ext_params *ext_params)
+{
+	CHECK_NULL_ARG_WITH_RETURN(mctp_inst, MCTP_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(ext_params, MCTP_ERROR);
+
+	return get_mctp_info(dest_endpoint, (mctp **)mctp_inst, ext_params);
+}
+
 static uint8_t mctp_msg_recv(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext_params ext_params)
 {
 	CHECK_NULL_ARG_WITH_RETURN(mctp_p, MCTP_ERROR);
@@ -115,31 +158,6 @@ static uint8_t mctp_msg_recv(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext_
 	}
 
 	return MCTP_SUCCESS;
-}
-
-static uint8_t get_mctp_route_info(uint8_t dest_endpoint, void **mctp_inst,
-				   mctp_ext_params *ext_params)
-{
-	CHECK_NULL_ARG_WITH_RETURN(mctp_inst, MCTP_ERROR);
-	CHECK_NULL_ARG_WITH_RETURN(ext_params, MCTP_ERROR);
-
-	uint8_t rc = MCTP_ERROR;
-	uint32_t i;
-
-	for (i = 0; i < ARRAY_SIZE(mctp_route_tbl); i++) {
-		mctp_route_entry *p = mctp_route_tbl + i;
-		if (p->endpoint == dest_endpoint) {
-			if (dest_endpoint == MCTP_EID_BMC) {
-				*mctp_inst = pal_find_mctp_by_bus(p->bus);
-				ext_params->type = MCTP_MEDIUM_TYPE_TARGET_I3C;
-				ext_params->smbus_ext_params.addr = p->addr;
-				rc = MCTP_SUCCESS;
-				break;
-			}
-		}
-	}
-
-	return rc;
 }
 
 void send_cmd_to_dev_handler(struct k_work *work)
@@ -215,6 +233,19 @@ void plat_mctp_init(void)
 	/* init the mctp/pldm instance */
 	for (uint8_t i = 0; i < ARRAY_SIZE(plat_mctp_port); i++) {
 		mctp_port *p = plat_mctp_port + i;
+
+		if (p->medium_type == MCTP_MEDIUM_TYPE_SMBUS) {
+			struct _i2c_target_config cfg;
+			memset(&cfg, 0, sizeof(cfg));
+			cfg.address = p->conf.smbus_conf.addr;
+			cfg.i2c_msg_count = 0x0A;
+
+			if (i2c_target_control(p->conf.smbus_conf.bus, &cfg, I2C_CONTROL_REGISTER) !=
+				I2C_TARGET_API_NO_ERR) {
+				LOG_ERR("i2c %d register target failed", p->conf.smbus_conf.bus);
+				continue;
+			}
+		}
 
 		p->mctp_inst = mctp_init();
 		if (!p->mctp_inst) {

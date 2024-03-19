@@ -44,4 +44,8 @@ enum _i2c_bus_num {
 
 #define CPLD_I2C_ADDR 0x42 //8bit
 
+// TODO: Modify SatMC bus&addr
+#define MCTP_I2C_SATMC_BUS I2C_BUS4
+#define MCTP_I2C_SATMC_ADDR 0x80 //8bit
+
 #endif
