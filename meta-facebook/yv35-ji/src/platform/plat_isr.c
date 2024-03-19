@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include "plat_isr.h"
 #include "plat_gpio.h"
+#include "power_status.h"
 #include "ipmi.h"
 #include "libutil.h"
 #include "logging/log.h"
@@ -105,6 +106,8 @@ void ISR_GPIOD0()
 void ISR_GPIOE0()
 {
 	isr_dbg_print(RUN_POWER_PG);
+	set_CPU_power_status(RUN_POWER_PG);
+	set_post_complete(false);
 }
 
 void ISR_GPIOE2()

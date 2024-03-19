@@ -21,6 +21,7 @@
 #include "plat_mctp.h"
 #include "plat_ssif.h"
 #include "util_worker.h"
+#include "power_status.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include "libutil.h"
@@ -61,6 +62,8 @@ void pal_device_init()
 void pal_set_sys_status()
 {
 	set_sys_ready_pin(BIC_READY);
+	set_CPU_power_status(RUN_POWER_PG);
+	set_post_complete(false);
 }
 
 #define DEF_PROJ_GPIO_PRIORITY 78
