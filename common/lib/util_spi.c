@@ -61,19 +61,19 @@ static int do_erase_write_verify(const struct device *flash_device, uint32_t op_
 		LOG_ERR("Failed to erase %u.", op_addr);
 		goto end;
 	}
-k_msleep(10);
+
 	ret = flash_write(flash_device, op_addr, write_buf, erase_sz);
 	if (ret != 0) {
 		LOG_ERR("Failed to write %u.", op_addr);
 		goto end;
 	}
-k_msleep(10);
+
 	ret = flash_read(flash_device, op_addr, read_back_buf, erase_sz);
 	if (ret != 0) {
 		LOG_ERR("Failed to read %u.", op_addr);
 		goto end;
 	}
-k_msleep(10);
+
 	if (memcmp(write_buf, read_back_buf, erase_sz) != 0) {
 		ret = -EINVAL;
 		LOG_ERR("Failed to write flash at 0x%x.", op_addr);
