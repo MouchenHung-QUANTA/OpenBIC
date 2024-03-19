@@ -44,8 +44,6 @@ LOG_MODULE_REGISTER(ssif);
 #define SSIF_STATUS_CHECK_PER_MS 100
 #define SSIF_TIMEOUT_MS 5000 // i2c bus drop off maximum time
 
-#define SSIF_RSP_PEC_EN 0
-
 ssif_dev *ssif;
 static uint8_t ssif_channel_cnt = 0;
 
@@ -134,6 +132,11 @@ void ssif_error_record(uint8_t channel, ssif_err_status_t errcode)
 }
 
 __weak void pal_ssif_alert_trigger(uint8_t status)
+{
+	return;
+}
+
+__weak void pal_bios_post_complete()
 {
 	return;
 }
@@ -252,7 +255,8 @@ static bool ssif_status_check(ssif_dev *ssif_inst, uint8_t smb_cmd)
 	switch (smb_cmd) {
 	case SSIF_WR_SINGLE:
 	case SSIF_WR_MULTI_START:
-		if (ssif_inst->cur_status != SSIF_STATUS_WAIT_FOR_WR_START)
+		if (ssif_inst->cur_status != SSIF_STATUS_WAIT_FOR_WR_START &&
+			ssif_inst->cur_status != SSIF_STATUS_WAIT_FOR_RD_START)
 			goto error;
 		if (smb_cmd == SSIF_WR_SINGLE)
 			ssif_state_machine(ssif_inst, SSIF_STATUS_WR_SINGLE_START);
@@ -373,6 +377,11 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 				if (ret == -1) {
 					LOG_ERR("Record bios fw version fail");
 				}
+			}
+
+			if ((ssif_inst->current_ipmi_msg.buffer.netfn == NETFN_OEM_REQ) && 
+				(ssif_inst->current_ipmi_msg.buffer.cmd == CMD_OEM_POST_END)) {
+				pal_bios_post_complete();
 			}
 
 			do {
@@ -507,11 +516,11 @@ exit:
 			wdata[0] = wdata_len;
 			wdata_len++;
 
-			if (SSIF_RSP_PEC_EN == 1) {
-				wdata[wdata_len + 1] = ssif_pec_get(ssif_inst->addr, smb_cmd, wdata,
-								    wdata_len + 1);
+#ifdef ENABLE_SSIF_RSP_PEC
+				wdata[wdata_len] = ssif_pec_get(ssif_inst->addr, smb_cmd, wdata,
+								    wdata_len);
 				wdata_len++;
-			}
+#endif
 
 			LOG_DBG("SSIF[%d] write RSP data:", ssif_inst->index);
 			LOG_HEXDUMP_DBG(wdata, wdata_len, "");
