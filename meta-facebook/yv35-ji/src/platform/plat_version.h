@@ -21,7 +21,7 @@
 
 #define PLATFORM_NAME "Yosemite V3.5"
 #define PROJECT_NAME "Java Island"
-#define PROJECT_STAGE POC
+#define PROJECT_STAGE EVT
 
 #define BOARD_ID 0x0A /* same with sign tool table */
 #define DEVICE_ID 0x00
@@ -37,7 +37,7 @@
 
 #define BIC_FW_YEAR_MSB 0x20
 #define BIC_FW_YEAR_LSB 0x24
-#define BIC_FW_WEEK 0x10
+#define BIC_FW_WEEK 0x12
 #define BIC_FW_VER 0x01
 #define BIC_FW_platform_0 0x6A // char: j
 #define BIC_FW_platform_1 0x69 // char: i
