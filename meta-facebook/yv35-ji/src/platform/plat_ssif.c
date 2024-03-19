@@ -19,6 +19,8 @@
 #include "plat_ssif.h"
 #include "plat_i2c.h"
 #include "plat_gpio.h"
+#include "plat_mctp.h"
+#include "power_status.h"
 #include "ssif.h"
 
 LOG_MODULE_REGISTER(plat_ssif);
@@ -39,4 +41,12 @@ void ssif_init(void)
 
 	if (ssif_inst_get_by_bus(SSIF_I2C_BUS))
 		LOG_WRN("SSIF ready!");
+}
+
+K_TIMER_DEFINE(send_cmd_timer, send_cmd_to_dev, NULL);
+
+void pal_bios_post_complete()
+{
+	set_post_complete(true);
+	k_timer_start(&send_cmd_timer, K_MSEC(3000), K_NO_WAIT);
 }
