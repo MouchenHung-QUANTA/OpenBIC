@@ -18,6 +18,7 @@
 #define PLAT_HOOK_H
 
 #include "sensor.h"
+#include "plat_def.h"
 
 /**************************************************************************************************
  * INIT ARGS
@@ -25,6 +26,9 @@
 extern adc_asd_init_arg ast_adc_init_args[];
 extern mp5990_init_arg mp5990_init_args[];
 extern ina230_init_arg ina230_init_args[];
+#ifdef ENABLE_NVIDIA
+extern nv_satmc_init_arg satmc_init_args[];
+#endif
 
 /**************************************************************************************************
  *  PRE-HOOK/POST-HOOK ARGS

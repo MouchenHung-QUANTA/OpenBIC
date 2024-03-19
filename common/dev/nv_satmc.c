@@ -31,21 +31,21 @@
 LOG_MODULE_REGISTER(nv_satmc);
 
 struct nv_satmc_sensor_parm satmc_sensor_cfg_list[] = {
-	{NV_SATMC_SENSOR_NUM_PWR_VDD_CPU, {0x3f800000, 0, 0xfd}},
-	{NV_SATMC_SENSOR_NUM_VOL_VDD_CPU, {0x3f800000, 0, 0xfd}},
-	{NV_SATMC_SENSOR_NUM_PWR_VDD_SOC, {0x3f800000, 0, 0xfd}},
-	{NV_SATMC_SENSOR_NUM_VOL_VDD_SOC, {0x3f800000, 0, 0xfd}},
-	{NV_SATMC_SENSOR_NUM_PWR_MODULE, {0x3f800000, 0, 0xfd}},
-	{NV_SATMC_SENSOR_NUM_ENG_MODULE, {0x3f800000, 0, 0}},
-	{NV_SATMC_SENSOR_NUM_PWR_GRACE, {0x3f800000, 0, 0xfd}},
-	{NV_SATMC_SENSOR_NUM_ENG_GRACE, {0x3f800000, 0, 0}},
-	{NV_SATMC_SENSOR_NUM_PWR_TOTAL_MODULE, {0x3f800000, 0, 0xfd}},
-	{NV_SATMC_SENSOR_NUM_ENG_TOTAL_MODULE, {0x3f800000, 0, 0}},
-	{NV_SATMC_SENSOR_NUM_CNT_PAGE_RETIRE, {0x3f800000, 0, 0}},
-	{NV_SATMC_SENSOR_NUM_TMP_GRACE, {0x3f800000, 0, 0xfd}},
-	{NV_SATMC_SENSOR_NUM_TMP_GRACE_LIMIT, {0x3f800000, 0, 0xfd}},
-	{NV_SATMC_SENSOR_NUM_FRQ_MEMORY, {0x3f800000, 0, 0x3}},
-	{NV_SATMC_SENSOR_NUM_FRQ_MAX_CPU, {0x3f800000, 0, 0}},
+	{NV_SATMC_SENSOR_NUM_PWR_VDD_CPU, {1, 0, -3}},
+	{NV_SATMC_SENSOR_NUM_VOL_VDD_CPU, {1, 0, -3}},
+	{NV_SATMC_SENSOR_NUM_PWR_VDD_SOC, {1, 0, -3}},
+	{NV_SATMC_SENSOR_NUM_VOL_VDD_SOC, {1, 0, -3}},
+	{NV_SATMC_SENSOR_NUM_PWR_MODULE, {1, 0, -3}},
+	{NV_SATMC_SENSOR_NUM_ENG_MODULE, {1, 0, 0}},
+	{NV_SATMC_SENSOR_NUM_PWR_GRACE, {1, 0, -3}},
+	{NV_SATMC_SENSOR_NUM_ENG_GRACE, {1, 0, 0}},
+	{NV_SATMC_SENSOR_NUM_PWR_TOTAL_MODULE, {1, 0, -3}},
+	{NV_SATMC_SENSOR_NUM_ENG_TOTAL_MODULE, {1, 0, 0}},
+	{NV_SATMC_SENSOR_NUM_CNT_PAGE_RETIRE, {1, 0, 0}},
+	{NV_SATMC_SENSOR_NUM_TMP_GRACE, {1, 0, -3}},
+	{NV_SATMC_SENSOR_NUM_TMP_GRACE_LIMIT, {1, 0, -3}},
+	{NV_SATMC_SENSOR_NUM_FRQ_MEMORY, {1, 0, 3}},
+	{NV_SATMC_SENSOR_NUM_FRQ_MAX_CPU, {1, 0, 0}},
 };
 
 const int SATMC_SENSOR_CFG_LIST_SIZE = ARRAY_SIZE(satmc_sensor_cfg_list);
@@ -90,7 +90,7 @@ uint8_t nv_satmc_read(sensor_cfg *cfg, int *reading)
 		return SENSOR_FAIL_TO_ACCESS;
 	}
 
-	uint8_t resp_buf[10] = { 0 };
+	uint8_t resp_buf[15] = { 0 };
 	uint8_t req_len = sizeof(struct pldm_get_sensor_reading_req);
 	struct pldm_get_sensor_reading_req req = { 0 };
 	req.sensor_id = init_arg->sensor_id;
@@ -126,11 +126,11 @@ uint8_t nv_satmc_read(sensor_cfg *cfg, int *reading)
 	float val =
 	pldm_sensor_cal(res->present_reading, resp_len - 7, res->sensor_data_size, init_arg->parm);
 
-	LOG_INF("SatMC sensor#0x%04x --> %.02f", init_arg->sensor_id, val);
-
 	sensor_val *sval = (sensor_val *)reading;
 	sval->integer = (int)val & 0xFFFF;
 	sval->fraction = (val - sval->integer) * 1000;
+
+	LOG_DBG("SatMC sensor #0x%04x --> %d.%03d", init_arg->sensor_id, sval->integer, sval->fraction);
 
 	return SENSOR_READ_SUCCESS;
 }

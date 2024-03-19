@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "sensor.h"
+#include "plat_def.h"
 #include "plat_i2c.h"
 #include "plat_gpio.h"
 #include "plat_hook.h"
@@ -26,6 +27,10 @@
 #include "libipmi.h"
 #include "ipmi.h"
 #include "power_status.h"
+#ifdef ENABLE_NVIDIA
+#include "nvidia.h"
+#include "plat_mctp.h"
+#endif
 
 #define ADJUST_MP5990_CURRENT(x) (x)
 #define ADJUST_MP5990_POWER(x) (x)
@@ -62,6 +67,17 @@ ina230_init_arg ina230_init_args[] = {
 		.alert_value = 13.2, // Unit: Watt, // Unit: Watt
 		.i_max = 16.384 },
 };
+
+#ifdef ENABLE_NVIDIA
+nv_satmc_init_arg satmc_init_args[] = {
+	[0] = { .is_init = false, .endpoint = MCTP_EID_SATMC, .sensor_id = NV_SATMC_SENSOR_NUM_TMP_GRACE },
+	[1] = { .is_init = false, .endpoint = MCTP_EID_SATMC, .sensor_id = NV_SATMC_SENSOR_NUM_PWR_VDD_CPU },
+	[2] = { .is_init = false, .endpoint = MCTP_EID_SATMC, .sensor_id = NV_SATMC_SENSOR_NUM_VOL_VDD_CPU },
+	[3] = { .is_init = false, .endpoint = MCTP_EID_SATMC, .sensor_id = NV_SATMC_SENSOR_NUM_PWR_VDD_SOC },
+	[4] = { .is_init = false, .endpoint = MCTP_EID_SATMC, .sensor_id = NV_SATMC_SENSOR_NUM_VOL_VDD_SOC },
+	[5] = { .is_init = false, .endpoint = MCTP_EID_SATMC, .sensor_id = NV_SATMC_SENSOR_NUM_PWR_GRACE },
+};
+#endif
 
 /**************************************************************************************************
  *  PRE-HOOK/POST-HOOK ARGS

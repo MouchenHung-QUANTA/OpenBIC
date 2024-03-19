@@ -199,8 +199,8 @@ enum pldm_entity_types {
 
 /* Y = (mX + b) * 10^r */
 typedef struct _pldm_sensor_pdr_parm {
-	float resolution; // from PDR (m)
-	float ofst; // from PDR (b)
+	int64_t resolution; // from PDR (m)
+	int64_t ofst; // from PDR (b)
 	int8_t unit_modifier; // from PDR (r)
 } pldm_sensor_pdr_parm;
 
