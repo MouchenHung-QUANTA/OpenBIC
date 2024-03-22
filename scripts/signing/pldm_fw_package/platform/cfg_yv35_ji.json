@@ -35,6 +35,27 @@
             "Device" : "LCMXO3-6900C",
             "CheckSum" : "n",
             "pkg_suffix" : ".pldm"
+        },
+        {
+            "CompID" : [3],
+            "Vendor" : "mps",
+            "Device" : "mpq8746",
+            "CheckSum" : "y",
+            "pkg_suffix" : ".pldm"
+        },
+        {
+            "CompID" : [4],
+            "Vendor" : "mps",
+            "Device" : "mp2898",
+            "CheckSum" : "y",
+            "pkg_suffix" : ".pldm"
+        },
+        {
+            "CompID" : [5],
+            "Vendor" : "mps",
+            "Device" : "mp2894",
+            "CheckSum" : "y",
+            "pkg_suffix" : ".pldm"
         }
     ]
 }
