@@ -212,7 +212,7 @@ SDR_Full_sensor plat_sdr_table[] = {
 		0x00, // reserved
 		0x00, // OEM
 		IPMI_SDR_STRING_TYPE_ASCII_8, // ID len, should be same as "size of struct"
-		"FIO_FRONT_TEMP_C",
+		"MB_FIO_FRONT_TEMP_C",
 	},
 #ifdef ENABLE_NVIDIA
 	{
