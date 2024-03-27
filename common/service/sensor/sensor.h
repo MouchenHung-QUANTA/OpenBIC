@@ -698,7 +698,8 @@ typedef struct _nv_satmc_init_arg {
 	bool is_init;
 	uint8_t endpoint;
 	uint16_t sensor_id;
-	pldm_sensor_pdr_parm parm;
+	uint8_t state_sensor_idx; //only used for state sensor
+	pldm_sensor_pdr_parm parm; //only used for numeric sensor
 } nv_satmc_init_arg;
 
 extern bool enable_sensor_poll_thread;

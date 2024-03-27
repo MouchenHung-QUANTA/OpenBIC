@@ -87,6 +87,11 @@
 #define SENSOR_NUM_PWR_CPUVDD 0x34
 #define SENSOR_NUM_PWR_SOCVDD 0x35
 
+/* SENSOR NUMBER(1 based) - state */
+#define SENSOR_NUM_OTH_CPU_THROTTLE 0x40
+#define SENSOR_NUM_OTH_POWER_BREAK 0x41
+#define SENSOR_NUM_OTH_SPARE_CHANNEL 0x42
+
 uint8_t plat_get_config_size();
 void load_sensor_config(void);
 

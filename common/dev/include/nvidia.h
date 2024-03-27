@@ -24,7 +24,7 @@
 #include "pldm_monitor.h"
 
 enum nv_satmc_sensor_num_table {
-	/* DIMM sensor 1 ~ 70 */
+	/* numeric sensor */
 	NV_SATMC_SENSOR_NUM_PWR_VDD_CPU = 0x0010,
 	NV_SATMC_SENSOR_NUM_VOL_VDD_CPU,
 	NV_SATMC_SENSOR_NUM_PWR_VDD_SOC = 0x0020,
@@ -40,6 +40,11 @@ enum nv_satmc_sensor_num_table {
 	NV_SATMC_SENSOR_NUM_TMP_GRACE_LIMIT,
 	NV_SATMC_SENSOR_NUM_FRQ_MEMORY = 0x00B0,
 	NV_SATMC_SENSOR_NUM_FRQ_MAX_CPU = 0x00C0,
+
+	/* state sensor */
+	NV_SATMC_SENSOR_NUM_CPU_THROT_STATE = 0x0210,
+	NV_SATMC_SENSOR_NUM_POWER_BREAK = 0x0240,
+	NV_SATMC_SENSOR_NUM_SPARE_CH_PRESENCE = 0x0250,
 };
 
 /* Y = (mX + b) * 10^r */

@@ -73,6 +73,58 @@ uint8_t nv_satmc_read(sensor_cfg *cfg, int *reading)
 
 	nv_satmc_init_arg *init_arg = (nv_satmc_init_arg *)cfg->init_args;
 
+	sensor_val *sval = (sensor_val *)reading;
+	uint8_t resp_buf[256] = { 0 };
+	uint8_t req_len = 0;
+	float val = 0;
+
+	mctp *mctp_inst = NULL;
+	mctp_ext_params ext_params = { 0 };
+	if (get_mctp_info_by_eid(init_arg->endpoint, &mctp_inst, &ext_params) == false) {
+		LOG_ERR("Failed to get mctp info by eid 0x%x", init_arg->endpoint);
+		return SENSOR_FAIL_TO_ACCESS;
+	}
+
+	if ((init_arg->sensor_id == NV_SATMC_SENSOR_NUM_CPU_THROT_STATE) || 
+		(init_arg->sensor_id == NV_SATMC_SENSOR_NUM_POWER_BREAK) ||
+		(init_arg->sensor_id == NV_SATMC_SENSOR_NUM_SPARE_CH_PRESENCE)) {
+		req_len = sizeof(struct pldm_get_state_sensor_reading_req);
+		struct pldm_get_state_sensor_reading_req req = {0};
+		req.sensor_id = init_arg->sensor_id;
+
+		uint16_t resp_len =
+		pldm_platform_monitor_read(mctp_inst, ext_params,
+					   PLDM_MONITOR_CMD_CODE_GET_STATE_SENSOR_READING,
+					   (uint8_t *)&req, req_len, resp_buf, sizeof(resp_buf));
+
+		if (resp_len == 0) {
+			LOG_ERR("Failed to get SatMC sensor #0x%x reading", init_arg->sensor_id);
+			return SENSOR_FAIL_TO_ACCESS;
+		}
+
+		struct pldm_get_state_sensor_reading_resp *res = (struct pldm_get_state_sensor_reading_resp *)resp_buf;
+		
+		if (res->completion_code != PLDM_SUCCESS) {
+			LOG_ERR("Get SatMC sensor #%04x with bad cc 0x%x", init_arg->sensor_id,
+				res->completion_code);
+			return SENSOR_FAIL_TO_ACCESS;
+		}
+
+		if (init_arg->state_sensor_idx >= res->composite_sensor_count) {
+			LOG_ERR("Failed to get SatMC sensor #0x%x state with index %d", init_arg->sensor_id, init_arg->state_sensor_idx);
+			return SENSOR_UNSPECIFIED_ERROR;
+		}
+
+		if (res->field[init_arg->state_sensor_idx].sensor_op_state != PLDM_SENSOR_ENABLED) {
+			LOG_WRN("SatMC sensor #%04x in abnormal op state 0x%x", init_arg->sensor_id,
+				res->field[init_arg->state_sensor_idx].sensor_op_state);
+			return SENSOR_NOT_ACCESSIBLE;
+		}
+
+		val = (float)res->field[init_arg->state_sensor_idx].present_state;
+		goto exit;
+	}
+
 	if (init_arg->is_init == false) {
 		pldm_sensor_pdr_parm *parm_cfg = find_sensor_parm_by_id(init_arg->sensor_id);
 		if (!parm_cfg) {
@@ -83,15 +135,7 @@ uint8_t nv_satmc_read(sensor_cfg *cfg, int *reading)
 		init_arg->is_init = true;
 	}
 
-	mctp *mctp_inst = NULL;
-	mctp_ext_params ext_params = { 0 };
-	if (get_mctp_info_by_eid(init_arg->endpoint, &mctp_inst, &ext_params) == false) {
-		LOG_ERR("Failed to get mctp info by eid 0x%x", init_arg->endpoint);
-		return SENSOR_FAIL_TO_ACCESS;
-	}
-
-	uint8_t resp_buf[15] = { 0 };
-	uint8_t req_len = sizeof(struct pldm_get_sensor_reading_req);
+	req_len = sizeof(struct pldm_get_sensor_reading_req);
 	struct pldm_get_sensor_reading_req req = { 0 };
 	req.sensor_id = init_arg->sensor_id;
 	req.rearm_event_state = 0;
@@ -123,10 +167,9 @@ uint8_t nv_satmc_read(sensor_cfg *cfg, int *reading)
 	LOG_DBG("SatMC sensor#0x%04x", init_arg->sensor_id);
 	LOG_HEXDUMP_DBG(res->present_reading, resp_len - 7, "");
 
-	float val =
-	pldm_sensor_cal(res->present_reading, resp_len - 7, res->sensor_data_size, init_arg->parm);
+	val = pldm_sensor_cal(res->present_reading, resp_len - 7, res->sensor_data_size, init_arg->parm);
 
-	sensor_val *sval = (sensor_val *)reading;
+exit:
 	sval->integer = (int)val & 0xFFFF;
 	sval->fraction = (val - sval->integer) * 1000;
 
