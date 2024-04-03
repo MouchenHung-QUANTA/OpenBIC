@@ -188,6 +188,10 @@ void pal_extend_sensor_config()
 		/* MP5990 can read HSC temperature */
 		add_sensor_config(mp5990_temp_sensor_config_table[0]);
 		break;
+	case HSC_MODULE_RS31380R:
+		LOG_INF("HSC vendor: RS31380R");
+		LOG_WRN("RS31380R HSC module is not supported yet");
+		break;
 	default:
 		LOG_ERR("Unsupported HSC module, HSC module: 0x%x", hsc_module);
 		break;
@@ -209,6 +213,10 @@ uint8_t pal_get_extend_sensor_config()
 		extend_sensor_config_size += ARRAY_SIZE(mp5990_sensor_config_table);
 		/* MP5990 can read HSC temperature */
 		extend_sensor_config_size += ARRAY_SIZE(mp5990_temp_sensor_config_table);
+		break;
+	case HSC_MODULE_RS31380R:
+		LOG_INF("HSC vendor: RS31380R");
+		LOG_WRN("RS31380R HSC module is not supported yet");
 		break;
 	default:
 		LOG_ERR("Unsupported HSC module, HSC module: 0x%x", hsc_module);

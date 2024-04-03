@@ -84,10 +84,20 @@ enum ADC_CHANNEL {
 
 enum HSC_MODULE {
 	HSC_MODULE_MP5990,
-	HSC_MODULE_ADM1278,
-	HSC_MODULE_LTC4282,
-	HSC_MODULE_LTC4286 = 0x04,
+	HSC_MODULE_RS31380R,
 	HSC_MODULE_UNKNOWN = 0xFF,
+};
+
+enum RETIMER_MODULE {
+	RETIMER_MODULE_PT4080L,
+	RETIMER_MODULE_DS160PT801,
+	RETIMER_MODULE_UNKNOWN = 0xFF,
+};
+
+enum OTHER_MODULE {
+	OTH_MODULE_PRIMARY,
+	OTH_MODULE_SECOND,
+	OTH_MODULE_UNKNOWN = 0xFF,
 };
 
 enum BIC_CARD_PRESENT {
@@ -109,6 +119,8 @@ CARD_STATUS get_1ou_status();
 CARD_STATUS get_2ou_status();
 uint8_t get_board_revision();
 uint8_t get_hsc_module();
+uint8_t get_retimer_module();
+uint8_t get_oth_module();
 bool get_adc_voltage(int channel, float *voltage);
 void init_hsc_module(uint8_t board_revision);
 void init_platform_config();
