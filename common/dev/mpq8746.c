@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <logging/log.h>
+#include "mpq8746.h"
 #include "sensor.h"
 #include "hal_i2c.h"
 #include "pmbus.h"
@@ -373,13 +374,24 @@ bool mpq8746_fwupdate(uint8_t bus, uint8_t addr, uint8_t *img_buff, uint32_t img
 		goto exit;
 	}
 
+	k_msleep(1000);
+
+	/* Step4. After update */
+	uint16_t checksum = 0;
+	if (mpq8746_get_checksum(bus, addr, &checksum) == false) {
+		LOG_ERR("Failed to get USER checksum!");
+		goto exit;
+	}
+
+	LOG_INF("User checksum: 0x%x", checksum);
+
 	ret = true;
 exit:
 	SAFE_FREE(dev_cfg.pdata);
 	return ret;
 }
 
-bool mpq8746_get_checksum(uint8_t bus, uint8_t addr, uint32_t *checksum)
+bool mpq8746_get_checksum(uint8_t bus, uint8_t addr, uint16_t *checksum)
 {
 	CHECK_NULL_ARG_WITH_RETURN(checksum, false);
 

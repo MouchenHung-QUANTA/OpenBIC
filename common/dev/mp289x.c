@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <logging/log.h>
+#include "mp289x.h"
 #include "sensor.h"
 #include "hal_i2c.h"
 #include "pmbus.h"
@@ -89,14 +90,6 @@ enum {
 	ATE_REG_DATA_HEX,
 	ATE_REG_DATA_DEC,
 	ATE_COL_MAX,
-};
-
-enum {
-	MODE_USR,
-	MODE_MULTI_CFG_12,
-	MODE_MULTI_CFG_34,
-	MODE_MULTI_CFG_56,
-	MODE_MULTI_CFG_ALL,
 };
 
 struct mp289x_data {
@@ -187,7 +180,7 @@ static uint8_t mp289x_check_err_status(uint8_t bus, uint8_t addr)
 	return i2c_msg.data[0];
 }
 
-static bool mp289x_crc_get(uint8_t bus, uint8_t addr, uint8_t mode, uint16_t *crc)
+bool mp289x_crc_get(uint8_t bus, uint8_t addr, uint8_t mode, uint16_t *crc)
 {
 	CHECK_NULL_ARG_WITH_RETURN(crc, false);
 
@@ -237,6 +230,8 @@ static bool mp289x_crc_get(uint8_t bus, uint8_t addr, uint8_t mode, uint16_t *cr
 		crc_lo_cmd_code = VR_REG_CRC_GP56_LO;
 		break;
 	default:
+		LOG_ERR("Invalid mode %d select", mode);
+		return false;
 		break;
 	}
 
@@ -603,6 +598,8 @@ bool mp289x_fwupdate(uint8_t bus, uint8_t addr, uint8_t *img_buff, uint32_t img_
 				last_page = cur_data->page;
 			}
 
+			LOG_DBG("USER page 0x%x wr 0x%x:", cur_data->page, cur_data->reg_addr);
+			LOG_HEXDUMP_DBG(cur_data->reg_data, cur_data->reg_len, "");
 			if (mp289x_write_data(bus, addr, cur_data) == false)
 				goto exit;
 
@@ -702,6 +699,8 @@ bool mp289x_fwupdate(uint8_t bus, uint8_t addr, uint8_t *img_buff, uint32_t img_
 			last_page = cur_data->page;
 		}
 
+		LOG_DBG("MULTI-CFG group %d page 0x%x wr 0x%x:", group_idx, cur_data->page, cur_data->reg_addr);
+		LOG_HEXDUMP_DBG(cur_data->reg_data, cur_data->reg_len, "");
 		if (mp289x_write_data(bus, addr, cur_data) == false)
 			goto exit;
 
