@@ -33,10 +33,11 @@
 #include "plat_sensor_table.h"
 #include "plat_class.h"
 
+#include "mpq8746.h"
+#include "mp289x.h"
+
 LOG_MODULE_REGISTER(plat_fwupdate);
 
-static uint8_t pldm_pre_cpld_update(void *fw_update_param);
-static bool get_cpld_user_code(void *info_p, uint8_t *buf, uint8_t *len);
 static uint8_t pldm_pre_vr_update(void *fw_update_param);
 static uint8_t pldm_post_vr_update(void *fw_update_param);
 static bool get_vr_fw_version(void *info_p, uint8_t *buf, uint8_t *len);
@@ -55,19 +56,6 @@ pldm_fw_update_info_t PLDMUPDATE_FW_CONFIG_TABLE[] = {
 		.activate_method = COMP_ACT_SELF,
 		.self_act_func = pldm_bic_activate,
 		.get_fw_version_fn = NULL,
-	},
-	{
-		.enable = true,
-		.comp_classification = COMP_CLASS_TYPE_DOWNSTREAM,
-		.comp_identifier = JI_COMPNT_CPLD,
-		.comp_classification_index = 0x00,
-		.pre_update_func = pldm_pre_cpld_update,
-		.update_func = pldm_cpld_update,
-		.pos_update_func = NULL,
-		.inf = COMP_UPDATE_VIA_I2C,
-		.activate_method = COMP_ACT_AC_PWR_CYCLE,
-		.self_act_func = NULL,
-		.get_fw_version_fn = get_cpld_user_code,
 	},
 	{
 		.enable = true,
@@ -125,41 +113,6 @@ void load_pldmupdate_comp_config(void)
 	}
 
 	memcpy(comp_config, PLDMUPDATE_FW_CONFIG_TABLE, sizeof(PLDMUPDATE_FW_CONFIG_TABLE));
-}
-
-static uint8_t pldm_pre_cpld_update(void *fw_update_param)
-{
-	CHECK_NULL_ARG_WITH_RETURN(fw_update_param, 1);
-
-	pldm_fw_update_param_t *p = (pldm_fw_update_param_t *)fw_update_param;
-
-	if (p->inf == COMP_UPDATE_VIA_I2C) {
-		p->bus = I2C_BUS1;
-		p->addr = CPLD_I2C_ADDR;
-	}
-
-	return 0;
-}
-
-static bool get_cpld_user_code(void *info_p, uint8_t *buf, uint8_t *len)
-{
-	CHECK_NULL_ARG_WITH_RETURN(buf, false);
-	CHECK_NULL_ARG_WITH_RETURN(len, false);
-	ARG_UNUSED(info_p);
-
-	uint8_t tmp_buf[4] = { 0 };
-	uint32_t read_usrcode = 0;
-
-	bool ret = cpld_i2c_get_usercode(I2C_BUS1, CPLD_I2C_ADDR, &read_usrcode);
-	if (ret == false) {
-		LOG_ERR("Fail to get CPLD usercode");
-		return false;
-	}
-
-	memcpy(tmp_buf, &read_usrcode, sizeof(read_usrcode));
-	*len = bin2hex(tmp_buf, 4, buf, 8);
-
-	return true;
 }
 
 /* pldm pre-update func */
@@ -227,7 +180,131 @@ static bool get_vr_fw_version(void *info_p, uint8_t *buf, uint8_t *len)
 	CHECK_NULL_ARG_WITH_RETURN(buf, false);
 	CHECK_NULL_ARG_WITH_RETURN(len, false);
 
-	LOG_WRN("Get VR FW version is not supported yet");
+	pldm_fw_update_info_t *p = (pldm_fw_update_info_t *)info_p;
 
-	return false;
+	if ((p->comp_identifier < JI_COMPNT_CPUDVDD) || (p->comp_identifier > JI_COMPNT_SOCVDD)) {
+		LOG_ERR("Unsupport VR component ID(%d)", p->comp_identifier);
+		return false;
+	}
+
+	bool ret = false;
+
+	gpio_set(BIC_CPLD_VRD_MUX_SEL, GPIO_LOW);
+
+	uint8_t version[15] = {0};
+	uint16_t tmp_crc_16 = 0;
+	uint16_t ver_len = 0;
+	uint16_t remain = 0xFFFF;
+	uint8_t bus = 0;
+	uint8_t addr = 0;
+
+	uint8_t source = get_oth_module();
+	if (source != OTH_MODULE_PRIMARY) {
+		LOG_WRN("Given source %d is not supported yet", source);
+		goto post_hook_and_ret;
+	}
+
+	switch (p->comp_identifier) {
+	case JI_COMPNT_CPUDVDD:
+		bus = CPUDVDD_I2C_BUS;
+		addr = CPUDVDD_I2C_ADDR >> 1;
+		if (!mpq8746_get_checksum(bus, addr, &tmp_crc_16)) {
+			LOG_ERR("Component %d version reading failed", p->comp_identifier);
+			goto post_hook_and_ret;
+		}
+		tmp_crc_16 = sys_cpu_to_be16(tmp_crc_16);
+		memcpy(version, &tmp_crc_16, sizeof(tmp_crc_16));
+		ver_len = 2;
+		break;
+	case JI_COMPNT_CPUVDD:
+	case JI_COMPNT_SOCVDD:
+		if (p->comp_identifier == JI_COMPNT_CPUVDD) {
+			bus = CPUVDD_I2C_BUS;
+			addr = CPUVDD_I2C_ADDR >> 1;
+		} else {
+			bus = SOCVDD_I2C_BUS;
+			addr = SOCVDD_I2C_ADDR >> 1;
+		}
+		if (!mp289x_crc_get(bus, addr, MODE_USR, &tmp_crc_16)) {
+			LOG_ERR("Component %d version reading failed", p->comp_identifier);
+			goto post_hook_and_ret;
+		}
+		tmp_crc_16 = sys_cpu_to_be16(tmp_crc_16);
+		memcpy(version, &tmp_crc_16, sizeof(tmp_crc_16));
+		ver_len += 2;
+
+		if (!mp289x_crc_get(bus, addr, MODE_MULTI_CFG_12, &tmp_crc_16)) {
+			LOG_ERR("Component %d version reading failed", p->comp_identifier);
+			goto post_hook_and_ret;
+		}
+		tmp_crc_16 = sys_cpu_to_be16(tmp_crc_16);
+		memcpy(&version[ver_len], &tmp_crc_16, sizeof(tmp_crc_16));
+		ver_len += 2;
+
+		if (!mp289x_crc_get(bus, addr, MODE_MULTI_CFG_34, &tmp_crc_16)) {
+			LOG_ERR("Component %d version reading failed", p->comp_identifier);
+			goto post_hook_and_ret;
+		}
+		tmp_crc_16 = sys_cpu_to_be16(tmp_crc_16);
+		memcpy(&version[ver_len], &tmp_crc_16, sizeof(tmp_crc_16));
+		ver_len += 2;
+
+		if (!mp289x_crc_get(bus, addr, MODE_MULTI_CFG_56, &tmp_crc_16)) {
+			LOG_ERR("Component %d version reading failed", p->comp_identifier);
+			goto post_hook_and_ret;
+		}
+		tmp_crc_16 = sys_cpu_to_be16(tmp_crc_16);
+		memcpy(&version[ver_len], &tmp_crc_16, sizeof(tmp_crc_16));
+		ver_len += 2;
+		break;
+	default:
+		LOG_ERR("Unsupport Component id(%d)", p->comp_identifier);
+		goto post_hook_and_ret;
+	}
+
+	const char *remain_str_p = ", Remaining Write: ";
+	uint8_t *buf_p = buf;
+	const uint8_t *vr_name_p = "MPS ";
+	*len = 0;
+
+	if (!vr_name_p) {
+		LOG_ERR("The pointer of VR string name is NULL");
+		goto post_hook_and_ret;
+	}
+
+	memcpy(buf_p, vr_name_p, strlen(vr_name_p));
+	buf_p += strlen(vr_name_p);
+
+	*len += bin2hex((uint8_t *)&version, ver_len, buf_p, ver_len*2) + strlen(vr_name_p);
+	buf_p += ver_len*2;
+
+	if (remain != 0xFFFF) {
+		memcpy(buf_p, remain_str_p, strlen(remain_str_p));
+		buf_p += strlen(remain_str_p);
+		remain = (uint8_t)((remain % 10) | (remain / 10 << 4));
+		*len += bin2hex((uint8_t *)&remain, 1, buf_p, 2) + strlen(remain_str_p);
+		buf_p += 2;
+	}
+
+	LOG_HEXDUMP_INF(buf, *len, "VR version string");
+
+	ret = true;
+
+post_hook_and_ret:
+	gpio_set(BIC_CPLD_VRD_MUX_SEL, GPIO_HIGH);
+
+	return ret;
+}
+
+void clear_pending_version(uint8_t activate_method)
+{
+	if (!comp_config || !comp_config_count) {
+		LOG_ERR("Component configuration is empty");
+		return;
+	}
+
+	for (uint8_t i = 0; i < comp_config_count; i++) {
+		if (comp_config[i].activate_method == activate_method)
+			SAFE_FREE(comp_config[i].pending_version_p);
+	}
 }
