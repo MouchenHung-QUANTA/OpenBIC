@@ -47,6 +47,6 @@ K_TIMER_DEFINE(send_cmd_timer, send_cmd_to_dev, NULL);
 
 void pal_bios_post_complete()
 {
-	set_post_complete(true);
 	k_timer_start(&send_cmd_timer, K_MSEC(3000), K_NO_WAIT);
+	set_post_complete(true);
 }

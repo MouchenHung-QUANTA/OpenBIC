@@ -34,7 +34,7 @@ mctp_port plat_mctp_port[] = {
 	{ .channel_target = PLDM,
 	  .medium_type = MCTP_MEDIUM_TYPE_SMBUS,
 	  .conf.smbus_conf.bus = MCTP_I2C_SATMC_BUS,
-	  .conf.smbus_conf.addr = MCTP_I2C_SATMC_ADDR },
+	  .conf.smbus_conf.addr = MCTP_I2C_BIC_ADDR },
 };
 
 mctp_route_entry mctp_route_tbl[] = {
