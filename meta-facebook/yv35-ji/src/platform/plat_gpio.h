@@ -61,7 +61,7 @@
 	gpio_name_to_num(Reserve_GPIOD2) \
 	gpio_name_to_num(BMC_READY) \
 	gpio_name_to_num(BIC_READY) \
-	gpio_name_to_num(PWR_BRAKE_CPU1_L) \
+	gpio_name_to_num(PWR_BRAKE_CPU1) \
 	gpio_name_to_num(Reserve_GPIOD6) \
 	gpio_name_to_num(Reserve_GPIOD7)
 
