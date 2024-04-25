@@ -100,9 +100,12 @@ uint8_t FRU_read(EEPROM_ENTRY *entry)
 
 	memcpy(&entry->config, &fru_config[fru_index], sizeof(fru_config[fru_index]));
 
+	LOG_INF("[READ] FRU ID: %x, Offset: %x, Length: %x", entry->config.dev_id, entry->offset, entry->data_len);
 	if (!eeprom_read(entry)) {
 		return FRU_FAIL_TO_ACCESS;
 	}
+
+	LOG_HEXDUMP_WRN(entry->data, entry->data_len, "data:");
 
 	return FRU_READ_SUCCESS;
 }
@@ -134,7 +137,10 @@ uint8_t FRU_write(EEPROM_ENTRY *entry)
 
 	memcpy(&entry->config, &fru_config[fru_index], sizeof(fru_config[fru_index]));
 
+	LOG_INF("[WRITE] FRU ID: %x, Offset: %x, Length: %x", entry->config.dev_id, entry->offset, entry->data_len);
+	LOG_HEXDUMP_WRN(entry->data, entry->data_len, "data:");
 	if (!eeprom_write(entry)) {
+		LOG_ERR("eeprom_write fail");
 		return FRU_FAIL_TO_ACCESS;
 	}
 

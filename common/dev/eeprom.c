@@ -119,6 +119,7 @@ bool eeprom_read(EEPROM_ENTRY *entry)
 			memcpy(&entry->data, &msg.data, msg.rx_len);
 			break;
 		}
+		LOG_ERR("RETRY %d............", i);
 	}
 
 	if (entry->config.bus_mutex) {

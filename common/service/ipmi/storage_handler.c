@@ -89,6 +89,9 @@ __weak void STORAGE_READ_FRUID_DATA(ipmi_msg *msg)
 		return;
 	}
 
+	LOG_INF("Try to read FRU ID %xh, offset %xh, len %xh",
+		fru_entry.config.dev_id, fru_entry.offset, fru_entry.data_len);
+
 	status = FRU_read(&fru_entry);
 
 	msg->data_len = fru_entry.data_len + 1;
@@ -136,6 +139,10 @@ __weak void STORAGE_WRITE_FRUID_DATA(ipmi_msg *msg)
 		return;
 	}
 	memcpy(&fru_entry.data[0], &msg->data[3], fru_entry.data_len);
+
+	LOG_INF("Try to write FRU ID %xh, offset %xh, len %xh",
+		fru_entry.config.dev_id, fru_entry.offset, fru_entry.data_len);
+	LOG_HEXDUMP_INF(fru_entry.data, fru_entry.data_len, "data:");
 
 	msg->data[0] = msg->data_len - 3;
 	msg->data_len = 1;
