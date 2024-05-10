@@ -332,7 +332,8 @@ uint8_t pldm_retimer_update(void *fw_update_param)
 	}
 
 	if (!strncmp(p->comp_version_str, KEYWORD_RETIMER_PT5161L,
-		     ARRAY_SIZE(KEYWORD_RETIMER_PT5161L) - 1)) {
+		     ARRAY_SIZE(KEYWORD_RETIMER_PT5161L) - 1) || !strncmp(p->comp_version_str, KEYWORD_RETIMER_PT4080L,
+		     ARRAY_SIZE(KEYWORD_RETIMER_PT4080L) - 1)) {
 		ret = pcie_retimer_fw_update(&i2c_msg, p->data_ofs, p->data_len, p->data,
 					     update_flag);
 	} else {

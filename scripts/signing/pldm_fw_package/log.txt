@@ -1,0 +1,5 @@
+[2024/04/30 11:16:20] <inf> Start record log for script /usr/local/bin/mc_command/mcfwupdate
+ok: run: mctpd_3: (pid 17624) 329235s
+[2024/04/30 11:16:21] <inf> Start update!
+[2024/04/30 11:16:31] <inf> PASS!
+[2024/04/30 11:16:34] <inf> Stop record log for script /usr/local/bin/mc_command/mcfwupdate

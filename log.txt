@@ -1,0 +1,6 @@
+[2024/05/10 16:49:27] <inf> Start record log for script /usr/local/bin/mc_command/mcfwupdate
+ok: run: mctpd_3: (pid 6525) 10018s
+[2024/05/10 16:49:28] <inf> Start update!
+[2024/05/10 16:50:46] <err> Failed to update bic_rcvy!
+[2024/05/10 16:50:46] <inf> PASS!
+[2024/05/10 16:50:49] <inf> Stop record log for script /usr/local/bin/mc_command/mcfwupdate

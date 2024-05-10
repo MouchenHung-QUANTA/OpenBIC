@@ -1,0 +1,58 @@
+{
+    "PackageHeaderInformation": {
+        "PackageHeaderIdentifier": "1244D2648D7D4718A030FC8A56587D5A",
+        "PackageHeaderFormatVersion": 2,
+        "PackageReleaseDateTime": "10/05/2024 17:09:34",
+        "PackageVersionString": "json config lib - v1.0.0 - 2023/01/11"
+    },
+    "FirmwareDeviceIdentificationArea": [
+        {
+            "DeviceUpdateOptionFlags": [
+                0
+            ],
+            "ComponentImageSetVersionString": "PLDM_UPDATE_SUPPORTED_DEVICE",
+            "ApplicableComponents": [
+                100
+            ],
+            "Descriptors": [
+                {
+                    "DescriptorType": 1,
+                    "DescriptorData": "0000A015"
+                },
+                {
+                    "DescriptorType": 65535,
+                    "VendorDefinedDescriptorTitleString": "Platform",
+                    "VendorDefinedDescriptorData": "Yosemite V3.5"
+                },
+                {
+                    "DescriptorType": 65535,
+                    "VendorDefinedDescriptorTitleString": "BoardID",
+                    "VendorDefinedDescriptorData": "Java Island"
+                },
+                {
+                    "DescriptorType": 65535,
+                    "VendorDefinedDescriptorTitleString": "Stage",
+                    "VendorDefinedDescriptorData": "EVT"
+                },
+                {
+                    "DescriptorType": 65535,
+                    "VendorDefinedDescriptorTitleString": "Image MD5",
+                    "VendorDefinedDescriptorData": "8f06354222af5ac2f7dabf051539c9b1"
+                }
+            ]
+        }
+    ],
+    "ComponentImageInformationArea": [
+        {
+            "ComponentClassification": 65535,
+            "ComponentIdentifier": 2,
+            "ComponentOptions": [
+                1
+            ],
+            "RequestedComponentActivationMethod": [
+                0
+            ],
+            "ComponentVersionString": "ast1030 20240510"
+        }
+    ]
+}

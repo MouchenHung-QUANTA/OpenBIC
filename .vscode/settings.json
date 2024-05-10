@@ -1,0 +1,15 @@
+{
+    "files.associations": {
+        "sensor.h": "c",
+        "plat_def.h": "c",
+        "log.h": "c",
+        "plat_hook.h": "c",
+        "plat_class.h": "c",
+        "plat_sdr_table.h": "c",
+        "stdint.h": "c",
+        "hal_i2c.h": "c",
+        "plat_sensor_table.h": "c",
+        "ds160pt801.h": "c",
+        "plat_power.h": "c"
+    }
+}
