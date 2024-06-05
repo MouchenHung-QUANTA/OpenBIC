@@ -38,6 +38,7 @@
 #include "mp289x.h"
 #include "pt5161l.h"
 #include "ds160pt801.h"
+#include "tda38741.h"
 
 LOG_MODULE_REGISTER(plat_fwupdate);
 
@@ -232,14 +233,15 @@ static bool get_vr_fw_version(void *info_p, uint8_t *buf, uint8_t *len)
 
 	uint8_t version[15] = { 0 };
 	uint16_t tmp_crc_16 = 0;
+	uint32_t tmp_crc_32 = 0;
 	uint16_t ver_len = 0;
 	uint16_t remain = 0xFFFF;
 	uint8_t bus = 0;
 	uint8_t addr = 0;
 
-	uint8_t source = get_oth_module();
-	if (source != OTH_MODULE_PRIMARY) {
-		LOG_WRN("Given source %d is not supported yet", source);
+	uint8_t vr_module = get_oth_module();
+	if (vr_module == OTH_MODULE_UNKNOWN) {
+		LOG_ERR("Given unknown source");
 		goto post_hook_and_ret;
 	}
 
@@ -247,13 +249,23 @@ static bool get_vr_fw_version(void *info_p, uint8_t *buf, uint8_t *len)
 	case JI_COMPNT_CPUDVDD:
 		bus = CPUDVDD_I2C_BUS;
 		addr = CPUDVDD_I2C_ADDR >> 1;
-		if (!mpq8746_get_checksum(bus, addr, &tmp_crc_16)) {
-			LOG_ERR("Component %d version reading failed", p->comp_identifier);
-			goto post_hook_and_ret;
+		if (vr_module == OTH_MODULE_PRIMARY) {
+			if (!mpq8746_get_checksum(bus, addr, &tmp_crc_16)) {
+				LOG_ERR("Component %d version reading failed", p->comp_identifier);
+				goto post_hook_and_ret;
+			}
+			tmp_crc_16 = sys_cpu_to_be16(tmp_crc_16);
+			memcpy(version, &tmp_crc_16, sizeof(tmp_crc_16));
+			ver_len = 2;
+		} else {
+			if (!tda38741_get_checksum(bus, addr, &tmp_crc_32)) {
+				LOG_ERR("Component %d version reading failed", p->comp_identifier);
+				goto post_hook_and_ret;
+			}
+			tmp_crc_32 = sys_cpu_to_be32(tmp_crc_32);
+			memcpy(version, &tmp_crc_32, sizeof(tmp_crc_32));
+			ver_len = 4;
 		}
-		tmp_crc_16 = sys_cpu_to_be16(tmp_crc_16);
-		memcpy(version, &tmp_crc_16, sizeof(tmp_crc_16));
-		ver_len = 2;
 		break;
 	case JI_COMPNT_CPUVDD:
 	case JI_COMPNT_SOCVDD:
@@ -303,8 +315,13 @@ static bool get_vr_fw_version(void *info_p, uint8_t *buf, uint8_t *len)
 
 	const char *remain_str_p = ", Remaining Write: ";
 	uint8_t *buf_p = buf;
-	const uint8_t *vr_name_p = "MPS ";
 	*len = 0;
+
+	const char *vr_name[] = {
+		[OTH_MODULE_PRIMARY] = "MPS ",
+		[OTH_MODULE_SECOND] = "INF ",
+	};
+	const uint8_t *vr_name_p = vr_name[vr_module];
 
 	if (!vr_name_p) {
 		LOG_ERR("The pointer of VR string name is NULL");
