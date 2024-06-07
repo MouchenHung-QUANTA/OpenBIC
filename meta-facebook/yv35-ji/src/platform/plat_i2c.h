@@ -58,4 +58,10 @@ enum _i2c_bus_num {
 #define SOCVDD_I2C_BUS I2C_BUS3
 #define SOCVDD_I2C_ADDR 0x4C //8bit
 
+#define FBVDDP2_I2C_BUS I2C_BUS3
+#define FBVDDP2_I2C_ADDR 0x48 //8bit
+
+#define VR_1V2_I2C_BUS I2C_BUS3
+#define VR_1V2_I2C_ADDR 0x46 //8bit
+
 #endif
