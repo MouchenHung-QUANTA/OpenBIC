@@ -26,6 +26,7 @@
 #include "plat_gpio.h"
 #include "plat_i2c.h"
 #include "plat_sensor_table.h"
+#include "plat_power_status.h"
 #include "power_status.h"
 
 #include <logging/log.h>
@@ -196,7 +197,7 @@ void init_platform_config()
 	}
 
 	/* work around */
-	set_post_status(VIRTUAL_BIOS_POST_COMPLETE_L);
+	handle_post_status(false, false);
 	if (get_post_status() == true)
 		modify_sensor_cfg();
 
