@@ -210,8 +210,8 @@ int i3c_brocast_ccc(I3C_MSG *msg, uint8_t ccc_id, uint8_t ccc_addr)
 
 	ret = i3c_master_send_ccc(dev_i3c[msg->bus], &ccc);
 	if (ret != 0) {
-		LOG_ERR("Failed to broadcast ccc 0x%x to addresses 0x%x bus%u, ret%d",
-                       ccc_id, ccc_addr, msg->bus, ret);
+		LOG_ERR("Failed to broadcast ccc 0x%x to addresses 0x%x bus%u, ret%d", ccc_id,
+			ccc_addr, msg->bus, ret);
 	}
 
 	return -ret;
@@ -322,6 +322,7 @@ int i3c_controller_write(I3C_MSG *msg)
 	return true;
 }
 
+#if 0
 int i3c_set_pid(I3C_MSG *msg, uint16_t slot_pid)
 {
 	CHECK_NULL_ARG_WITH_RETURN(msg, -EINVAL);
@@ -352,6 +353,7 @@ int i3c_set_pid(I3C_MSG *msg, uint16_t slot_pid)
 
 	return true;
 }
+#endif
 
 void util_init_i3c(void)
 {
