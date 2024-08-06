@@ -46,8 +46,5 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 	shell_print(
 		shell,
 		"========================{SHELL COMMAND INFO}========================================");
-	
-	shell_print(shell, "%d", is_ac_lost());
-	
 	return 0;
 }
