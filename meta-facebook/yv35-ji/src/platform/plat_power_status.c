@@ -226,3 +226,20 @@ void power_status_monitor()
 			0, K_NO_WAIT);
 	k_thread_name_set(&power_status_monitor_thread, "power_monitor_thread");
 }
+
+static bool is_satmc_ready = false;
+
+bool satmc_access(uint8_t sensor_num)
+{
+	return get_satmc_status();
+}
+
+bool get_satmc_status()
+{
+	return is_satmc_ready;
+}
+
+void set_satmc_status(bool status)
+{
+	is_satmc_ready = status;
+}
