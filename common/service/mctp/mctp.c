@@ -344,7 +344,12 @@ static void mctp_tx_task(void *arg, void *dummy0, void *dummy1)
 		LOG_DBG("mctp_msg.len = %d", mctp_msg.len);
 		LOG_DBG("split_pkt_num = %d", split_pkt_num);
 		for (i = 0; i < split_pkt_num; i++) {
-			uint8_t buf[max_msg_size + MCTP_TRANSPORT_HEADER_SIZE];
+			uint8_t *buf = (uint8_t *)malloc(max_msg_size + MCTP_TRANSPORT_HEADER_SIZE);
+			if(!buf) {
+				LOG_ERR("malloc failed");
+				break;
+			}
+
 			mctp_hdr *hdr = (mctp_hdr *)buf;
 			uint8_t cp_msg_size = max_msg_size;
 
@@ -383,6 +388,8 @@ static void mctp_tx_task(void *arg, void *dummy0, void *dummy1)
 			ret = mctp_inst->write_data(mctp_inst, buf,
 						    cp_msg_size + MCTP_TRANSPORT_HEADER_SIZE,
 						    mctp_msg.ext_params);
+
+			SAFE_FREE(buf);
 
 			if (ret != MCTP_SUCCESS) {
 				LOG_WRN("mctp write data failed");
