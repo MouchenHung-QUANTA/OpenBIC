@@ -227,8 +227,6 @@ void power_status_monitor()
 	k_thread_name_set(&power_status_monitor_thread, "power_monitor_thread");
 }
 
-static bool is_satmc_ready = false;
-
 bool satmc_access(uint8_t sensor_num)
 {
 	return get_satmc_status();
@@ -236,10 +234,13 @@ bool satmc_access(uint8_t sensor_num)
 
 bool get_satmc_status()
 {
-	return is_satmc_ready;
+	return gpio_get(VIRTUAL_SATMC_READY);
 }
 
 void set_satmc_status(bool status)
 {
-	is_satmc_ready = status;
+	if (status == true)
+		gpio_set(VIRTUAL_SATMC_READY, GPIO_HIGH);
+	else
+		gpio_set(VIRTUAL_SATMC_READY, GPIO_LOW);
 }
