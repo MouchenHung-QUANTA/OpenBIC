@@ -26,10 +26,10 @@
 #include "ipmb.h"
 #include "hal_i2c_target.h"
 
-#define SSIF_THREAD_STACK_SIZE 4096
+#define SSIF_THREAD_STACK_SIZE 5120
 #define SSIF_POLLING_INTERVAL 100
 #define SSIF_MAX_IPMI_DATA_SIZE 32
-#define SSIF_BUFF_SIZE 50
+#define SSIF_BUFF_SIZE 1024
 
 #define SSIF_TASK_NAME_LEN 32
 
@@ -68,6 +68,7 @@ typedef enum ssif_err_status {
 	SSIF_STATUS_RSP_MSG_TIMEOUT, // Failed to send out msg or receive response msg
 	SSIF_STATUS_RSP_NOT_READY, // Can't get response msg while data collect
 	SSIF_STATUS_TARGET_WR_RD_ERROR, // I2C target write read error
+	SSIF_STATUS_MALLOC_ERROR, // Failed to malloc memory
 	SSIF_STATUS_UNKNOWN_ERR = 0xFF,
 } ssif_err_status_t;
 

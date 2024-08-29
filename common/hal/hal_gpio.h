@@ -71,7 +71,7 @@ enum GPIO_GROUP { FOREACH_GPIO(GEN_ENUM) };
 #define CHIP_SGPIO 1
 #define GPIO_LOW 0
 #define GPIO_HIGH 1
-#define GPIO_STACK_SIZE 3072
+#define GPIO_STACK_SIZE 4096
 
 #define OPEN_DRAIN 0
 #define PUSH_PULL 1

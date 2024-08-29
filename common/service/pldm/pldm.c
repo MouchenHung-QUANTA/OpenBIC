@@ -608,17 +608,25 @@ int pldm_send_ipmi_request(ipmi_msg *msg)
 {
 	CHECK_NULL_ARG_WITH_RETURN(msg, -1);
 
+	int ret = -1;
+
 	pldm_msg pmsg = { 0 };
-	uint8_t req_buf[PLDM_MAX_DATA_SIZE] = { 0 };
-	memset(&pmsg, 0, sizeof(pmsg));
+	uint8_t req_buf[1024] = { 0 };
+/*
+	uint8_t *req_buf = (uint8_t *)malloc(IANA_LEN + 2 + msg->data_len);
+	if (!req_buf) {
+		LOG_ERR("Failed to allocate req_buf");
+		goto exit;
+	}
 	memset(req_buf, 0, sizeof(req_buf));
+*/
 
 	mctp_port *p = pal_find_mctp_port_by_channel_target(msg->InF_target);
 	CHECK_NULL_ARG_WITH_RETURN(p, -1);
 
 	int target = pal_find_bus_in_mctp_port(p);
 	if (target < 0) {
-		return -1;
+		goto exit;
 	}
 
 	// Set PLDM header
@@ -649,7 +657,7 @@ int pldm_send_ipmi_request(ipmi_msg *msg)
 
 	if (!res_len) {
 		LOG_ERR("mctp_pldm_read fail");
-		return false;
+		goto exit;
 	}
 
 	struct _pldm_ipmi_cmd_resp *resp = (struct _pldm_ipmi_cmd_resp *)rbuf;
@@ -669,7 +677,11 @@ int pldm_send_ipmi_request(ipmi_msg *msg)
 		msg->data_len = 0;
 	}
 
-	return 0;
+	ret = 0;
+exit:
+	//SAFE_FREE(req_buf);
+
+	return ret;
 }
 
 K_THREAD_DEFINE(pldm_wait_resp_to, 1024, pldm_msg_timeout_monitor, NULL, NULL, NULL, 7, 0, 0);

@@ -329,10 +329,17 @@ static void send_cmd_work_handler(void *arg1, uint32_t arg2)
 	ssif_dev *ssif_inst = (ssif_dev *)arg1;
 	int ret = 0;
 
+	ipmi_msg *msg = (ipmi_msg *)malloc(sizeof(ipmi_msg));
+	if (!msg) {
+		LOG_ERR("Failed to allocate memory for ipmi_msg");
+		return;
+	}
+	memset(msg, 0, sizeof(ipmi_msg));
+
 	do {
 		uint8_t seq_source = 0xFF;
-		ipmi_msg msg = { 0 };
-		msg = construct_ipmi_message(seq_source, ssif_inst->current_ipmi_msg.buffer.netfn,
+		//ipmi_msg msg = { 0 };
+		*msg = construct_ipmi_message(seq_source, ssif_inst->current_ipmi_msg.buffer.netfn,
 					     ssif_inst->current_ipmi_msg.buffer.cmd, SELF, BMC_IPMB,
 					     ssif_inst->current_ipmi_msg.buffer.data_len,
 					     ssif_inst->current_ipmi_msg.buffer.data);
@@ -340,16 +347,16 @@ static void send_cmd_work_handler(void *arg1, uint32_t arg2)
 #if MAX_IPMB_IDX
 		// Check BMC communication interface if use IPMB or not
 		if (!pal_is_interface_use_ipmb(IPMB_inf_index_map[BMC_IPMB])) {
-			msg.InF_target = PLDM;
+			msg->InF_target = PLDM;
 			// Send request to MCTP/PLDM thread to ask BMC
-			ret = pldm_send_ipmi_request(&msg);
+			ret = pldm_send_ipmi_request(msg);
 			if (ret < 0) {
 				LOG_ERR("SSIF[%d] Failed to send SSIF msg to BMC via PLDM with ret: 0x%x",
 					ssif_inst->index, ret);
 				break;
 			}
 		} else {
-			ipmb_error ipmb_ret = ipmb_read(&msg, IPMB_inf_index_map[msg.InF_target]);
+			ipmb_error ipmb_ret = ipmb_read(msg, IPMB_inf_index_map[msg->InF_target]);
 			if (ipmb_ret != IPMB_ERROR_SUCCESS) {
 				LOG_ERR("SSIF[%d] Failed to send SSIF msg to BMC via IPMB with ret: 0x%x",
 					ssif_inst->index, ipmb_ret);
@@ -357,9 +364,9 @@ static void send_cmd_work_handler(void *arg1, uint32_t arg2)
 			}
 		}
 #else
-		msg.InF_target = PLDM;
+		msg->InF_target = PLDM;
 		// Send request to MCTP/PLDM thread to ask BMC
-		ret = pldm_send_ipmi_request(&msg);
+		ret = pldm_send_ipmi_request(msg);
 		if (ret < 0) {
 			LOG_ERR("SSIF[%d] Failed to send SSIF msg to BMC via PLDM with ret: 0x%x",
 				ssif_inst->index, ret);
@@ -367,6 +374,8 @@ static void send_cmd_work_handler(void *arg1, uint32_t arg2)
 		}
 #endif
 	} while (0);
+
+	SAFE_FREE(msg);
 }
 
 static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t smb_cmd)
@@ -404,33 +413,40 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 			if (pal_immediate_respond_from_HOST(
 				    ssif_inst->current_ipmi_msg.buffer.netfn,
 				    ssif_inst->current_ipmi_msg.buffer.cmd)) {
-				ipmi_msg_cfg ipmi_req = { 0 };
-				ipmi_req = ssif_inst->current_ipmi_msg;
+				//ipmi_msg_cfg ipmi_req = { 0 };
+				ipmi_msg_cfg *ipmi_req = (ipmi_msg_cfg *)malloc(sizeof(ipmi_msg_cfg));
+				if (!ipmi_req) {
+					LOG_ERR("Failed to allocate memory for ipmi_msg_cfg");
+					goto exit;
+				}
+				*ipmi_req = ssif_inst->current_ipmi_msg;
 
-				ipmi_req.buffer.data_len = 0;
-				ipmi_req.buffer.completion_code = CC_SUCCESS;
+				ipmi_req->buffer.data_len = 0;
+				ipmi_req->buffer.completion_code = CC_SUCCESS;
 				if (((ssif_inst->current_ipmi_msg.buffer.netfn ==
 				      NETFN_STORAGE_REQ) &&
 				     (ssif_inst->current_ipmi_msg.buffer.cmd ==
 				      CMD_STORAGE_ADD_SEL))) {
 					pal_add_sel_handler(&ssif_inst->current_ipmi_msg.buffer);
-					ipmi_req.buffer.data_len = 2;
-					ipmi_req.buffer.data[0] = 0x00;
-					ipmi_req.buffer.data[1] = 0x00;
+					ipmi_req->buffer.data_len = 2;
+					ipmi_req->buffer.data[0] = 0x00;
+					ipmi_req->buffer.data[1] = 0x00;
 				} else if (((ssif_inst->current_ipmi_msg.buffer.netfn ==
 					     NETFN_OEM_REQ) &&
 					    (ssif_inst->current_ipmi_msg.buffer.cmd ==
 					     CMD_OEM_POST_END))) {
 					pal_bios_post_complete();
-					ipmi_req.buffer.data_len = 0;
+					ipmi_req->buffer.data_len = 0;
 				}
 
-				ipmi_req.buffer.netfn =
+				ipmi_req->buffer.netfn =
 					(ssif_inst->current_ipmi_msg.buffer.netfn + 1) << 2;
 
-				if (ssif_set_data(ssif_inst->index, &ipmi_req) == false) {
+				if (ssif_set_data(ssif_inst->index, ipmi_req) == false) {
 					LOG_ERR("Failed to write ssif response data");
 				}
+
+				SAFE_FREE(ipmi_req);
 
 				worker_job job = { 0 };
 				job.delay_ms = 0;
@@ -446,7 +462,14 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 			     CMD_APP_SET_SYS_INFO_PARAMS) &&
 			    (ssif_inst->current_ipmi_msg.buffer.data[0] ==
 			     CMD_SYS_INFO_FW_VERSION)) {
-				uint8_t ipmi_buff[IPMI_MSG_MAX_LENGTH] = { 0 };
+				//uint8_t ipmi_buff[IPMI_MSG_MAX_LENGTH] = { 0 };
+				uint8_t *ipmi_buff = (uint8_t *)malloc(IPMI_MSG_MAX_LENGTH);
+				if (!ipmi_buff) {
+					LOG_ERR("Failed to allocate memory for ipmi_buff");
+					goto exit;
+				}
+				memset(ipmi_buff, 0, IPMI_MSG_MAX_LENGTH);
+
 				ipmi_buff[0] = ssif_inst->current_ipmi_msg.buffer.netfn;
 				ipmi_buff[1] = ssif_inst->current_ipmi_msg.buffer.cmd;
 				memcpy(ipmi_buff + 2, ssif_inst->current_ipmi_msg.buffer.data,
@@ -456,6 +479,8 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 				if (ret == -1) {
 					LOG_ERR("Record bios fw version fail");
 				}
+
+				SAFE_FREE(ipmi_buff);
 			}
 
 			do {
@@ -498,13 +523,20 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 				}
 #endif
 
-				ipmi_msg_cfg ssif_rsp = { 0 };
-				ssif_rsp.buffer = msg;
-				ssif_rsp.buffer.netfn = ssif_rsp.buffer.netfn << 2;
-				if (ssif_set_data(ssif_inst->index, &ssif_rsp) == false) {
+				//ipmi_msg_cfg ssif_rsp = { 0 };
+				ipmi_msg_cfg *ssif_rsp = (ipmi_msg_cfg *)malloc(sizeof(ipmi_msg_cfg));
+				if (!ssif_rsp) {
+					LOG_ERR("Failed to allocate memory for ipmi_msg_cfg");
+					break;
+				}
+				memset(ssif_rsp, 0, sizeof(ipmi_msg_cfg));
+				ssif_rsp->buffer = msg;
+				ssif_rsp->buffer.netfn = ssif_rsp->buffer.netfn << 2;
+				if (ssif_set_data(ssif_inst->index, ssif_rsp) == false) {
 					LOG_ERR("SSIF[%d] failed to write ssif response data",
 						ssif_inst->index);
 				}
+				SAFE_FREE(ssif_rsp);
 			} while (0);
 		}
 
@@ -776,10 +808,20 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 
 	memset(&ssif_inst->current_ipmi_msg, 0, sizeof(ssif_inst->current_ipmi_msg));
 
+	uint8_t *rdata = NULL;
 	while (1) {
-		uint8_t rdata[SSIF_BUFF_SIZE] = { 0 };
+		if (rdata)
+			SAFE_FREE(rdata);
+		rdata = (uint8_t *)malloc(SSIF_BUFF_SIZE);
+		if (!rdata) {
+			LOG_ERR("SSIF[%d] rdata malloc failed", ssif_inst->index);
+			ssif_error_record(ssif_inst->index, SSIF_STATUS_MALLOC_ERROR);
+			goto cold_reset;
+		}
+		memset(rdata, 0, SSIF_BUFF_SIZE);
+		//uint8_t rdata[SSIF_BUFF_SIZE] = { 0 };
 		uint16_t rlen = 0;
-		rc = i2c_target_read(ssif_inst->i2c_bus, rdata, sizeof(rdata), &rlen);
+		rc = i2c_target_read(ssif_inst->i2c_bus, rdata, SSIF_BUFF_SIZE, &rlen);
 		if (rc) {
 			LOG_ERR("SSIF[%d] i2c_target_read failed, ret %d\n", ssif_inst->index, rc);
 			ssif_error_record(ssif_inst->index, SSIF_STATUS_TARGET_WR_RD_ERROR);
