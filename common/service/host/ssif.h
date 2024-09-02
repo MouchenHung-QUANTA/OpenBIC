@@ -26,7 +26,7 @@
 #include "ipmb.h"
 #include "hal_i2c_target.h"
 
-#define SSIF_THREAD_STACK_SIZE 5120
+#define SSIF_THREAD_STACK_SIZE 6144
 #define SSIF_POLLING_INTERVAL 100
 #define SSIF_MAX_IPMI_DATA_SIZE 32
 #define SSIF_BUFF_SIZE 1024
