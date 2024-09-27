@@ -515,10 +515,12 @@ static bool ssif_data_handle(ssif_dev *ssif_inst, ssif_action_t action, uint8_t 
 			return false;
 		}
 
-		LOG_DBG("SSIF[%d] ipmi rsp netfn 0x%x, cmd 0x%x, cc 0x%x, data length %d:",
+		if (ssif_inst->rsp_buff[0] == 0x2c && ssif_inst->rsp_buff[1] == 0x11) {
+			LOG_INF("SSIF[%d] ipmi rsp netfn 0x%x, cmd 0x%x, cc 0x%x, data length %d:",
 			ssif_inst->index, ssif_inst->rsp_buff[0], ssif_inst->rsp_buff[1],
 			ssif_inst->rsp_buff[2], ssif_inst->rsp_buf_len - 3);
-		LOG_HEXDUMP_DBG(ssif_inst->rsp_buff + 3, ssif_inst->rsp_buf_len - 3, "");
+			LOG_HEXDUMP_INF(ssif_inst->rsp_buff + 3, ssif_inst->rsp_buf_len - 3, "");	
+		}
 
 		/* unlock i2c bus address */
 		if (ssif_lock_ctl(ssif_inst, false) == false) {
@@ -794,8 +796,11 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 			goto cold_reset;
 		}
 
-		LOG_DBG("SSIF[%d] read REQ data:", ssif_inst->index);
-		LOG_HEXDUMP_DBG(rdata, rlen, "");
+		if (rdata[2] == 0x28 && rdata[3] == 0x11)
+		{
+			LOG_INF("SSIF[%d] read REQ data:", ssif_inst->index);
+			LOG_HEXDUMP_INF(rdata, rlen, "");
+		}
 
 		cur_smb_cmd = rdata[0];
 
@@ -904,6 +909,11 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 			goto cold_reset;
 		}
 
+		if (ssif_inst->current_ipmi_msg.buffer.netfn == 0x0a && ssif_inst->current_ipmi_msg.buffer.cmd == 0x11) {
+			LOG_WRN("SSIF[%d] received netfn 0x06 cmd 0x11", ssif_inst->index);
+			LOG_HEXDUMP_WRN(ssif_inst->current_ipmi_msg.buffer.data,
+				ssif_inst->current_ipmi_msg.buffer.data_len, "");
+		}
 		LOG_DBG("SSIF[%d] ipmi req netfn 0x%x, cmd 0x%x, data length %d:", ssif_inst->index,
 			ssif_inst->current_ipmi_msg.buffer.netfn,
 			ssif_inst->current_ipmi_msg.buffer.cmd,
