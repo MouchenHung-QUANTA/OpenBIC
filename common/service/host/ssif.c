@@ -728,10 +728,12 @@ static void ssif_timeout_monitor(void *dummy0, void *dummy1, void *dummy2)
 		k_msleep(SSIF_STATUS_CHECK_PER_MS);
 
 		for (int idx = 0; idx < ssif_channel_cnt; idx++) {
+			LOG_INF("--- %s", ssif[idx].addr_lock == true ? "lock" : "unlock");
 			if (ssif[idx].addr_lock == false)
 				continue;
 
 			int64_t cur_uptime = k_uptime_get();
+			LOG_INF("~~~~ %lld %lld", ssif[idx].exp_to_ms, cur_uptime);
 			if ((ssif[idx].exp_to_ms <= cur_uptime)) {
 				LOG_WRN("SSIF[%d] msg timeout, ssif unlock!!", idx);
 				ssif_error_record(ssif[idx].index, SSIF_STATUS_ADDR_LCK_TIMEOUT);
@@ -796,11 +798,11 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 			goto cold_reset;
 		}
 
-		if (rdata[2] == 0x28 && rdata[3] == 0x11)
-		{
+		//if (rdata[2] == 0x28 && rdata[3] == 0x11)
+		//{
 			LOG_INF("SSIF[%d] read REQ data:", ssif_inst->index);
 			LOG_HEXDUMP_INF(rdata, rlen, "");
-		}
+		//}
 
 		cur_smb_cmd = rdata[0];
 
@@ -910,7 +912,7 @@ static void ssif_read_task(void *arvg0, void *arvg1, void *arvg2)
 		}
 
 		if (ssif_inst->current_ipmi_msg.buffer.netfn == 0x0a && ssif_inst->current_ipmi_msg.buffer.cmd == 0x11) {
-			LOG_WRN("SSIF[%d] received netfn 0x06 cmd 0x11", ssif_inst->index);
+			LOG_WRN("SSIF[%d] received netfn 0x0a cmd 0x11", ssif_inst->index);
 			LOG_HEXDUMP_WRN(ssif_inst->current_ipmi_msg.buffer.data,
 				ssif_inst->current_ipmi_msg.buffer.data_len, "");
 		}
