@@ -56,6 +56,10 @@ static int i2c_target_write_requested(struct i2c_slave_config *config)
 	struct i2c_target_data *data;
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
 
+	if (data->target_wr_msg.msg_length) {
+		LOG_WRN("Write buffer doesn't receive completely last time");
+	}
+
 	data->target_wr_msg.msg_length = 0;
 	memset(data->target_wr_msg.msg, 0x0, MAX_I2C_TARGET_BUFF);
 	data->wr_buffer_idx = 0;
@@ -136,6 +140,10 @@ static int i2c_target_stop(struct i2c_slave_config *config)
 
 	struct i2c_target_data *data;
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
+
+	if (data->i2c_bus == 5) {
+		LOG_INF("** stop");
+	}
 
 	int ret = 1;
 
