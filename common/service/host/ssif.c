@@ -33,6 +33,7 @@
 #include "hal_i2c_target.h"
 #include "hal_gpio.h"
 #include "util_worker.h"
+#include "plat_gpio.h"
 
 #ifdef ENABLE_SBMR
 #include "sbmr.h"
@@ -729,8 +730,12 @@ static void ssif_timeout_monitor(void *dummy0, void *dummy1, void *dummy2)
 
 		for (int idx = 0; idx < ssif_channel_cnt; idx++) {
 			LOG_INF("--- %s", ssif[idx].addr_lock == true ? "lock" : "unlock");
-			if (ssif[idx].addr_lock == false)
+			if (ssif[idx].addr_lock == false) {
+				gpio_set(BIC_EROT_LVSFT_EN, GPIO_LOW);
 				continue;
+			}
+
+			gpio_set(BIC_EROT_LVSFT_EN, GPIO_HIGH);
 
 			int64_t cur_uptime = k_uptime_get();
 			LOG_INF("~~~~ %lld %lld", ssif[idx].exp_to_ms, cur_uptime);
