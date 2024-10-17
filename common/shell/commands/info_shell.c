@@ -17,6 +17,7 @@
 #include "info_shell.h"
 #include "plat_version.h"
 #include "util_sys.h"
+#include "hal_i2c_target.h"
 
 #ifndef CONFIG_BOARD
 #define CONFIG_BOARD "unknown"
@@ -46,5 +47,8 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 	shell_print(
 		shell,
 		"========================{SHELL COMMAND INFO}========================================");
+
+	k_msleep(1000);
+	print_driver_status();
 	return 0;
 }

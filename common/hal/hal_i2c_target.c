@@ -33,10 +33,24 @@ static struct i2c_target_device i2c_target_device_global[MAX_TARGET_NUM] = { 0 }
 /* I2C target config modify lock */
 struct k_mutex i2c_target_mutex[MAX_TARGET_NUM];
 
+uint32_t DRIVER_STATUS[32] = { 0 };
+uint8_t DRIVER_WR_BYTES[32] = { 0 };
+int cur_rec_idx = 0;
+int cur_wr_rec_idx = 0;
+
 /* static function declare */
 static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg);
 static int do_i2c_target_register(uint8_t bus_num);
 static int do_i2c_target_unregister(uint8_t bus_num);
+
+void print_driver_status(void)
+{
+	LOG_WRN("DRIVER_WR_BYTES: %d", cur_wr_rec_idx-1);
+	LOG_HEXDUMP_WRN(DRIVER_WR_BYTES, 32, "");
+
+	LOG_WRN("DRIVER_STATUS: %d", cur_rec_idx-1);
+	LOG_HEXDUMP_WRN(DRIVER_STATUS, 128, "");
+}
 
 static bool do_something_while_rd_start(void *arg)
 {
@@ -55,10 +69,6 @@ static int i2c_target_write_requested(struct i2c_slave_config *config)
 
 	struct i2c_target_data *data;
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
-
-	if (data->target_wr_msg.msg_length) {
-		LOG_WRN("Write buffer doesn't receive completely last time");
-	}
 
 	data->target_wr_msg.msg_length = 0;
 	memset(data->target_wr_msg.msg, 0x0, MAX_I2C_TARGET_BUFF);
@@ -80,6 +90,20 @@ static int i2c_target_write_received(struct i2c_slave_config *config, uint8_t va
 		return 1;
 	}
 	data->target_wr_msg.msg[data->wr_buffer_idx++] = val;
+
+	if (data->i2c_bus == 5) {
+		if (data->wr_buffer_idx == 1) {
+			if (cur_rec_idx >= 32) {
+				cur_rec_idx = 0;
+			}
+			DRIVER_STATUS[cur_rec_idx++] = config->sts;
+		}
+
+		if (cur_wr_rec_idx >= 32) {
+			cur_wr_rec_idx = 0;
+		}
+		DRIVER_WR_BYTES[cur_wr_rec_idx++] = val;
+	}
 
 	if (data->post_wr_rcv_func)
 		data->post_wr_rcv_func(data);
@@ -140,10 +164,6 @@ static int i2c_target_stop(struct i2c_slave_config *config)
 
 	struct i2c_target_data *data;
 	data = CONTAINER_OF(config, struct i2c_target_data, config);
-
-	if (data->i2c_bus == 5) {
-		LOG_INF("** stop");
-	}
 
 	int ret = 1;
 

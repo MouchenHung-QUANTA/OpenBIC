@@ -725,11 +725,15 @@ static void ssif_timeout_monitor(void *dummy0, void *dummy1, void *dummy2)
 	ARG_UNUSED(dummy1);
 	ARG_UNUSED(dummy2);
 
+	static bool cur_lck = false;
+
 	while (1) {
 		k_msleep(SSIF_STATUS_CHECK_PER_MS);
 
 		for (int idx = 0; idx < ssif_channel_cnt; idx++) {
-			LOG_INF("--- %s", ssif[idx].addr_lock == true ? "lock" : "unlock");
+			if (cur_lck != ssif[idx].addr_lock)
+				LOG_INF("--- %s", ssif[idx].addr_lock == true ? "lock" : "unlock");
+			cur_lck = ssif[idx].addr_lock;
 			if (ssif[idx].addr_lock == false) {
 				gpio_set(BIC_EROT_LVSFT_EN, GPIO_LOW);
 				continue;
@@ -739,6 +743,7 @@ static void ssif_timeout_monitor(void *dummy0, void *dummy1, void *dummy2)
 			LOG_INF("~~~~ %lld %lld", ssif[idx].exp_to_ms, cur_uptime);
 			if ((ssif[idx].exp_to_ms <= cur_uptime)) {
 				gpio_set(BIC_EROT_LVSFT_EN, GPIO_HIGH);
+				print_driver_status();
 				LOG_WRN("SSIF[%d] msg timeout, ssif unlock!!", idx);
 				ssif_error_record(ssif[idx].index, SSIF_STATUS_ADDR_LCK_TIMEOUT);
 				if (ssif_lock_ctl(&ssif[idx], false) == false) {

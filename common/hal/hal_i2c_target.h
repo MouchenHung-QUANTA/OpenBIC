@@ -102,5 +102,6 @@ int i2c_target_control(uint8_t bus_num, struct _i2c_target_config *cfg,
 		       enum i2c_target_api_control_mode mode);
 
 void util_init_I2C_target(void);
+void print_driver_status(void);
 
 #endif
