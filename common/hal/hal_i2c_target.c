@@ -33,10 +33,10 @@ static struct i2c_target_device i2c_target_device_global[MAX_TARGET_NUM] = { 0 }
 /* I2C target config modify lock */
 struct k_mutex i2c_target_mutex[MAX_TARGET_NUM];
 
-uint32_t DRIVER_STATUS[32] = { 0 };
 uint8_t DRIVER_WR_BYTES[32] = { 0 };
-int cur_rec_idx = 0;
 int cur_wr_rec_idx = 0;
+uint32_t DRIVER_STATUS[64] = { 0 };
+int cur_sts_rec_idx = 0;
 
 /* static function declare */
 static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg);
@@ -48,8 +48,8 @@ void print_driver_status(void)
 	LOG_WRN("DRIVER_WR_BYTES: %d", cur_wr_rec_idx-1);
 	LOG_HEXDUMP_WRN(DRIVER_WR_BYTES, 32, "");
 
-	LOG_WRN("DRIVER_STATUS: %d", cur_rec_idx-1);
-	LOG_HEXDUMP_WRN(DRIVER_STATUS, 128, "");
+	LOG_WRN("DRIVER_STATUS: %d", cur_sts_rec_idx);
+	LOG_HEXDUMP_WRN(DRIVER_STATUS, 256, "");
 }
 
 static bool do_something_while_rd_start(void *arg)
@@ -93,10 +93,8 @@ static int i2c_target_write_received(struct i2c_slave_config *config, uint8_t va
 
 	if (data->i2c_bus == 5) {
 		if (data->wr_buffer_idx == 1) {
-			if (cur_rec_idx >= 32) {
-				cur_rec_idx = 0;
-			}
-			DRIVER_STATUS[cur_rec_idx++] = config->sts;
+			memcpy(DRIVER_STATUS, config->sts, sizeof(DRIVER_STATUS));
+			cur_sts_rec_idx = config->cur_rec_idx;
 		}
 
 		if (cur_wr_rec_idx >= 32) {
