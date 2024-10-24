@@ -725,15 +725,18 @@ static void ssif_timeout_monitor(void *dummy0, void *dummy1, void *dummy2)
 	ARG_UNUSED(dummy1);
 	ARG_UNUSED(dummy2);
 
-	static bool cur_lck = false;
+	//static bool cur_lck = false;
 
 	while (1) {
 		k_msleep(SSIF_STATUS_CHECK_PER_MS);
 
 		for (int idx = 0; idx < ssif_channel_cnt; idx++) {
+			/*
 			if (cur_lck != ssif[idx].addr_lock)
 				LOG_INF("--- %s", ssif[idx].addr_lock == true ? "lock" : "unlock");
 			cur_lck = ssif[idx].addr_lock;
+*/
+			LOG_INF("--- %s", ssif[idx].addr_lock == true ? "lock" : "unlock");
 			if (ssif[idx].addr_lock == false) {
 				gpio_set(BIC_EROT_LVSFT_EN, GPIO_LOW);
 				continue;
