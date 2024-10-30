@@ -35,8 +35,6 @@ struct k_mutex i2c_target_mutex[MAX_TARGET_NUM];
 
 uint8_t DRIVER_WR_BYTES[32] = { 0 };
 int cur_wr_rec_idx = 0;
-uint32_t DRIVER_STATUS[64] = { 0 };
-int cur_sts_rec_idx = 0;
 
 /* static function declare */
 static int do_i2c_target_cfg(uint8_t bus_num, struct _i2c_target_config *cfg);
@@ -45,11 +43,13 @@ static int do_i2c_target_unregister(uint8_t bus_num);
 
 void print_driver_status(void)
 {
-	LOG_WRN("DRIVER_WR_BYTES: %d", cur_wr_rec_idx-1);
-	LOG_HEXDUMP_WRN(DRIVER_WR_BYTES, 32, "");
-
-	LOG_WRN("DRIVER_STATUS: %d", cur_sts_rec_idx);
-	LOG_HEXDUMP_WRN(DRIVER_STATUS, 256, "");
+	const struct device *dev;
+	dev = device_get_binding("I2C_5");
+	if (!dev) {
+		LOG_ERR("I2C controller not found!");
+		return;
+	}
+	i2c_print_irq_status(dev);
 }
 
 static bool do_something_while_rd_start(void *arg)
@@ -92,11 +92,6 @@ static int i2c_target_write_received(struct i2c_slave_config *config, uint8_t va
 	data->target_wr_msg.msg[data->wr_buffer_idx++] = val;
 
 	if (data->i2c_bus == 5) {
-		if (data->wr_buffer_idx == 1) {
-			memcpy(DRIVER_STATUS, config->sts, sizeof(DRIVER_STATUS));
-			cur_sts_rec_idx = config->cur_rec_idx;
-		}
-
 		if (cur_wr_rec_idx >= 32) {
 			cur_wr_rec_idx = 0;
 		}
