@@ -1,0 +1,12 @@
+<map id="pal_load_gpio_config" name="pal_load_gpio_config">
+<area shape="rect" id="node1" title=" " alt="" coords="5,81,148,108"/>
+<area shape="rect" id="node2" href="$yv4-sd_2src_2platform_2plat__class_8c.html#a77fab2f8167a9eb32f8d848d1bb1ef53" title=" " alt="" coords="231,5,335,32"/>
+<area shape="rect" id="node5" href="$at-cb_2src_2platform_2plat__class_8c.html#a177b22525ca1657da5ced816317de219" title=" " alt="" coords="429,81,560,108"/>
+<area shape="rect" id="node6" href="$yv4-wf_2src_2platform_2plat__isr_8c.html#a39572d2e82df88124c4a0dc0141bbe95" title=" " alt="" coords="196,157,371,184"/>
+<area shape="rect" id="node10" href="$at-cb_2src_2platform_2plat__gpio_8c.html#ac3611320ab056e269621aefe3f1f5e05" title=" " alt="" coords="205,107,361,133"/>
+<area shape="rect" id="node3" href="$hal__i2c_8c.html#a10a12888a55c2d866fcf01cbd342652f" title=" " alt="" coords="435,5,554,32"/>
+<area shape="rect" id="node4" href="$hal__i2c_8c.html#abe0116512c803f4b7188c17345eb998f" title=" " alt="" coords="619,5,761,32"/>
+<area shape="rect" id="node7" href="$hal__gpio_8c.html#af700ee50de3d113e223c2b011c41f966" title=" " alt="" coords="459,132,530,159"/>
+<area shape="rect" id="node8" href="$power__status_8c.html#a6d168539f3bc57902955388b4e060e4a" title=" " alt="" coords="419,183,571,225"/>
+<area shape="rect" id="node9" href="$power__status_8c.html#a4a854c545c7f9edd4323cf550ed13d39" title=" " alt="" coords="419,249,571,290"/>
+</map>
