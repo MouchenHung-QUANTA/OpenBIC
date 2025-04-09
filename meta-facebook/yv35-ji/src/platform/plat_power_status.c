@@ -256,9 +256,11 @@ uint8_t scan_retimer_addr()
 	static uint8_t retimer_addr = 0xFF;
 	if (retimer_addr_get == true)
 		return retimer_addr;
-	uint8_t addr_list[10] = { 0 };
-	uint8_t addr_len = 0;
+	//uint8_t addr_list[10] = { 0 };
+	//uint8_t addr_len = 0;
 	uint8_t retimer_module = RETIMER_MODULE_UNKNOWN;
+
+#if 0
 	uint8_t retry = 3;
 	I2C_MSG msg = { 0 };
 	msg.bus = I2C_BUS2;
@@ -289,6 +291,11 @@ uint8_t scan_retimer_addr()
 		LOG_DBG("No retimer device found!!");
 		return 0xFF;
 	}
+#endif
+
+	retimer_module = RETIMER_MODULE_PT4080L;
+	retimer_addr = AL_RETIMER_ADDR;
+
 	set_retimer_module(retimer_module);
 	retimer_addr_get = true;
 	return retimer_addr;
@@ -301,6 +308,7 @@ bool retimer_access(uint8_t sensor_num)
 
 bool get_retimer_status()
 {
+	return false;
 	if (get_DC_status() == false)
 		return false;
 
