@@ -17,6 +17,7 @@
 #include "info_shell.h"
 #include "plat_version.h"
 #include "util_sys.h"
+#include <drivers/spi.h>
 
 #ifndef CONFIG_BOARD
 #define CONFIG_BOARD "unknown"
@@ -46,5 +47,49 @@ int cmd_info_print(const struct shell *shell, size_t argc, char **argv)
 	shell_print(
 		shell,
 		"========================{SHELL COMMAND INFO}========================================");
+
+	
+
+	const struct device *spi_dev = device_get_binding("SPI1");
+	if (!spi_dev) {
+		shell_print(shell, "Failed to get SPI device");
+		return 0;
+	}
+
+	const struct spi_config spi_cfg_single = {
+		.frequency = 1000000,
+		.operation = SPI_OP_MODE_MASTER | SPI_TRANSFER_MSB | SPI_WORD_SET(8) | SPI_LINES_SINGLE,
+		.slave = 0,
+		.cs = NULL,
+	};
+
+	uint8_t cmd_buf[100] = { 0 };
+	uint8_t rsp_buf[100] = { 0 };
+
+	cmd_buf[0] = 0x9f; // Command to read
+
+	struct spi_buf tx_buf[] = {
+		{ .buf = cmd_buf, .len = 1 },
+	};
+	const struct spi_buf_set tx = {
+		.buffers = tx_buf, .count = ARRAY_SIZE(tx_buf)
+	};
+	struct spi_buf rx_buf[] = {
+		{ .buf = rsp_buf, .len = 3 }
+	};
+	const struct spi_buf_set rx = {
+		.buffers = rx_buf, .count = ARRAY_SIZE(rx_buf)
+	};
+
+	int err = spi_transceive(spi_dev, &spi_cfg_single,
+			      &tx, &rx);
+	if (err) {
+		shell_error(shell, "Failed to read RX buffer %d", err);
+		return 0;
+	}
+
+	shell_print(shell, "SPI RX buffer:");
+	shell_hexdump(shell, rsp_buf, 3);
+
 	return 0;
 }
